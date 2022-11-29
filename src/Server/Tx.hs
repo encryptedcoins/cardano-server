@@ -65,8 +65,7 @@ mkTx utxosAddresses txs = do
     utxos <- liftIO $ mconcatMapM getUtxosAt utxosAddresses
     ct    <- liftIO currentTime
 
-    let paramsFile = $(makeRelativeToProject "testnet/protocol-parameters.json" >>= embedFile)
-        protocolParams = fromJust . decode $ fromStrict paramsFile
+    let protocolParams = fromJust . decode $ fromStrict $(embedFile "testnet/protocol-parameters.json")
         networkId = Testnet $ NetworkMagic 1097911063
         ledgerParams = Params def protocolParams networkId
 
