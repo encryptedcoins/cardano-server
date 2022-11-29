@@ -16,7 +16,7 @@ import           Control.Monad.State       (State, get, put, execState, MonadIO(
 import           Data.Aeson                (decode)
 import           Data.ByteString.Lazy      (fromStrict)
 import           Data.Default              (Default(..))
-import           Data.FileEmbed            (embedFile)
+import           Data.FileEmbed            (embedFile, makeRelativeToProject)
 import qualified Data.Map                  as M
 import           Data.Maybe                (fromJust)
 import           Data.Void                 (Void)
@@ -65,7 +65,8 @@ mkTx utxosAddresses txs = do
     utxos <- liftIO $ mconcatMapM getUtxosAt utxosAddresses
     ct    <- liftIO currentTime
 
-    let protocolParams = fromJust . decode $ fromStrict $(embedFile "testnet/protocol-parameters.json")
+    let paramsFile = $(makeRelativeToProject "testnet/protocol-parameters.json" >>= embedFile)
+        protocolParams = fromJust . decode $ fromStrict paramsFile
         networkId = Testnet $ NetworkMagic 1097911063
         ledgerParams = Params def protocolParams networkId
 
