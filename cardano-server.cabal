@@ -38,16 +38,14 @@ library
       Server.Endpoints.Ping
       Server.Internal
       Server.Main
-      Server.Opts
-      Server.Setup
       Server.Tx
       Test.Internal
+      TestingServer.Main
       Utils.Logger
       Utils.Servant
       Utils.Wait
     other-modules:
       Test.TestingServer
-      TestingServer.Main
       TestingServer.OnChain
       TestingServer.OffChain
     default-extensions:

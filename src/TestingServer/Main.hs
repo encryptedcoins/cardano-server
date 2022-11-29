@@ -47,8 +47,6 @@ instance HasServer TestingServer where
         addr <- getWalletAddr
         void $ mkTx [addr] [testMintTx bbs]
 
-    setupServer = pure ()
-
 instance HasMintEndpoint TestingServer where
 
     type MintApiResultOf TestingServer = '[NoContent, WithStatus 422 Text]

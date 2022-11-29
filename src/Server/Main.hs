@@ -4,7 +4,6 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MonoLocalBinds        #-}
 {-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE RecordWildCards       #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeOperators         #-}
@@ -21,11 +20,8 @@ import           Servant                  (Proxy(..), type (:<|>)(..), ServerT, 
 import           Server.Endpoints.Balance (BalanceApi, balanceHandler)
 import           Server.Endpoints.Mint    (HasMintEndpoint, MintApi, mintHandler, processQueue)
 import           Server.Endpoints.Ping    (PingApi, pingHandler)
-import           Server.Internal          (AppM(unAppM), HasServer(..), loadEnv, Env)
-import           Server.Opts              (runWithOpts, Options(..), ServerMode(..), ServerType(..))
-import           Server.Setup             (runSetupM)
+import           Server.Internal          (AppM(unAppM), loadEnv, Env)
 import           System.IO                (stdout, BufferMode(LineBuffering), hSetBuffering)
-import           TestingServer.Main       (TestingServer)
 
 type ServerAPI s
     =    PingApi
@@ -48,25 +44,12 @@ serverAPI = Proxy @(ServerAPI s)
 port :: Int
 port = 3000
 
-main :: IO ()
-main = do
-    Options{..} <- runWithOpts
-    case serverType of
-        Test    -> withInstantiation @TestingServer
-
-withInstantiation :: forall s. ServerConstraints s => IO ()
-withInstantiation = do
-    Options{..} <- runWithOpts
+runServer :: forall s. ServerConstraints s => IO ()
+runServer = do
     env        <- loadEnv @s
-    case serverMode of
-        Run   -> runServer env
-        Setup -> runSetupM env $ setupServer @s
-
-runServer :: forall s. ServerConstraints s => Env s -> IO ()
-runServer env = do
-        hSetBuffering stdout LineBuffering
-        forkIO $ processQueue env
-        Warp.run port $ mkApp @s env
+    hSetBuffering stdout LineBuffering
+    forkIO $ processQueue env
+    Warp.run port $ mkApp @s env
 
 mkApp :: forall s. ServerConstraints s => Env s -> Application
 mkApp env = serveWithContext (serverAPI @s) EmptyContext $

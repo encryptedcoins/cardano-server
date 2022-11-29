@@ -1,12 +1,10 @@
 {-# LANGUAGE AllowAmbiguousTypes        #-}
-{-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE DerivingStrategies         #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE RecordWildCards            #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
-{-# LANGUAGE StandaloneDeriving         #-}
 {-# LANGUAGE TypeApplications           #-}
 {-# LANGUAGE TypeFamilies               #-}
 
@@ -35,8 +33,6 @@ class ( Show (AuxiliaryEnvOf s)
     type AuxiliaryEnvOf s :: Type
 
     loadAuxiliaryEnv :: FilePath -> IO (AuxiliaryEnvOf s)
-
-    setupServer :: (MonadReader (Env s) m, HasLogger m, HasWallet m) => m ()
 
     type RedeemerOf s :: Type
 

@@ -1,5 +1,4 @@
 {-# LANGUAGE AllowAmbiguousTypes        #-}
-{-# LANGUAGE LambdaCase                 #-}
 {-# LANGUAGE NumericUnderscores         #-}
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE RecordWildCards            #-}
@@ -9,7 +8,7 @@
 module Client.Main where
 
 import           Client.Internal           (HasClient(..), ClientM, ClientRequestOf, runClientM)
-import           Client.Opts               (AutoOptions(..), Maximum, Options(..), optionsParser)
+import           Client.Opts               (AutoOptions(..), Maximum, Options(..), runWithOpts)
 import           Control.Monad             (replicateM)
 import           Control.Monad.Reader      (MonadIO(..), forever, when)
 import           Data.Aeson                (encode)
@@ -19,28 +18,15 @@ import           Network.HTTP.Client       (httpLbs, defaultManagerSettings, new
                                             Manager, Request(..), RequestBody(..), responseStatus, responseTimeoutMicro)
 import           Network.HTTP.Types.Header (hContentType)
 import           Network.HTTP.Types.Status (status204)
-import           Options.Applicative       (Parser, (<**>), (<|>), fullDesc, info, long, execParser, helper, flag')
 import           Server.Config             (Config(..), loadConfig)       
 import qualified Server.Internal           as Server
 import           System.Random             (randomRIO)
-import           TestingServer.Main        (TestingServer)
 import           Utils.Logger              (HasLogger(..), (.<))
 import           Utils.Wait                (waitTime)
 
-main :: IO ()
-main = runWithOptsSum >>= \case
-        OptionsTesting opts -> startClient opts
-    where
-        runWithOptsSum = execParser $ info (parserSum <**> helper) fullDesc
-        parserSum = parser "test"    OptionsTesting
-
-        parser :: forall s. HasClient s => String -> (Options s -> OptionsSum) -> Parser OptionsSum
-        parser name constr = flag' constr (long name) <*> optionsParser
-
-data OptionsSum = OptionsTesting (Options TestingServer)
-
-startClient :: forall s. HasClient s => Options s -> IO ()
-startClient opts = do
+startClient :: forall s. HasClient s => IO ()
+startClient = do
+    opts <- runWithOpts @s
     Config{..} <- loadConfig 
     Server.Env{..} <- Server.loadEnv @s
     let fullAddress = "http://"

@@ -1,6 +1,9 @@
+{-# LANGUAGE TypeApplications #-}
+
 module Main where
 
-import qualified Server.Main
+import Server.Main        (runServer)
+import TestingServer.Main (TestingServer)
 
 main :: IO ()
-main = Server.Main.main
+main = runServer @TestingServer
