@@ -2,6 +2,6 @@
 , "node_address"        : ""
 , "chain_index_address" : ""
 , "auxiliary_env_file"  : "testnet/txOutRef.json"
-, "wallet_file"         : "testnet/wallet.json"
+, "wallet_file"         : "testnet/wallets/wallet.json"
 , "min_utxos_amount"    : 1
 }
