@@ -11,16 +11,17 @@
 module Server.Main where
 
 import           Control.Concurrent       (forkIO)
+import           Control.Monad.Except     (runExceptT)
 import           Control.Monad.Reader     (ReaderT(runReaderT))
 import           Utils.Logger             (HasLogger(logMsg))
 import qualified Network.Wai.Handler.Warp as Warp
 import qualified Servant
 import           Servant                  (Proxy(..), type (:<|>)(..), ServerT, Context(EmptyContext), hoistServer,
-                                           serveWithContext, Application)
+                                           serveWithContext, Application, runHandler')
 import           Server.Endpoints.Balance (BalanceApi, balanceHandler)
 import           Server.Endpoints.Mint    (HasMintEndpoint, MintApi, mintHandler, processQueue)
 import           Server.Endpoints.Ping    (PingApi, pingHandler)
-import           Server.Internal          (AppM(unAppM), loadEnv, Env)
+import           Server.Internal          (AppM(unAppM), Env, loadEnv)
 import           System.IO                (stdout, BufferMode(LineBuffering), hSetBuffering)
 
 type ServerAPI s
@@ -46,13 +47,14 @@ port = 3000
 
 runServer :: forall s. ServerConstraints s => IO ()
 runServer = do
-    env        <- loadEnv @s
-    hSetBuffering stdout LineBuffering
-    forkIO $ processQueue env
-    Warp.run port $ mkApp @s env
+        env <- loadEnv
+        hSetBuffering stdout LineBuffering
+        forkIO $ processQueue env
+        logStart env "Starting server..."
+        Warp.run port $ mkApp @s env
+    where
+        logStart env = runExceptT . runHandler' . flip runReaderT env . unAppM . logMsg
 
 mkApp :: forall s. ServerConstraints s => Env s -> Application
 mkApp env = serveWithContext (serverAPI @s) EmptyContext $
-    hoistServer (serverAPI @s) ((`runReaderT` env) . unAppM . (logStart >>)) server
-    where
-        logStart = logMsg "Starting server..."
+    hoistServer (serverAPI @s) ((`runReaderT` env) . unAppM) server
