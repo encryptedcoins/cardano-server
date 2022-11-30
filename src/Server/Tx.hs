@@ -5,18 +5,13 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell     #-}
-{-# LANGUAGE TypeApplications    #-}
 
 module Server.Tx where
 
 import           Cardano.Api.Shelley       (NetworkMagic(..), NetworkId(..))
 import           Control.Monad.Extra       (mconcatMapM)
 import           Control.Monad.State       (State, get, put, execState, MonadIO(..))
-import           Data.Aeson                (decode)
-import           Data.ByteString.Lazy      (fromStrict)
 import           Data.Default              (Default(..))
-import           Data.FileEmbed            (embedFile, makeRelativeToProject)
 import qualified Data.Map                  as M
 import           Data.Maybe                (fromJust)
 import           Data.Void                 (Void)
@@ -32,6 +27,7 @@ import           IO.ChainIndex             (getUtxosAt)
 import           IO.Time                   (currentTime)
 import           IO.Wallet                 (HasWallet(..), signTx, balanceTx, submitTxConfirmed, getWalletAddr,
                                             getWalletAddrBech32, getWalletKeyHashes)
+import           Server.Config             (decodeOrErrorFromFile)
 import           Types.TxConstructor       (TxConstructor (..), selectTxConstructor, mkTxConstructor)
 import           Utils.Logger              (HasLogger(..), logPretty, logSmth)
 
@@ -62,11 +58,11 @@ mkTx utxosAddresses txs = do
     walletAddrBech32       <- getWalletAddrBech32
     walletAddr             <- getWalletAddr
     (walletPKH, walletSKH) <- getWalletKeyHashes
-    utxos <- liftIO $ mconcatMapM getUtxosAt utxosAddresses
-    ct    <- liftIO currentTime
+    utxos                  <- liftIO $ mconcatMapM getUtxosAt utxosAddresses
+    ct                     <- liftIO currentTime
+    protocolParams         <- liftIO $ decodeOrErrorFromFile "testnet/protocol-parameters.json"
 
-    let protocolParams = fromJust . decode $ fromStrict $(embedFile "testnet/protocol-parameters.json")
-        networkId = Testnet $ NetworkMagic 1097911063
+    let networkId = Testnet $ NetworkMagic 1097911063
         ledgerParams = Params def protocolParams networkId
 
     let ?txWalletAddr = walletAddr

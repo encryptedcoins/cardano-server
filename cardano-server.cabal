@@ -62,7 +62,6 @@ library
       directory                              -any,
       exceptions                             -any,
       extra                                  -any,
-      file-embed                             -any,
       filepath                               -any,
       http-client                            -any,
       http-types                             -any,
@@ -85,8 +84,6 @@ library
       warp                                   -any,
 
     hs-source-dirs: src
-
-extra-source-files: testnet/protocol-parameters.json
 
 executable testingServer
   default-language: Haskell2010
