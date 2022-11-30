@@ -12,7 +12,7 @@ import           Cardano.Api.Shelley       (NetworkMagic(..), NetworkId(..))
 import           Control.Monad.Extra       (mconcatMapM)
 import           Control.Monad.State       (State, get, put, execState, MonadIO(..))
 import           Data.Default              (Default(..))
-import qualified Data.Map                  as M
+import qualified Data.Map                  as Map
 import           Data.Maybe                (fromJust)
 import           Data.Void                 (Void)
 import           Ledger                    (Address, CardanoTx(..), ChainIndexTxOut, Params(..), POSIXTime, PubKeyHash, TxOutRef,
@@ -36,7 +36,7 @@ type HasTxEnv =
     , ?txWalletPKH  :: PubKeyHash
     , ?txWalletSKH  :: Maybe PubKeyHash
     , ?txCt         :: POSIXTime
-    , ?txUtxos      :: M.Map TxOutRef (ChainIndexTxOut, ChainIndexTx)
+    , ?txUtxos      :: Map.Map TxOutRef (ChainIndexTxOut, ChainIndexTx)
     , ?txParams     :: Params
     )
 
@@ -101,8 +101,8 @@ mkWalletTxOutRefs addr n = do
         signedTx <- mkTx [addr] [constructor]
         let refs = case signedTx of
                 EmulatorTx _    -> error "Can not get TxOutRef's from EmulatorTx."
-                CardanoApiTx tx -> M.keys $ unspentOutputsTx tx
-                Both _ tx       -> M.keys $ unspentOutputsTx tx
+                CardanoApiTx tx -> Map.keys $ unspentOutputsTx tx
+                Both _ tx       -> Map.keys $ unspentOutputsTx tx
         pure refs
     where
         constructor :: HasTxEnv => State (TxConstructor Void i o) ()

@@ -5,7 +5,7 @@
 module Test.Reference where
 
 import           Control.Monad           (void)
-import qualified Data.Map                as M
+import qualified Data.Map                as Map
 import           IO.Wallet               (getWalletAddr)
 import qualified Ledger.Ada              as Ada
 import           Ledger.Typed.Scripts    (Any)
@@ -40,7 +40,7 @@ runReferenceTest = void $ runTestM @TestingServer $ do
     mkTest token addr = mkTx @Any [addr]
         [ referenceMintingPolicyTx 
             testPolicy
-            (head $ M.keys ?txUtxos) 
+            (head $ Map.keys ?txUtxos) 
             ([token] :: [Plutus.BuiltinByteString])
             (Plutus.sum $ map testToken [token])
         ]
