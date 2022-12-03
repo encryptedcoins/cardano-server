@@ -1,0 +1,4 @@
+cradle:
+  cabal:
+    - path: "src"
+      component: "cardano-server:lib:cardano-server"
