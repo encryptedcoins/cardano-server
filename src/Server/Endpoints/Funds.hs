@@ -16,7 +16,7 @@ import           Control.Monad.Catch    (Exception, handle, throwM)
 import           Control.Monad.IO.Class (MonadIO(..))
 import           Data.Aeson             (ToJSON)
 import           Data.Text              (Text)
-import qualified Data.Map               as M
+import qualified Data.Map               as Map
 import           GHC.Generics           (Generic)
 import           IO.ChainIndex          (getUtxosAt)
 import           Ledger                 (DecoratedTxOut(..))
@@ -61,7 +61,7 @@ fundsErrorHandler = \case
 
 getFunds :: MonadIO m => CurrencySymbol -> Address -> m Funds
 getFunds cs addr = do
-        coins <- liftIO $ M.toList . M.map getNames <$> getUtxosAt addr
+        coins <- liftIO $ Map.toList . Map.map getNames <$> getUtxosAt addr
         pure $ Funds $ concatMap (\(ref, names) -> zip names (repeat ref)) coins
     where
         getNames = maybe [] PAM.keys . PAM.lookup cs . getValue . _decoratedTxOutValue . fst
