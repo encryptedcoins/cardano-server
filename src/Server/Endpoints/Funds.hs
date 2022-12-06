@@ -10,7 +10,7 @@
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE TypeOperators              #-}
 
-module Server.Endpoints.Balance where
+module Server.Endpoints.Funds where
 
 import           Control.Monad.Catch    (Exception, handle, throwM)
 import           Control.Monad.IO.Class (MonadIO(..))
@@ -29,39 +29,39 @@ import           Utils.Address          (bech32ToAddress)
 import           Utils.Logger           (logMsg)
 import           Utils.Servant          (respondWithStatus)
 
-type BalanceApi = "relayRequestBalance"
+type FundsApi = "relayRequestFunds"
                :> ReqBody '[JSON] Text
-               :> UVerb 'GET '[JSON] BalanceApiResult
+               :> UVerb 'GET '[JSON] FundsApiResult
 
-type BalanceApiResult = '[Balance, WithStatus 400 Text]
+type FundsApiResult = '[Funds, WithStatus 400 Text]
 
-newtype Balance = Balance [(TokenName, TxOutRef)]
+newtype Funds = Funds [(TokenName, TxOutRef)]
     deriving (Show, Generic)
     deriving newtype ToJSON
 
-instance HasStatus Balance where
-    type StatusOf Balance = 200
+instance HasStatus Funds where
+    type StatusOf Funds = 200
 
-data BalanceError
+data FundsError
     = UnparsableAddress
     deriving (Show, Exception)
 
-balanceHandler :: forall s. HasServer s => Text -> AppM s (Union BalanceApiResult)
-balanceHandler addrBech32 = handle balanceErrorHandler $ do
-    logMsg $ "New balance request received:\n" <> addrBech32
+fundsHandler :: forall s. HasServer s => Text -> AppM s (Union FundsApiResult)
+fundsHandler addrBech32 = handle fundsErrorHandler $ do
+    logMsg $ "New funds request received:\n" <> addrBech32
     addr <- maybe (throwM UnparsableAddress) pure $ bech32ToAddress addrBech32
     cs   <- getCurrencySymbol @s
-    respond =<< getBalance cs addr
+    respond =<< getFunds cs addr
 
-balanceErrorHandler :: BalanceError -> AppM s (Union BalanceApiResult)
-balanceErrorHandler = \case
+fundsErrorHandler :: FundsError -> AppM s (Union FundsApiResult)
+fundsErrorHandler = \case
 
     UnparsableAddress -> respondWithStatus @400
         "Incorrect wallet address."
 
-getBalance :: MonadIO m => CurrencySymbol -> Address -> m Balance
-getBalance cs addr = do
+getFunds :: MonadIO m => CurrencySymbol -> Address -> m Funds
+getFunds cs addr = do
         coins <- liftIO $ M.toList . M.map getNames <$> getUtxosAt addr
-        pure $ Balance $ concatMap (\(ref, names) -> zip names (repeat ref)) coins
+        pure $ Funds $ concatMap (\(ref, names) -> zip names (repeat ref)) coins
     where
         getNames = maybe [] PAM.keys . PAM.lookup cs . getValue . _decoratedTxOutValue . fst

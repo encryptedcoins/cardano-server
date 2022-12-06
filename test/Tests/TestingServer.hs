@@ -10,16 +10,16 @@ import           IO.Wallet               (getWalletAddr)
 import           PlutusTx.Builtins.Class (stringToBuiltinByteString)
 import           Server.Internal         (HasServer(..))
 import           Server.Tx               (mkWalletTxOutRefs) 
-import           Tests.Internal          (runTestM, testBalance, testBalanceAll)
+import           Tests.Internal          (runTestM, testFunds, testFundsAll)
 import           TestingServer.Main      (TestingServer)
 import           Utils.ChainIndex        (filterCleanUtxos)
 import           Utils.Logger            (HasLogger(..), logSmth, (.<))
 
-testBalanceTS :: IO ()
-testBalanceTS = testBalance @TestingServer
+testFundsTS :: IO ()
+testFundsTS = testFunds @TestingServer
 
-testBalanceAllTS :: IO ()
-testBalanceAllTS = testBalanceAll @TestingServer
+testFundsAllTS :: IO ()
+testFundsAllTS = testFundsAll @TestingServer
 
 testMintTS :: [String] -> IO ()
 testMintTS = runTestM @TestingServer . processTokens . map stringToBuiltinByteString

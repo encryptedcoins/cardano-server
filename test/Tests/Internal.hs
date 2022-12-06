@@ -14,26 +14,26 @@ import           Data.Maybe               (fromJust)
 import qualified Data.Text.IO             as T
 import           IO.Wallet                (HasWallet(..), getWalletAddr, ownAddresses)
 import           Ledger                   (Address)
-import           Server.Endpoints.Balance (getBalance, Balance(..))
+import           Server.Endpoints.Funds   (getFunds, Funds(..))
 import           Server.Internal          (HasServer(getCurrencySymbol), Env(..), loadEnv)
 import           Utils.Address            (bech32ToAddress)
 import           Utils.Logger             (HasLogger(..))
 
-testBalance :: forall s. HasServer s => IO ()
-testBalance = runTestM @s $ do
+testFunds :: forall s. HasServer s => IO ()
+testFunds = runTestM @s $ do
     addr <- getWalletAddr
-    printBalance @s [addr]
+    printFunds @s [addr]
 
-testBalanceAll :: forall s. HasServer s => IO ()
-testBalanceAll = runTestM @s $ getAddresses >>= printBalance
+testFundsAll :: forall s. HasServer s => IO ()
+testFundsAll = runTestM @s $ getAddresses >>= printFunds
     where
         getAddresses = ownAddresses <&> map (fromJust . bech32ToAddress)
 
-printBalance :: forall s. HasServer s => [Address] -> TestM s ()
-printBalance addreses = do
+printFunds :: forall s. HasServer s => [Address] -> TestM s ()
+printFunds addreses = do
     cs <- getCurrencySymbol
     forM_ addreses $ \addr -> do
-        Balance b <- getBalance cs addr
+        Funds b <- getFunds cs addr
         unless (null b) $ liftIO $ print b
 
 newtype TestM s a = TestM { unTestM :: ReaderT (Env s) IO a }

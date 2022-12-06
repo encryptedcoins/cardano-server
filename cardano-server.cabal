@@ -33,7 +33,7 @@ library
       Client.Main
       Client.Opts
       Server.Config
-      Server.Endpoints.Balance 
+      Server.Endpoints.Funds 
       Server.Endpoints.Mint 
       Server.Endpoints.Ping
       Server.Internal

@@ -18,7 +18,7 @@ import qualified Network.Wai.Handler.Warp as Warp
 import qualified Servant
 import           Servant                  (Proxy(..), type (:<|>)(..), ServerT, Context(EmptyContext), hoistServer,
                                            serveWithContext, Application, runHandler')
-import           Server.Endpoints.Balance (BalanceApi, balanceHandler)
+import           Server.Endpoints.Funds   (FundsApi, fundsHandler)
 import           Server.Endpoints.Mint    (HasMintEndpoint, MintApi, mintHandler, processQueue)
 import           Server.Endpoints.Ping    (PingApi, pingHandler)
 import           Server.Internal          (AppM(unAppM), Env, loadEnv)
@@ -27,7 +27,7 @@ import           System.IO                (stdout, BufferMode(LineBuffering), hS
 type ServerAPI s
     =    PingApi
     :<|> MintApi s
-    :<|> BalanceApi
+    :<|> FundsApi
 
 type ServerConstraints s =
     ( HasMintEndpoint s
@@ -37,7 +37,7 @@ type ServerConstraints s =
 server :: HasMintEndpoint s => ServerT (ServerAPI s) (AppM s)
 server = pingHandler
     :<|> mintHandler
-    :<|> balanceHandler
+    :<|> fundsHandler
 
 serverAPI :: forall s. Proxy (ServerAPI s)
 serverAPI = Proxy @(ServerAPI s)
