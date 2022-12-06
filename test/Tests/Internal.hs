@@ -4,7 +4,7 @@
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE TypeApplications           #-}
 
-module Test.Internal where
+module Tests.Internal where
 
 import           Control.Monad            (unless, forM_)
 import           Control.Monad.IO.Class   (MonadIO(..))

@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications  #-}
 
-module Test.TestingServer where
+module Tests.TestingServer where
 
 import           Control.Monad.IO.Class  (MonadIO(..))
 import qualified Data.Map                as Map
@@ -10,7 +10,7 @@ import           IO.Wallet               (getWalletAddr)
 import           PlutusTx.Builtins.Class (stringToBuiltinByteString)
 import           Server.Internal         (HasServer(..))
 import           Server.Tx               (mkWalletTxOutRefs) 
-import           Test.Internal           (runTestM, testBalance, testBalanceAll)
+import           Tests.Internal          (runTestM, testBalance, testBalanceAll)
 import           TestingServer.Main      (TestingServer)
 import           Utils.ChainIndex        (filterCleanUtxos)
 import           Utils.Logger            (HasLogger(..), logSmth, (.<))
