@@ -13,8 +13,8 @@
 
 module Server.Endpoints.Mint where
 
-import           Control.Monad                    (forever, void, when)
-import           Control.Monad.Catch              (Exception, SomeException, handle, MonadThrow, MonadCatch)
+import           Control.Monad                    (void, when)
+import           Control.Monad.Catch              (Exception, SomeException, catch, handle, MonadThrow, MonadCatch)
 import           Control.Monad.IO.Class           (MonadIO(..))
 import           Control.Monad.Reader             (ReaderT(..), MonadReader, asks)
 import           Data.Kind                        (Type)
@@ -85,16 +85,17 @@ runQueueM env = flip runReaderT env . unQueueM
 processQueue :: forall s. HasServer s => Env s -> IO ()
 processQueue env = runQueueM env $ do
         logMsg "Starting queue handler..."
-        handle handler go
-    where
-        go = do
-            qRef <- asks envQueueRef
-            forever $ liftIO (readIORef qRef) >>= \case
-                Empty        -> logMsg "No new redeemers to process." >> waitTime 3
-                red :<| reds -> processRedeemer qRef red reds
-        handler = \(err :: SomeException) -> do
+        catch go $ \(err :: SomeException) -> do
             logSmth err
             go
+    where
+        go = checkQueue (0 :: Int)
+        checkQueue n = do 
+            qRef <- asks envQueueRef
+            liftIO (readIORef qRef) >>= \case
+                Empty -> logIdle n >> waitTime 3 >> checkQueue (n + 1)
+                red :<| reds -> processRedeemer qRef red reds >> go
+        logIdle n = when (n `mod` 100 == 0) $ logMsg "No new redeemers to process."
 
 processRedeemer :: HasServer s => QueueRef s -> RedeemerOf s -> Seq (RedeemerOf s) -> QueueM s ()
 processRedeemer qRef red reds = do
