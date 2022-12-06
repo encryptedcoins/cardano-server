@@ -9,7 +9,7 @@ import qualified Data.Map                as Map
 import           IO.Wallet               (getWalletAddr)
 import qualified Ledger.Ada              as Ada
 import           Ledger.Typed.Scripts    (Any)
-import           Scripts.Constraints     (postMintingPolicyTx, referenceMintingPolicyTx)
+import           Constraints.OffChain    (postMintingPolicyTx, referenceMintingPolicyTx)
 import           Server.Tx               (mkTx)
 import           TestingServer.Main      (TestingServer)
 import           TestingServer.OffChain  (testToken)

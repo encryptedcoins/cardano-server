@@ -17,7 +17,7 @@ import           Data.Aeson             (FromJSON(..), ToJSON)
 import           Data.IORef             (IORef, newIORef)
 import           Data.Kind              (Type)
 import           Data.Sequence          (Seq, empty)
-import           IO.Wallet              (HasWallet(..), RestoreWallet)
+import           IO.Wallet              (HasWallet(..), RestoredWallet)
 import           Ledger                 (CurrencySymbol)
 import           Servant                (Handler, MimeUnrender, JSON)
 import           Server.Config          (Config(..), configFile, decodeOrErrorFromFile)
@@ -64,7 +64,7 @@ type QueueRef s = IORef (Queue s)
 
 data Env s = Env
     { envQueueRef       :: QueueRef s
-    , envWallet         :: RestoreWallet
+    , envWallet         :: RestoredWallet
     , envAuxiliary      :: AuxiliaryEnvOf s
     , envMinUtxosAmount :: Int
     }

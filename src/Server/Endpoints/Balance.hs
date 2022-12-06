@@ -19,7 +19,7 @@ import           Data.Text              (Text)
 import qualified Data.Map               as M
 import           GHC.Generics           (Generic)
 import           IO.ChainIndex          (getUtxosAt)
-import           Ledger                 (ChainIndexTxOut(..))
+import           Ledger                 (DecoratedTxOut(..))
 import           Plutus.V2.Ledger.Api   (Address, CurrencySymbol, TokenName, TxOutRef, Value(..))
 import qualified PlutusTx.AssocMap      as PAM
 import           Servant                ((:>), StdMethod(GET), JSON, respond, HasStatus,
@@ -64,4 +64,4 @@ getBalance cs addr = do
         coins <- liftIO $ M.toList . M.map getNames <$> getUtxosAt addr
         pure $ Balance $ concatMap (\(ref, names) -> zip names (repeat ref)) coins
     where
-        getNames = maybe [] PAM.keys . PAM.lookup cs . getValue . _ciTxOutValue . fst
+        getNames = maybe [] PAM.keys . PAM.lookup cs . getValue . _decoratedTxOutValue . fst

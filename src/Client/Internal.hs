@@ -8,7 +8,7 @@ module Client.Internal where
 
 import           Data.Kind            (Type)
 import           Control.Monad.Reader (asks, MonadIO, MonadReader, ReaderT(..))
-import           IO.Wallet            (HasWallet(..), RestoreWallet)
+import           IO.Wallet            (HasWallet(..), RestoredWallet)
 import           Options.Applicative  (Parser)
 import qualified Server.Internal      as Server
 import           Utils.Logger         (HasLogger(..))
@@ -16,12 +16,12 @@ import           Utils.Logger         (HasLogger(..))
 newtype ClientM s a = ClientM { unClientM :: ReaderT (Env s) IO a }
     deriving newtype (Functor, Applicative, Monad, MonadReader (Env s), MonadIO)
 
-runClientM :: Server.AuxiliaryEnvOf s -> RestoreWallet -> ClientM s a -> IO a
+runClientM :: Server.AuxiliaryEnvOf s -> RestoredWallet -> ClientM s a -> IO a
 runClientM aEnv wallet = flip runReaderT (Env aEnv wallet) . unClientM
 
 data Env s = Env
     { envAuxiliary :: Server.AuxiliaryEnvOf s
-    , envWallet    :: RestoreWallet
+    , envWallet    :: RestoredWallet
     }
 
 instance HasLogger (ClientM s) where

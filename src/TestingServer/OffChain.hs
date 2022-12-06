@@ -17,8 +17,8 @@ import           Plutus.Script.Utils.V2.Scripts       (ValidatorHash, validatorH
 import           Plutus.Script.Utils.V2.Typed.Scripts (ValidatorTypes (..), validatorScript)
 import           Plutus.V2.Ledger.Api                 (Value, Validator, CurrencySymbol)
 import           PlutusTx.Prelude 
-import           Scripts.Constraints                  (tokensMintedTx)
-import           Types.TxConstructor                  (TxConstructor (..))
+import           Constraints.OffChain                 (tokensMintedTx)
+import           Types.Tx                             (TxConstructor (..))
 import           TestingServer.OnChain                (testPolicy, testTokenName, testTypedValidator)
 
 type TestTransaction = TxConstructor Any (RedeemerType Any) (DatumType Any)
