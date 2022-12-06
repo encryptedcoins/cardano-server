@@ -21,8 +21,8 @@ testFundsTS = testFunds @TestingServer
 testFundsAllTS :: IO ()
 testFundsAllTS = testFundsAll @TestingServer
 
-testMintTS :: [String] -> IO ()
-testMintTS = runTestM @TestingServer . processTokens . map stringToBuiltinByteString
+testSubmitTxTS :: [String] -> IO ()
+testSubmitTxTS = runTestM @TestingServer . processTokens . map stringToBuiltinByteString
 
 mkRefs :: Int -> IO ()
 mkRefs n = runTestM @TestingServer $ do

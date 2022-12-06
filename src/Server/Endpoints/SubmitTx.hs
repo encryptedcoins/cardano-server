@@ -11,7 +11,7 @@
 {-# LANGUAGE UndecidableInstances       #-}
 {-# LANGUAGE UndecidableSuperClasses    #-}
 
-module Server.Endpoints.Mint where
+module Server.Endpoints.SubmitTx where
 
 import           Control.Monad                    (void, when)
 import           Control.Monad.Catch              (Exception, SomeException, catch, handle, MonadThrow, MonadCatch)
@@ -29,19 +29,19 @@ import           Utils.ChainIndex                 (filterCleanUtxos)
 import           Utils.Logger                     (HasLogger(..), (.<), logSmth)
 import           Utils.Wait                       (waitTime)
 
-type MintApi s = "relayRequestMint"
+type SubmitTxApi s = "relayRequestSubmitTx"
               :> ReqBody '[JSON] (RedeemerOf s)
-              :> UVerb 'POST '[JSON] (MintApiResultOf s)
+              :> UVerb 'POST '[JSON] (SubmitTxApiResultOf s)
 
-mintHandler :: forall s. HasMintEndpoint s => RedeemerOf s -> AppM s (Union (MintApiResultOf s))
-mintHandler red = handle mintErrorHanlder $ do
-        logMsg $ "New mint request received:\n" .< red
+submitTxHandler :: forall s. HasSubmitTxEndpoint s => RedeemerOf s -> AppM s (Union (SubmitTxApiResultOf s))
+submitTxHandler red = handle submitTxErrorHanlder $ do
+        logMsg $ "New submitTx request received:\n" .< red
         checkForErrors
         ref <- getQueueRef
         liftIO $ atomicModifyIORef ref ((,()) . (|> red))
         respond NoContent
     where
-        checkForErrors = checkForMintErros red >> checkForCleanUtxos
+        checkForErrors = checkForSubmitTxErros red >> checkForCleanUtxos
         checkForCleanUtxos = do
             addr       <- getWalletAddr
             cleanUtxos <- length . filterCleanUtxos <$> liftIO (getUtxosAt addr)
@@ -51,18 +51,18 @@ mintHandler red = handle mintErrorHanlder $ do
                 void $ mkWalletTxOutRefs addr (cleanUtxos - minUtxos)
 
 class ( HasServer s
-      , IsMember NoContent (MintApiResultOf s)
-      , Show (MintErrorOf s)
-      , Exception (MintErrorOf s)
-      ) => HasMintEndpoint s where
+      , IsMember NoContent (SubmitTxApiResultOf s)
+      , Show (SubmitTxErrorOf s)
+      , Exception (SubmitTxErrorOf s)
+      ) => HasSubmitTxEndpoint s where
 
-    type MintApiResultOf s :: [Type]
+    type SubmitTxApiResultOf s :: [Type]
 
-    data MintErrorOf s
+    data SubmitTxErrorOf s
 
-    checkForMintErros :: RedeemerOf s -> AppM s ()
+    checkForSubmitTxErros :: RedeemerOf s -> AppM s ()
 
-    mintErrorHanlder :: MintErrorOf s -> AppM s (Union (MintApiResultOf s))
+    submitTxErrorHanlder :: SubmitTxErrorOf s -> AppM s (Union (SubmitTxApiResultOf s))
 
 newtype QueueM s a = QueueM { unQueueM :: ReaderT (Env s) IO a }
     deriving newtype
