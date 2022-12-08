@@ -38,6 +38,7 @@ library
       Server.Endpoints.Ping
       Server.Internal
       Server.Main
+      Server.Setup
       Server.Tx
       TestingServer.Main
       TestingServer.OnChain

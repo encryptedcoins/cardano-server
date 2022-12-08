@@ -40,6 +40,12 @@ class ( Show (AuxiliaryEnvOf s)
 
     processTokens :: (MonadReader (Env s) m, HasWallet m, HasLogger m) => RedeemerOf s -> m ()
 
+    setupServer :: (MonadReader (Env s) m, HasLogger m, HasWallet m) => m ()
+    setupServer = pure ()
+
+    cycleTx :: (MonadReader (Env s) m, HasLogger m, HasWallet m) => m ()
+    cycleTx = pure ()
+
 newtype AppM s a = AppM { unAppM :: ReaderT (Env s) Handler a }
     deriving newtype
         ( Functor
