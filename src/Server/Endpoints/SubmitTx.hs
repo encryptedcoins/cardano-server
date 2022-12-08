@@ -14,14 +14,16 @@
 module Server.Endpoints.SubmitTx where
 
 import           Control.Monad                    (void, when)
+import           Control.Monad.Extra              (mconcatMapM)
 import           Control.Monad.Catch              (Exception, SomeException, catch, handle, MonadThrow, MonadCatch)
 import           Control.Monad.IO.Class           (MonadIO(..))
 import           Control.Monad.Reader             (ReaderT(..), MonadReader, asks)
+import           Data.Functor                     ((<&>))
 import           Data.Kind                        (Type)
 import           Data.IORef                       (atomicWriteIORef, atomicModifyIORef, readIORef)
 import           Data.Sequence                    (Seq(..), (|>))
 import           IO.ChainIndex                    (getUtxosAt)
-import           IO.Wallet                        (HasWallet(..), getWalletAddr)
+import           IO.Wallet                        (HasWallet(..), getWalletAddr, ownAddresses)
 import           Servant                          (NoContent(..), JSON, (:>), ReqBody, respond, StdMethod(POST), UVerb, Union, IsMember)
 import           Server.Internal                  (getQueueRef, AppM, Env(..), HasServer(..), QueueRef)
 import           Server.Tx                        (mkWalletTxOutRefs)
@@ -44,7 +46,7 @@ submitTxHandler red = handle submitTxErrorHanlder $ do
         checkForErrors = checkForSubmitTxErros red >> checkForCleanUtxos
         checkForCleanUtxos = do
             addr       <- getWalletAddr
-            cleanUtxos <- length . filterCleanUtxos <$> liftIO (getUtxosAt addr)
+            cleanUtxos <- ownAddresses >>= liftIO . mconcatMapM getUtxosAt <&> length . filterCleanUtxos
             minUtxos   <- asks envMinUtxosAmount
             when (cleanUtxos < minUtxos) $ do
                 logMsg "Address doesn't has enough clean UTXO's."

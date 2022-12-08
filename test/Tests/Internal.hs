@@ -9,7 +9,6 @@ module Tests.Internal where
 import           Control.Monad            (unless, forM_)
 import           Control.Monad.IO.Class   (MonadIO(..))
 import           Control.Monad.Reader     (MonadReader, ReaderT(..), asks)
-import           Data.Functor             ((<&>))
 import           Data.Maybe               (fromJust)
 import qualified Data.Text.IO             as T
 import           IO.Wallet                (HasWallet(..), getWalletAddr, ownAddresses)
@@ -25,9 +24,7 @@ testFunds = runTestM @s $ do
     printFunds @s [addr]
 
 testFundsAll :: forall s. HasServer s => IO ()
-testFundsAll = runTestM @s $ getAddresses >>= printFunds
-    where
-        getAddresses = ownAddresses <&> map (fromJust . bech32ToAddress)
+testFundsAll = runTestM @s $ ownAddresses >>= printFunds
 
 printFunds :: forall s. HasServer s => [Address] -> TestM s ()
 printFunds addreses = do
