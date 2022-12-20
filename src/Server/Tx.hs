@@ -15,7 +15,7 @@ import           Data.Default              (Default(..))
 import qualified Data.Map                  as Map
 import           Data.Maybe                (fromJust)
 import           Data.Void                 (Void)
-import           Ledger                    (Address, CardanoTx(..), DecoratedTxOut, Params(..), POSIXTime, PubKeyHash, TxOutRef, PaymentPubKeyHash (..), StakingCredential, stakingCredential)
+import           Ledger                    (Address, CardanoTx(..), DecoratedTxOut, Params(..), POSIXTime, PubKeyHash, TxOutRef, PaymentPubKeyHash (..), StakingCredential, stakingCredential, pParamsFromProtocolParams)
 import           Ledger.Ada                (lovelaceValueOf) 
 import           Ledger.Constraints        (ScriptLookups, mustPayToPubKey, mustPayToPubKeyAddress)
 import           Ledger.Tx.CardanoAPI      (unspentOutputsTx)
@@ -61,8 +61,8 @@ mkTx utxosAddresses txs = do
     ct                     <- liftIO currentTime
     params                 <- liftIO $ decodeOrErrorFromFile "testnet/protocol-parameters.json"
 
-    let networkId = Testnet $ NetworkMagic 1097911063
-        ledgerParams = Params def (emulatorPParams params) networkId
+    let networkId = Testnet $ NetworkMagic 2
+        ledgerParams = Params def (pParamsFromProtocolParams params) networkId
 
     let ?txWalletAddr = walletAddr
         ?txWalletPKH  = unPaymentPubKeyHash walletPKH
