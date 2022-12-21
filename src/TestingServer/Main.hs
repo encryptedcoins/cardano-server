@@ -25,14 +25,13 @@ import Plutus.V2.Ledger.Api      (BuiltinByteString)
 import PlutusTx.Builtins.Class   (stringToBuiltinByteString)
 import Servant                   (NoContent, WithStatus)
 import Server.Endpoints.SubmitTx (HasSubmitTxEndpoint(..))
-import Server.Internal           (HasServer(..), HasCycleTx, NoCycleTx)
+import Server.Internal           (HasServer(..))
 import Server.Tx                 (mkTx)
 import System.Random             (randomRIO, randomIO)
 import TestingServer.OffChain    (testCurrencySymbol, testMintTx)
 import Utils.Servant             (respondWithStatus)
 
 data TestingServer
-    deriving HasCycleTx via NoCycleTx
 
 instance HasServer TestingServer where
 

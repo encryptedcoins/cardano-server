@@ -1,5 +1,4 @@
 {-# LANGUAGE AllowAmbiguousTypes        #-}
-{-# LANGUAGE DefaultSignatures          #-}
 {-# LANGUAGE DerivingStrategies         #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}
@@ -13,7 +12,7 @@ module Server.Internal where
 
 import           Control.Monad.Catch    (MonadThrow, MonadCatch)
 import           Control.Monad.IO.Class (MonadIO)
-import           Control.Monad.Reader   (ReaderT(ReaderT), MonadReader, asks)
+import           Control.Monad.Reader   (ReaderT(ReaderT, runReaderT), MonadReader, asks)
 import           Data.Aeson             (FromJSON(..), ToJSON)
 import           Data.IORef             (IORef, newIORef)
 import           Data.Kind              (Type)
@@ -29,7 +28,6 @@ class ( Show (AuxiliaryEnvOf s)
       , MimeUnrender JSON (RedeemerOf s)
       , ToJSON (RedeemerOf s)
       , Show (RedeemerOf s)
-      , HasCycleTx s
       ) => HasServer s where
 
     type AuxiliaryEnvOf s :: Type
@@ -42,22 +40,11 @@ class ( Show (AuxiliaryEnvOf s)
 
     processTokens :: (MonadReader (Env s) m, HasWallet m, HasLogger m) => RedeemerOf s -> m ()
 
-    setupServer :: (MonadReader (Env s) m, HasLogger m, HasWallet m) => m ()
+    setupServer :: SetupM s ()
     setupServer = pure ()
 
-    cycleTx :: (MonadReader (Env s) m, HasLogger m, HasWallet m) => CycleTx s
-    default cycleTx :: CycleTx s ~ () => CycleTx s
-    cycleTx = ()
-
-class HasCycleTx s where
-
-    type CycleTx s :: *
-
-data NoCycleTx
-
-instance HasCycleTx NoCycleTx where
-
-    type CycleTx NoCycleTx = ()
+    cycleTx :: SetupM s ()
+    cycleTx = pure ()
 
 newtype AppM s a = AppM { unAppM :: ReaderT (Env s) Handler a }
     deriving newtype
@@ -99,3 +86,15 @@ loadEnv = do
     envWallet    <- decodeOrErrorFromFile cWalletFile
     envAuxiliary <- loadAuxiliaryEnv @s cAuxiliaryEnvFile
     pure Env{..}
+
+newtype SetupM s a = SetupM { unSetupM :: ReaderT (Env s) IO a }
+    deriving newtype (Functor, Applicative, Monad, MonadIO, MonadReader (Env s))
+
+runSetupM :: Env s -> SetupM s a -> IO a
+runSetupM env = (`runReaderT` env) . unSetupM
+
+instance HasLogger (SetupM s) where
+    loggerFilePath = "server.log"
+
+instance HasWallet (SetupM s) where
+    getRestoreWallet = asks envWallet
