@@ -1,4 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes        #-}
+{-# LANGUAGE DefaultSignatures          #-}
 {-# LANGUAGE DerivingStrategies         #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}
@@ -28,6 +29,7 @@ class ( Show (AuxiliaryEnvOf s)
       , MimeUnrender JSON (RedeemerOf s)
       , ToJSON (RedeemerOf s)
       , Show (RedeemerOf s)
+      , HasCycleTx s
       ) => HasServer s where
 
     type AuxiliaryEnvOf s :: Type
@@ -43,8 +45,19 @@ class ( Show (AuxiliaryEnvOf s)
     setupServer :: (MonadReader (Env s) m, HasLogger m, HasWallet m) => m ()
     setupServer = pure ()
 
-    cycleTx :: (MonadReader (Env s) m, HasLogger m, HasWallet m) => m ()
-    cycleTx = pure ()
+    cycleTx :: (MonadReader (Env s) m, HasLogger m, HasWallet m) => CycleTx s
+    default cycleTx :: CycleTx s ~ () => CycleTx s
+    cycleTx = ()
+
+class HasCycleTx s where
+
+    type CycleTx s :: *
+
+data NoCycleTx
+
+instance HasCycleTx NoCycleTx where
+
+    type CycleTx NoCycleTx = ()
 
 newtype AppM s a = AppM { unAppM :: ReaderT (Env s) Handler a }
     deriving newtype
