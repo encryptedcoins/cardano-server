@@ -12,12 +12,12 @@ module Server.Internal where
 
 import           Control.Monad.Catch    (MonadThrow, MonadCatch)
 import           Control.Monad.IO.Class (MonadIO)
-import           Control.Monad.Reader   (ReaderT(ReaderT), MonadReader, asks)
+import           Control.Monad.Reader   (ReaderT(ReaderT, runReaderT), MonadReader, asks)
 import           Data.Aeson             (FromJSON(..), ToJSON)
 import           Data.IORef             (IORef, newIORef)
 import           Data.Kind              (Type)
 import           Data.Sequence          (Seq, empty)
-import           IO.Wallet              (HasWallet(..), RestoreWallet)
+import           IO.Wallet              (HasWallet(..), RestoredWallet)
 import           Ledger                 (CurrencySymbol)
 import           Servant                (Handler, MimeUnrender, JSON)
 import           Server.Config          (Config(..), configFile, decodeOrErrorFromFile)
@@ -39,6 +39,12 @@ class ( Show (AuxiliaryEnvOf s)
     getCurrencySymbol :: MonadReader (Env s) m => m CurrencySymbol
 
     processTokens :: (MonadReader (Env s) m, HasWallet m, HasLogger m) => RedeemerOf s -> m ()
+
+    setupServer :: SetupM s ()
+    setupServer = pure ()
+
+    cycleTx :: SetupM s ()
+    cycleTx = pure ()
 
 newtype AppM s a = AppM { unAppM :: ReaderT (Env s) Handler a }
     deriving newtype
@@ -64,7 +70,7 @@ type QueueRef s = IORef (Queue s)
 
 data Env s = Env
     { envQueueRef       :: QueueRef s
-    , envWallet         :: RestoreWallet
+    , envWallet         :: RestoredWallet
     , envAuxiliary      :: AuxiliaryEnvOf s
     , envMinUtxosAmount :: Int
     }
@@ -80,3 +86,15 @@ loadEnv = do
     envWallet    <- decodeOrErrorFromFile cWalletFile
     envAuxiliary <- loadAuxiliaryEnv @s cAuxiliaryEnvFile
     pure Env{..}
+
+newtype SetupM s a = SetupM { unSetupM :: ReaderT (Env s) IO a }
+    deriving newtype (Functor, Applicative, Monad, MonadIO, MonadReader (Env s))
+
+runSetupM :: Env s -> SetupM s a -> IO a
+runSetupM env = (`runReaderT` env) . unSetupM
+
+instance HasLogger (SetupM s) where
+    loggerFilePath = "server.log"
+
+instance HasWallet (SetupM s) where
+    getRestoreWallet = asks envWallet

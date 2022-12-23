@@ -27,7 +27,7 @@ import           PlutusTx                             (compile)
 import           PlutusTx.AssocMap                    (fromList)
 import           PlutusTx.Prelude                     (BuiltinByteString, Bool (..), ($), map)
 import           Plutus.Script.Utils.V2.Scripts       (scriptHash)
-import           Scripts.Constraints                  (tokensMinted)
+import           Constraints.OnChain                  (tokensMinted)
 
 ------------------------------------- Test Minting Policy --------------------------------------
 

@@ -31,7 +31,7 @@ startClient = do
     Server.Env{..} <- Server.loadEnv @s
     let fullAddress = "http://"
                    <> T.unpack cServerAddress
-                   <> "/relayRequestMint"
+                   <> "/relayRequestSubmitTx"
     nakedRequest <- parseRequest fullAddress
     manager <- newManager defaultManagerSettings
     let mkRequest' = mkRequest @s nakedRequest manager

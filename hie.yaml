@@ -2,3 +2,5 @@ cradle:
   cabal:
     - path: "src"
       component: "cardano-server:lib:cardano-server"
+    - path: "test"
+      component: "cardano-server:test:cardano-server-test"

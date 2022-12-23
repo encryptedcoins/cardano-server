@@ -11,16 +11,16 @@
 {-# LANGUAGE UndecidableInstances       #-}
 {-# LANGUAGE UndecidableSuperClasses    #-}
 
-module Server.Endpoints.Mint where
+module Server.Endpoints.SubmitTx where
 
-import           Control.Monad                    (forever, void, when)
-import           Control.Monad.Catch              (Exception, SomeException, handle, MonadThrow, MonadCatch)
+import           Control.Monad                    (void, when)
+import           Control.Monad.Catch              (Exception, SomeException, catch, handle, MonadThrow, MonadCatch)
 import           Control.Monad.IO.Class           (MonadIO(..))
 import           Control.Monad.Reader             (ReaderT(..), MonadReader, asks)
 import           Data.Kind                        (Type)
 import           Data.IORef                       (atomicWriteIORef, atomicModifyIORef, readIORef)
 import           Data.Sequence                    (Seq(..), (|>))
-import           IO.ChainIndex                    (getUtxosAt)
+import           IO.ChainIndex                    (getWalletUtxos)
 import           IO.Wallet                        (HasWallet(..), getWalletAddr)
 import           Servant                          (NoContent(..), JSON, (:>), ReqBody, respond, StdMethod(POST), UVerb, Union, IsMember)
 import           Server.Internal                  (getQueueRef, AppM, Env(..), HasServer(..), QueueRef)
@@ -29,40 +29,40 @@ import           Utils.ChainIndex                 (filterCleanUtxos)
 import           Utils.Logger                     (HasLogger(..), (.<), logSmth)
 import           Utils.Wait                       (waitTime)
 
-type MintApi s = "relayRequestMint"
+type SubmitTxApi s = "relayRequestSubmitTx"
               :> ReqBody '[JSON] (RedeemerOf s)
-              :> UVerb 'POST '[JSON] (MintApiResultOf s)
+              :> UVerb 'POST '[JSON] (SubmitTxApiResultOf s)
 
-mintHandler :: forall s. HasMintEndpoint s => RedeemerOf s -> AppM s (Union (MintApiResultOf s))
-mintHandler red = handle mintErrorHanlder $ do
-        logMsg $ "New mint request received:\n" .< red
+submitTxHandler :: forall s. HasSubmitTxEndpoint s => RedeemerOf s -> AppM s (Union (SubmitTxApiResultOf s))
+submitTxHandler red = handle submitTxErrorHanlder $ do
+        logMsg $ "New submitTx request received:\n" .< red
         checkForErrors
         ref <- getQueueRef
         liftIO $ atomicModifyIORef ref ((,()) . (|> red))
         respond NoContent
     where
-        checkForErrors = checkForMintErros red >> checkForCleanUtxos
+        checkForErrors = checkForSubmitTxErros red >> checkForCleanUtxos
         checkForCleanUtxos = do
             addr       <- getWalletAddr
-            cleanUtxos <- length . filterCleanUtxos <$> liftIO (getUtxosAt addr)
+            cleanUtxos <- length . filterCleanUtxos <$> getWalletUtxos
             minUtxos   <- asks envMinUtxosAmount
             when (cleanUtxos < minUtxos) $ do
                 logMsg "Address doesn't has enough clean UTXO's."
                 void $ mkWalletTxOutRefs addr (cleanUtxos - minUtxos)
 
 class ( HasServer s
-      , IsMember NoContent (MintApiResultOf s)
-      , Show (MintErrorOf s)
-      , Exception (MintErrorOf s)
-      ) => HasMintEndpoint s where
+      , IsMember NoContent (SubmitTxApiResultOf s)
+      , Show (SubmitTxErrorOf s)
+      , Exception (SubmitTxErrorOf s)
+      ) => HasSubmitTxEndpoint s where
 
-    type MintApiResultOf s :: [Type]
+    type SubmitTxApiResultOf s :: [Type]
 
-    data MintErrorOf s
+    data SubmitTxErrorOf s
 
-    checkForMintErros :: RedeemerOf s -> AppM s ()
+    checkForSubmitTxErros :: RedeemerOf s -> AppM s ()
 
-    mintErrorHanlder :: MintErrorOf s -> AppM s (Union (MintApiResultOf s))
+    submitTxErrorHanlder :: SubmitTxErrorOf s -> AppM s (Union (SubmitTxApiResultOf s))
 
 newtype QueueM s a = QueueM { unQueueM :: ReaderT (Env s) IO a }
     deriving newtype
@@ -85,16 +85,17 @@ runQueueM env = flip runReaderT env . unQueueM
 processQueue :: forall s. HasServer s => Env s -> IO ()
 processQueue env = runQueueM env $ do
         logMsg "Starting queue handler..."
-        handle handler go
-    where
-        go = do
-            qRef <- asks envQueueRef
-            forever $ liftIO (readIORef qRef) >>= \case
-                Empty        -> logMsg "No new redeemers to process." >> waitTime 3
-                red :<| reds -> processRedeemer qRef red reds
-        handler = \(err :: SomeException) -> do
+        catch go $ \(err :: SomeException) -> do
             logSmth err
             go
+    where
+        go = checkQueue (0 :: Int)
+        checkQueue n = do 
+            qRef <- asks envQueueRef
+            liftIO (readIORef qRef) >>= \case
+                Empty -> logIdle n >> waitTime 3 >> checkQueue (n + 1)
+                red :<| reds -> processRedeemer qRef red reds >> go
+        logIdle n = when (n `mod` 100 == 0) $ logMsg "No new redeemers to process."
 
 processRedeemer :: HasServer s => QueueRef s -> RedeemerOf s -> Seq (RedeemerOf s) -> QueueM s ()
 processRedeemer qRef red reds = do
