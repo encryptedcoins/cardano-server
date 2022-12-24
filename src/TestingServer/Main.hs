@@ -10,23 +10,20 @@
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE TupleSections              #-}
 {-# LANGUAGE UndecidableInstances       #-}
-{-# LANGUAGE DerivingVia #-}
 
 module TestingServer.Main (TestingServer) where
 
 import Client.Internal           (HasClient(..))
+import Control.Monad             (when, replicateM)
 import Control.Monad.Catch       (Exception, throwM)
-import Control.Monad             (replicateM, when, void)
 import Data.List                 (nub)
 import Data.Text                 (Text)
-import IO.Wallet                 (getWalletAddr)
 import Options.Applicative       (argument, metavar, str)
 import Plutus.V2.Ledger.Api      (BuiltinByteString)
 import PlutusTx.Builtins.Class   (stringToBuiltinByteString)
 import Servant                   (NoContent, WithStatus)
 import Server.Endpoints.SubmitTx (HasSubmitTxEndpoint(..))
 import Server.Internal           (HasServer(..))
-import Server.Tx                 (mkTx)
 import System.Random             (randomRIO, randomIO)
 import TestingServer.OffChain    (testCurrencySymbol, testMintTx)
 import Utils.Servant             (respondWithStatus)
@@ -43,16 +40,15 @@ instance HasServer TestingServer where
 
     getCurrencySymbol = pure testCurrencySymbol
 
-    processTokens bbs = do
-        addr <- getWalletAddr
-        void $ mkTx [addr] [testMintTx bbs]
-
 instance HasSubmitTxEndpoint TestingServer where
 
     type SubmitTxApiResultOf TestingServer = '[NoContent, WithStatus 422 Text]
 
     data (SubmitTxErrorOf TestingServer) = HasDuplicates
         deriving (Show, Exception)
+
+    -- submitTxBuilders :: [BuiltinByteString] -> [State (TxConstructor Any (RedeemerType Any) (DatumType Any)) ()]
+    submitTxBuilders bbs = [testMintTx bbs]
 
     checkForSubmitTxErros bbs =
         let hasDuplicates = length bbs /= length (nub bbs)

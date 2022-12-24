@@ -38,8 +38,6 @@ class ( Show (AuxiliaryEnvOf s)
 
     getCurrencySymbol :: MonadReader (Env s) m => m CurrencySymbol
 
-    processTokens :: (MonadReader (Env s) m, HasWallet m, HasLogger m) => RedeemerOf s -> m ()
-
     setupServer :: SetupM s ()
     setupServer = pure ()
 

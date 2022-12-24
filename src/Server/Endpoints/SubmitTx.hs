@@ -1,10 +1,13 @@
+{-# LANGUAGE AllowAmbiguousTypes        #-}
 {-# LANGUAGE DataKinds                  #-}
 {-# LANGUAGE DerivingStrategies         #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase                 #-}
 {-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE RankNTypes                 #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
+{-# LANGUAGE TypeApplications           #-}
 {-# LANGUAGE TypeOperators              #-}
 {-# LANGUAGE TupleSections              #-}
 {-# LANGUAGE TypeFamilies               #-}
@@ -14,17 +17,21 @@
 module Server.Endpoints.SubmitTx where
 
 import           Control.Monad                    (void, when)
-import           Control.Monad.Catch              (Exception, SomeException, catch, handle, MonadThrow, MonadCatch)
 import           Control.Monad.IO.Class           (MonadIO(..))
+import           Control.Monad.Catch              (Exception, SomeException, catch, handle, MonadThrow, MonadCatch)
 import           Control.Monad.Reader             (ReaderT(..), MonadReader, asks)
+import           Control.Monad.State              (State)
 import           Data.Kind                        (Type)
 import           Data.IORef                       (atomicWriteIORef, atomicModifyIORef, readIORef)
 import           Data.Sequence                    (Seq(..), (|>))
 import           IO.ChainIndex                    (getWalletUtxos)
 import           IO.Wallet                        (HasWallet(..), getWalletAddr)
+import           Ledger                           (Address)
+import           Plutus.Script.Utils.Typed        (Any, ValidatorTypes(..))
 import           Servant                          (NoContent(..), JSON, (:>), ReqBody, respond, StdMethod(POST), UVerb, Union, IsMember)
 import           Server.Internal                  (getQueueRef, AppM, Env(..), HasServer(..), QueueRef)
-import           Server.Tx                        (mkWalletTxOutRefs)
+import           Server.Tx                        (mkWalletTxOutRefs, mkTx)
+import           Types.Tx                         (TxConstructor)
 import           Utils.ChainIndex                 (filterCleanUtxos)
 import           Utils.Logger                     (HasLogger(..), (.<), logSmth)
 import           Utils.Wait                       (waitTime)
@@ -64,6 +71,11 @@ class ( HasServer s
 
     submitTxErrorHanlder :: SubmitTxErrorOf s -> AppM s (Union (SubmitTxApiResultOf s))
 
+    getTrackedAddresses :: HasWallet m => m [Address]
+    getTrackedAddresses = (:[]) <$> getWalletAddr
+
+    submitTxBuilders :: RedeemerOf s -> {-(HasTxEnv => -}[State (TxConstructor Any (RedeemerType Any) (DatumType Any)) ()]{-)-}
+
 newtype QueueM s a = QueueM { unQueueM :: ReaderT (Env s) IO a }
     deriving newtype
         ( Functor
@@ -82,7 +94,7 @@ instance HasLogger (QueueM s) where
 runQueueM :: Env s -> QueueM s () -> IO ()
 runQueueM env = flip runReaderT env . unQueueM
 
-processQueue :: forall s. HasServer s => Env s -> IO ()
+processQueue :: forall s. HasSubmitTxEndpoint s => Env s -> IO ()
 processQueue env = runQueueM env $ do
         logMsg "Starting queue handler..."
         catch go $ \(err :: SomeException) -> do
@@ -97,8 +109,13 @@ processQueue env = runQueueM env $ do
                 red :<| reds -> processRedeemer qRef red reds >> go
         logIdle n = when (n `mod` 100 == 0) $ logMsg "No new redeemers to process."
 
-processRedeemer :: HasServer s => QueueRef s -> RedeemerOf s -> Seq (RedeemerOf s) -> QueueM s ()
+processRedeemer :: forall s. HasSubmitTxEndpoint s => QueueRef s -> RedeemerOf s -> Seq (RedeemerOf s) -> QueueM s ()
 processRedeemer qRef red reds = do
     liftIO $ atomicWriteIORef qRef reds
     logMsg $ "New redeemer to process:" .< red
-    processTokens red
+    processTokens @s red
+
+processTokens :: forall s m. (HasSubmitTxEndpoint s, HasWallet m, HasLogger m) => RedeemerOf s -> m ()
+processTokens red = do
+    addrs <- getTrackedAddresses @s
+    void $ mkTx addrs $ submitTxBuilders @s red
