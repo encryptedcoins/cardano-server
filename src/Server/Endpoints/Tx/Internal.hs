@@ -1,7 +1,9 @@
 {-# LANGUAGE AllowAmbiguousTypes        #-}
 {-# LANGUAGE DataKinds                  #-}
+{-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE DerivingVia                #-}
 {-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE UndecidableInstances       #-}
 {-# LANGUAGE UndecidableSuperClasses    #-}
@@ -11,8 +13,10 @@ module Server.Endpoints.Tx.Internal where
 import           Control.Monad.Catch              (Exception)
 import           Control.Monad.Reader             (MonadReader)
 import           Control.Monad.State              (State)
+import           Data.Aeson                       (ToJSON)
 import           Data.Kind                        (Type)
 import           Data.Text                        (Text)
+import           GHC.Generics                     (Generic)
 import           IO.Wallet                        (HasWallet(..), getWalletAddr)
 import           Ledger                           (Address)
 import           Plutus.Script.Utils.Typed        (Any, ValidatorTypes(..))
@@ -45,3 +49,5 @@ type DefaultTxApiResult = '[WithStatus 422 Text, NoContent, NewTxEndpointResult]
 
 newtype NewTxEndpointResult = NewTxEndpointResult Text
     deriving HasStatus via WithStatus 200 NewTxEndpointResult
+    deriving (Show, Generic)
+    deriving newtype ToJSON 
