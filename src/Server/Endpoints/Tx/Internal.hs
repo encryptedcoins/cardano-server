@@ -9,6 +9,7 @@
 module Server.Endpoints.Tx.Internal where
 
 import           Control.Monad.Catch              (Exception)
+import           Control.Monad.Reader             (MonadReader)
 import           Control.Monad.State              (State)
 import           Data.Kind                        (Type)
 import           Data.Text                        (Text)
@@ -16,7 +17,7 @@ import           IO.Wallet                        (HasWallet(..), getWalletAddr)
 import           Ledger                           (Address)
 import           Plutus.Script.Utils.Typed        (Any, ValidatorTypes(..))
 import           Servant                          (NoContent(..), Union, IsMember, WithStatus, HasStatus)
-import           Server.Internal                  (AppM, HasServer(..))
+import           Server.Internal                  (AppM, HasServer(..), Env)
 import           Types.Tx                         (TxConstructor)
 
 class ( HasServer s
@@ -38,7 +39,7 @@ class ( HasServer s
     getTrackedAddresses :: HasWallet m => m [Address]
     getTrackedAddresses = (:[]) <$> getWalletAddr
 
-    txEndpointsTxBuilders :: RedeemerOf s -> {-(HasTxEnv => -}[State (TxConstructor Any (RedeemerType Any) (DatumType Any)) ()]{-)-}
+    txEndpointsTxBuilders :: (MonadReader (Env s) m, HasWallet m) => RedeemerOf s -> m [State (TxConstructor Any (RedeemerType Any) (DatumType Any)) ()]
 
 type DefaultTxApiResult = '[WithStatus 422 Text, NoContent, NewTxEndpointResult]
 

@@ -7,6 +7,7 @@
 
 module Server.Endpoints.Tx.New where
 
+import           Control.Monad                    (join, liftM2)
 import           Control.Monad.Catch              (handle)
 import           Servant                          (JSON, (:>), ReqBody, respond, StdMethod(POST), UVerb, Union)
 import           Server.Endpoints.Tx.Internal     (HasTxEndpoints(..), NewTxEndpointResult(..))
@@ -24,7 +25,7 @@ newTxHandler :: forall s. HasTxEndpoints s => RedeemerOf s -> AppM s (Union (TxA
 newTxHandler red = handle txEndpointsErrorHanlder $ do
     logMsg $ "New newTx request received:\n" .< red
     checkForTxEndpointsErros red
-    balancedTx <- getTrackedAddresses @s >>= (`mkBalanceTx` txEndpointsTxBuilders @s red)
+    balancedTx <- join $ liftM2 mkBalanceTx (getTrackedAddresses @s) $ txEndpointsTxBuilders @s red
     case cardanoTxToText balancedTx of
         Just res -> respond $ NewTxEndpointResult res
         Nothing -> respondWithStatus @422 $ "Can't serialise balanced tx:" .< balancedTx
