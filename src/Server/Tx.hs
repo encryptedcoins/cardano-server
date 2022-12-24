@@ -49,11 +49,11 @@ type MkTxConstraints a m =
     , HasLogger m
     )
 
-mkTx :: forall a m. MkTxConstraints a m 
+mkBalanceTx :: forall a m. MkTxConstraints a m 
     => [Address]
     -> (HasTxEnv => [State (TxConstructor a (RedeemerType a) (DatumType a)) ()])
     -> m CardanoTx
-mkTx utxosAddresses txs = do
+mkBalanceTx utxosAddresses txs = do
     walletAddrBech32       <- getWalletAddrBech32
     walletAddr             <- getWalletAddr
     (walletPKH, walletSKH) <- getWalletKeyHashes
@@ -85,7 +85,14 @@ mkTx utxosAddresses txs = do
     logSmth cons
 
     logMsg "Balancing..."
-    balancedTx <- balanceTx ledgerParams lookups cons
+    balanceTx ledgerParams lookups cons
+
+mkTx :: forall a m. MkTxConstraints a m 
+    => [Address]
+    -> (HasTxEnv => [State (TxConstructor a (RedeemerType a) (DatumType a)) ()])
+    -> m CardanoTx
+mkTx utxosAddresses txs = do
+    balancedTx <- mkBalanceTx utxosAddresses txs
     logPretty balancedTx
     logMsg "Signing..."
     signedTx <- signTx balancedTx
