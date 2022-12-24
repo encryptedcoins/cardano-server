@@ -45,7 +45,7 @@ instance HasTxEndpoints TestingServer where
     data (TxEndpointsErrorOf TestingServer) = HasDuplicates
         deriving (Show, Exception)
 
-    txEndpointsTxBuilders bbs = [testMintTx bbs]
+    txEndpointsTxBuilders bbs = pure [testMintTx bbs]
 
     checkForTxEndpointsErros bbs =
         let hasDuplicates = length bbs /= length (nub bbs)
