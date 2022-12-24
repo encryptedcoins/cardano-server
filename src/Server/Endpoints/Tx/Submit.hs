@@ -1,4 +1,3 @@
-{-# LANGUAGE AllowAmbiguousTypes        #-}
 {-# LANGUAGE DataKinds                  #-}
 {-# LANGUAGE DerivingStrategies         #-}
 {-# LANGUAGE FlexibleContexts           #-}
@@ -10,62 +9,34 @@
 {-# LANGUAGE TypeApplications           #-}
 {-# LANGUAGE TypeOperators              #-}
 {-# LANGUAGE TupleSections              #-}
-{-# LANGUAGE TypeFamilies               #-}
-{-# LANGUAGE UndecidableInstances       #-}
-{-# LANGUAGE UndecidableSuperClasses    #-}
 
-module Server.Endpoints.SubmitTx where
+module Server.Endpoints.Tx.Submit where
 
 import           Control.Monad                    (void, when)
 import           Control.Monad.IO.Class           (MonadIO(..))
-import           Control.Monad.Catch              (Exception, SomeException, catch, handle, MonadThrow, MonadCatch)
+import           Control.Monad.Catch              (SomeException, catch, handle, MonadThrow, MonadCatch)
 import           Control.Monad.Reader             (ReaderT(..), MonadReader, asks)
-import           Control.Monad.State              (State)
-import           Data.Kind                        (Type)
 import           Data.IORef                       (atomicWriteIORef, atomicModifyIORef, readIORef)
 import           Data.Sequence                    (Seq(..), (|>))
-import           IO.ChainIndex                    (getWalletUtxos)
-import           IO.Wallet                        (HasWallet(..), getWalletAddr)
-import           Ledger                           (Address)
-import           Plutus.Script.Utils.Typed        (Any, ValidatorTypes(..))
-import           Servant                          (NoContent(..), JSON, (:>), ReqBody, respond, StdMethod(POST), UVerb, Union, IsMember)
+import           IO.Wallet                        (HasWallet(..))
+import           Servant                          (NoContent(..), JSON, (:>), ReqBody, respond, StdMethod(POST), UVerb, Union)
+import           Server.Endpoints.Tx.Internal     (HasTxEndpoints(..))     
 import           Server.Internal                  (getQueueRef, AppM, Env(..), HasServer(..), QueueRef, checkForCleanUtxos)
-import           Server.Tx                        (mkWalletTxOutRefs, mkTx)
-import           Types.Tx                         (TxConstructor)
-import           Utils.ChainIndex                 (filterCleanUtxos)
+import           Server.Tx                        (mkTx)
 import           Utils.Logger                     (HasLogger(..), (.<), logSmth)
 import           Utils.Wait                       (waitTime)
 
 type SubmitTxApi s = "relayRequestSubmitTx"
               :> ReqBody '[JSON] (RedeemerOf s)
-              :> UVerb 'POST '[JSON] (SubmitTxApiResultOf s)
+              :> UVerb 'POST '[JSON] (TxApiResultOf s)
 
-submitTxHandler :: forall s. HasSubmitTxEndpoint s => RedeemerOf s -> AppM s (Union (SubmitTxApiResultOf s))
-submitTxHandler red = handle submitTxErrorHanlder $ do
+submitTxHandler :: forall s. HasTxEndpoints s => RedeemerOf s -> AppM s (Union (TxApiResultOf s))
+submitTxHandler red = handle txEndpointsErrorHanlder $ do
     logMsg $ "New submitTx request received:\n" .< red
-    checkForSubmitTxErros red
+    checkForTxEndpointsErros red
     ref <- getQueueRef
     liftIO $ atomicModifyIORef ref ((,()) . (|> red))
     respond NoContent
-
-class ( HasServer s
-      , IsMember NoContent (SubmitTxApiResultOf s)
-      , Show (SubmitTxErrorOf s)
-      , Exception (SubmitTxErrorOf s)
-      ) => HasSubmitTxEndpoint s where
-
-    type SubmitTxApiResultOf s :: [Type]
-
-    data SubmitTxErrorOf s
-
-    checkForSubmitTxErros :: RedeemerOf s -> AppM s ()
-
-    submitTxErrorHanlder :: SubmitTxErrorOf s -> AppM s (Union (SubmitTxApiResultOf s))
-
-    getTrackedAddresses :: HasWallet m => m [Address]
-    getTrackedAddresses = (:[]) <$> getWalletAddr
-
-    submitTxBuilders :: RedeemerOf s -> {-(HasTxEnv => -}[State (TxConstructor Any (RedeemerType Any) (DatumType Any)) ()]{-)-}
 
 newtype QueueM s a = QueueM { unQueueM :: ReaderT (Env s) IO a }
     deriving newtype
@@ -85,7 +56,7 @@ instance HasLogger (QueueM s) where
 runQueueM :: Env s -> QueueM s () -> IO ()
 runQueueM env = flip runReaderT env . unQueueM
 
-processQueue :: forall s. HasSubmitTxEndpoint s => Env s -> IO ()
+processQueue :: forall s. HasTxEndpoints s => Env s -> IO ()
 processQueue env = runQueueM env $ do
         logMsg "Starting queue handler..."
         catch go $ \(err :: SomeException) -> do
@@ -100,14 +71,14 @@ processQueue env = runQueueM env $ do
                 red :<| reds -> processRedeemer qRef red reds >> go
         logIdle n = when (n `mod` 100 == 0) $ logMsg "No new redeemers to process."
 
-processRedeemer :: forall s. HasSubmitTxEndpoint s => QueueRef s -> RedeemerOf s -> Seq (RedeemerOf s) -> QueueM s ()
+processRedeemer :: forall s. HasTxEndpoints s => QueueRef s -> RedeemerOf s -> Seq (RedeemerOf s) -> QueueM s ()
 processRedeemer qRef red reds = do
     liftIO $ atomicWriteIORef qRef reds
     logMsg $ "New redeemer to process:" .< red
     processTokens @s red
 
-processTokens :: forall s m. (HasSubmitTxEndpoint s, HasWallet m, HasLogger m, MonadReader (Env s) m) => RedeemerOf s -> m ()
+processTokens :: forall s m. (HasTxEndpoints s, HasWallet m, HasLogger m, MonadReader (Env s) m) => RedeemerOf s -> m ()
 processTokens red = do
     checkForCleanUtxos
     addrs <- getTrackedAddresses @s
-    void $ mkTx addrs $ submitTxBuilders @s red
+    void $ mkTx addrs $ txEndpointsTxBuilders @s red

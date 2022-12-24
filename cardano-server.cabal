@@ -34,7 +34,9 @@ library
       Client.Opts
       Server.Config
       Server.Endpoints.Funds 
-      Server.Endpoints.SubmitTx 
+      Server.Endpoints.Tx.Submit
+      Server.Endpoints.Tx.New
+      Server.Endpoints.Tx.Internal
       Server.Endpoints.Ping
       Server.Internal
       Server.Main
