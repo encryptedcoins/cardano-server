@@ -29,7 +29,7 @@ import           IO.Wallet                        (HasWallet(..), getWalletAddr)
 import           Ledger                           (Address)
 import           Plutus.Script.Utils.Typed        (Any, ValidatorTypes(..))
 import           Servant                          (NoContent(..), JSON, (:>), ReqBody, respond, StdMethod(POST), UVerb, Union, IsMember)
-import           Server.Internal                  (getQueueRef, AppM, Env(..), HasServer(..), QueueRef)
+import           Server.Internal                  (getQueueRef, AppM, Env(..), HasServer(..), QueueRef, checkForCleanUtxos)
 import           Server.Tx                        (mkWalletTxOutRefs, mkTx)
 import           Types.Tx                         (TxConstructor)
 import           Utils.ChainIndex                 (filterCleanUtxos)
@@ -42,20 +42,11 @@ type SubmitTxApi s = "relayRequestSubmitTx"
 
 submitTxHandler :: forall s. HasSubmitTxEndpoint s => RedeemerOf s -> AppM s (Union (SubmitTxApiResultOf s))
 submitTxHandler red = handle submitTxErrorHanlder $ do
-        logMsg $ "New submitTx request received:\n" .< red
-        checkForErrors
-        ref <- getQueueRef
-        liftIO $ atomicModifyIORef ref ((,()) . (|> red))
-        respond NoContent
-    where
-        checkForErrors = checkForSubmitTxErros red >> checkForCleanUtxos
-        checkForCleanUtxos = do
-            addr       <- getWalletAddr
-            cleanUtxos <- length . filterCleanUtxos <$> getWalletUtxos
-            minUtxos   <- asks envMinUtxosAmount
-            when (cleanUtxos < minUtxos) $ do
-                logMsg "Address doesn't has enough clean UTXO's."
-                void $ mkWalletTxOutRefs addr (cleanUtxos - minUtxos)
+    logMsg $ "New submitTx request received:\n" .< red
+    checkForSubmitTxErros red
+    ref <- getQueueRef
+    liftIO $ atomicModifyIORef ref ((,()) . (|> red))
+    respond NoContent
 
 class ( HasServer s
       , IsMember NoContent (SubmitTxApiResultOf s)
@@ -115,7 +106,8 @@ processRedeemer qRef red reds = do
     logMsg $ "New redeemer to process:" .< red
     processTokens @s red
 
-processTokens :: forall s m. (HasSubmitTxEndpoint s, HasWallet m, HasLogger m) => RedeemerOf s -> m ()
+processTokens :: forall s m. (HasSubmitTxEndpoint s, HasWallet m, HasLogger m, MonadReader (Env s) m) => RedeemerOf s -> m ()
 processTokens red = do
+    checkForCleanUtxos
     addrs <- getTrackedAddresses @s
     void $ mkTx addrs $ submitTxBuilders @s red

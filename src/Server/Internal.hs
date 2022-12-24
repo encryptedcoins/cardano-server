@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE RecordWildCards            #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE TypeApplications           #-}
@@ -10,6 +11,7 @@
 
 module Server.Internal where
 
+import           Control.Monad          (void, when)
 import           Control.Monad.Catch    (MonadThrow, MonadCatch)
 import           Control.Monad.IO.Class (MonadIO)
 import           Control.Monad.Reader   (ReaderT(ReaderT, runReaderT), MonadReader, asks)
@@ -17,10 +19,13 @@ import           Data.Aeson             (FromJSON(..), ToJSON)
 import           Data.IORef             (IORef, newIORef)
 import           Data.Kind              (Type)
 import           Data.Sequence          (Seq, empty)
-import           IO.Wallet              (HasWallet(..), RestoredWallet)
+import           IO.ChainIndex          (getWalletUtxos)
+import           IO.Wallet              (HasWallet(..), RestoredWallet, getWalletAddr)
 import           Ledger                 (CurrencySymbol)
 import           Servant                (Handler, MimeUnrender, JSON)
 import           Server.Config          (Config(..), configFile, decodeOrErrorFromFile)
+import           Server.Tx              (mkWalletTxOutRefs)
+import           Utils.ChainIndex       (filterCleanUtxos)
 import           Utils.Logger           (HasLogger(..))
 
 class ( Show (AuxiliaryEnvOf s)
@@ -96,3 +101,12 @@ instance HasLogger (SetupM s) where
 
 instance HasWallet (SetupM s) where
     getRestoreWallet = asks envWallet
+
+checkForCleanUtxos :: (HasWallet m, HasLogger m, MonadReader (Env s) m) => m ()
+checkForCleanUtxos = do
+    addr       <- getWalletAddr
+    cleanUtxos <- length . filterCleanUtxos <$> getWalletUtxos
+    minUtxos   <- asks envMinUtxosAmount
+    when (cleanUtxos < minUtxos) $ do
+        logMsg "Address doesn't has enough clean UTXO's."
+        void $ mkWalletTxOutRefs addr (cleanUtxos - minUtxos)

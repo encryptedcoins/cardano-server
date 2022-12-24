@@ -21,7 +21,7 @@ import           Servant                   (Proxy(..), type (:<|>)(..), ServerT,
 import           Server.Endpoints.Funds    (FundsApi, fundsHandler)
 import           Server.Endpoints.SubmitTx (HasSubmitTxEndpoint, SubmitTxApi, submitTxHandler, processQueue)
 import           Server.Endpoints.Ping     (PingApi, pingHandler)
-import           Server.Internal           (AppM(unAppM), Env, loadEnv)
+import           Server.Internal           (AppM(unAppM), Env, loadEnv, checkForCleanUtxos)
 import           System.IO                 (stdout, BufferMode(LineBuffering), hSetBuffering)
 
 type ServerAPI s
@@ -50,10 +50,12 @@ runServer = do
         env <- loadEnv
         hSetBuffering stdout LineBuffering
         forkIO $ processQueue env
-        logStart env "Starting server..."
+        prepareServer env 
         Warp.run port $ mkApp @s env
     where
-        logStart env = runExceptT . runHandler' . flip runReaderT env . unAppM . logMsg
+        prepareServer env = runExceptT . runHandler' . flip runReaderT env . unAppM $ do 
+            logMsg "Starting server..."
+            checkForCleanUtxos
 
 mkApp :: forall s. ServerConstraints s => Env s -> Application
 mkApp env = serveWithContext (serverAPI @s) EmptyContext $
