@@ -15,6 +15,7 @@ import           Control.Monad.Except         (runExceptT)
 import           Control.Monad.Reader         (ReaderT(runReaderT))
 import           Utils.Logger                 (HasLogger(logMsg))
 import qualified Network.Wai.Handler.Warp     as Warp
+import qualified Network.Wai.Middleware.Cors  as Cors
 import qualified Servant
 import           Servant                      (Proxy(..), type (:<|>)(..), ServerT, Context(EmptyContext), hoistServer,
                                                serveWithContext, Application, runHandler')
@@ -62,5 +63,5 @@ runServer = do
             checkForCleanUtxos
 
 mkApp :: forall s. ServerConstraints s => Env s -> Application
-mkApp env = serveWithContext (serverAPI @s) EmptyContext $
+mkApp env = Cors.simpleCors $ serveWithContext (serverAPI @s) EmptyContext $
     hoistServer (serverAPI @s) ((`runReaderT` env) . unAppM) server

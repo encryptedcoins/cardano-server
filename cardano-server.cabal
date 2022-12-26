@@ -81,6 +81,7 @@ library
       servant-server                         -any,
       text                                   -any,
       time                                   -any,
+      wai-cors                               -any,
       warp                                   -any,
 
     hs-source-dirs: src
