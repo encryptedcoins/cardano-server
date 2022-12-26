@@ -50,15 +50,17 @@ type MkTxConstraints a m =
 
 mkBalanceTx :: forall a m. MkTxConstraints a m 
     => [Address]
+    -> Map.Map TxOutRef DecoratedTxOut
     -> (HasTxEnv => [State (TxConstructor a (RedeemerType a) (DatumType a)) ()])
     -> m CardanoTx
-mkBalanceTx utxosAddresses txs = do
+mkBalanceTx utxosAddresses utxosExternal txs = do
     walletAddrBech32       <- getWalletAddrBech32
     walletAddr             <- getWalletAddr
     (walletPKH, walletSKH) <- getWalletKeyHashes
-    utxos                  <- liftIO $ mconcatMapM getUtxosAt utxosAddresses
+    utxosTracked           <- liftIO $ mconcatMapM getUtxosAt utxosAddresses
     ct                     <- liftIO currentTime
     params                 <- liftIO $ decodeOrErrorFromFile "testnet/protocol-parameters.json"
+    let utxos = utxosTracked `Map.union` utxosExternal
 
     let networkId = Testnet $ NetworkMagic 2
         ledgerParams = Params def (pParamsFromProtocolParams params) networkId
@@ -88,10 +90,11 @@ mkBalanceTx utxosAddresses txs = do
 
 mkTx :: forall a m. MkTxConstraints a m 
     => [Address]
+    -> Map.Map TxOutRef DecoratedTxOut
     -> (HasTxEnv => [State (TxConstructor a (RedeemerType a) (DatumType a)) ()])
     -> m CardanoTx
-mkTx utxosAddresses txs = do
-    balancedTx <- mkBalanceTx utxosAddresses txs
+mkTx utxosAddresses utxosExternal txs = do
+    balancedTx <- mkBalanceTx utxosAddresses utxosExternal txs
     logPretty balancedTx
     logMsg "Signing..."
     signedTx <- signTx balancedTx
@@ -103,7 +106,7 @@ mkTx utxosAddresses txs = do
 
 mkWalletTxOutRefs :: MkTxConstraints Void m => Address -> Int -> m [TxOutRef]
 mkWalletTxOutRefs addr n = do
-        signedTx <- mkTx [addr] [constructor]
+        signedTx <- mkTx [addr] Map.empty [constructor]
         let refs = case signedTx of
                 EmulatorTx _    -> error "Can not get TxOutRef's from EmulatorTx."
                 CardanoApiTx tx -> Map.keys $ unspentOutputsTx tx

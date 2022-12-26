@@ -12,11 +12,12 @@
 
 module Server.Endpoints.Tx.Submit where
 
-import           Control.Monad                    (join, liftM2, void, when)
+import           Control.Monad                    (join, void, when, liftM3)
 import           Control.Monad.IO.Class           (MonadIO(..))
 import           Control.Monad.Catch              (SomeException, catch, handle, MonadThrow, MonadCatch)
 import           Control.Monad.Reader             (ReaderT(..), MonadReader, asks)
 import           Data.IORef                       (atomicWriteIORef, atomicModifyIORef, readIORef)
+import qualified Data.Map                         as Map
 import           Data.Sequence                    (Seq(..), (|>))
 import           IO.Wallet                        (HasWallet(..))
 import           Servant                          (NoContent(..), JSON, (:>), ReqBody, respond, StdMethod(POST), UVerb, Union)
@@ -80,4 +81,4 @@ processRedeemer qRef red reds = do
 processTokens :: forall s m. (HasTxEndpoints s, HasWallet m, HasLogger m, MonadReader (Env s) m) => RedeemerOf s -> m ()
 processTokens red = do
     checkForCleanUtxos
-    void $ join $ liftM2 mkTx (getTrackedAddresses @s) $ txEndpointsTxBuilders @s red
+    void $ join $ liftM3 mkTx (getTrackedAddresses @s) (pure Map.empty) $ txEndpointsTxBuilders @s red
