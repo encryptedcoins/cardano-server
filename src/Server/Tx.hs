@@ -20,7 +20,6 @@ import           Ledger.Ada                (lovelaceValueOf)
 import           Ledger.Constraints        (ScriptLookups, mustPayToPubKey, mustPayToPubKeyAddress)
 import           Ledger.Tx.CardanoAPI      (unspentOutputsTx)
 import           PlutusTx                  (FromData(..), ToData(..))
-import           Plutus.ChainIndex         (ChainIndexTx)
 import           Plutus.Script.Utils.Typed (RedeemerType, DatumType)
 import           IO.ChainIndex             (getUtxosAt)
 import           IO.Time                   (currentTime)
@@ -35,7 +34,7 @@ type HasTxEnv =
     , ?txWalletPKH  :: PubKeyHash
     , ?txWalletSKC  :: Maybe StakingCredential
     , ?txCt         :: POSIXTime
-    , ?txUtxos      :: Map.Map TxOutRef (DecoratedTxOut, ChainIndexTx)
+    , ?txUtxos      :: Map.Map TxOutRef DecoratedTxOut
     , ?txParams     :: Params
     )
 

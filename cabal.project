@@ -24,17 +24,17 @@ packages: ./.
 source-repository-package
   type: git
   location: https://github.com/encryptedcoins/plutus-tx-extra.git
-  tag: 8e9ab9d1baa91a97cbd9395dda4b32fe0ac1f65f
+  tag: ad216bcb85a419592d843463038f35dda3c308ad
 
 source-repository-package
   type: git
   location: https://github.com/encryptedcoins/encoins-bulletproofs.git
-  tag: aac10bf5f19dc20dc8548a365e8b83fc5c498502
+  tag: 33d74636bda1079b96432ab1606d846292e58b76
 
 source-repository-package
   type: git
   location: https://github.com/encryptedcoins/plutus-apps-extra
-  tag: 15e789efe1b5c5994948af54d1df40bf19c2883f
+  tag: 301f86cb91dcdf8c8fd284be339f44c2a9aed3ee
 
 source-repository-package
   type: git
