@@ -14,7 +14,7 @@ import           Control.Monad.Extra       (mconcatMapM)
 import           Control.Monad.State       (State, get, put, execState, MonadIO(..))
 import           Data.Default              (Default(..))
 import qualified Data.Map                  as Map
-import           Data.Maybe                (fromJust)
+import           Data.Maybe                (fromJust, isNothing)
 import           Data.Void                 (Void)
 import           Ledger                    (Address, CardanoTx(..), DecoratedTxOut, Params(..), POSIXTime, PubKeyHash, TxOutRef, PaymentPubKeyHash (..), StakingCredential, stakingCredential, pParamsFromProtocolParams)
 import           Ledger.Ada                (lovelaceValueOf) 
@@ -54,11 +54,11 @@ mkBalanceTx :: forall a m. MkTxConstraints a m
     -> Map.Map TxOutRef DecoratedTxOut
     -> (HasTxEnv => [State (TxConstructor a (RedeemerType a) (DatumType a)) ()])
     -> m CardanoTx
-mkBalanceTx utxosAddresses utxosExternal txs = do
+mkBalanceTx addressesTracked utxosExternal txs = do
     walletAddrBech32       <- getWalletAddrBech32
     walletAddr             <- getWalletAddr
     (walletPKH, walletSKH) <- getWalletKeyHashes
-    utxosTracked           <- liftIO $ mconcatMapM getUtxosAt utxosAddresses
+    utxosTracked           <- liftIO $ mconcatMapM getUtxosAt addressesTracked
     ct                     <- liftIO currentTime
     params                 <- liftIO $ decodeOrErrorFromFile "testnet/protocol-parameters.json"
     let utxos = utxosTracked `Map.union` utxosExternal
@@ -79,11 +79,11 @@ mkBalanceTx utxosAddresses utxosExternal txs = do
             (walletPKH, walletSKH)
             ct
             utxos
-        constructors = map (`execState` constrInit) txs
-    when (null constructors) $ do
+        constr = selectTxConstructor $ map (`execState` constrInit) txs
+    when (isNothing constr) $ do
         logMsg "\tNo transactions can be constructed. Last error:"
         logSmth $ head $ txConstructorErrors $ last $ map (`execState` constrInit) txs
-    let (lookups, cons) = fromJust $ txConstructorResult $ fromJust $ selectTxConstructor constructors
+    let (lookups, cons) = fromJust $ txConstructorResult $ fromJust constr
     logMsg "\tLookups:"
     logSmth lookups
     logMsg "\tConstraints:"
