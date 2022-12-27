@@ -9,6 +9,7 @@
 module Server.Tx where
 
 import           Cardano.Api.Shelley       (NetworkMagic(..), NetworkId(..))
+import           Control.Monad             (when)
 import           Control.Monad.Extra       (mconcatMapM)
 import           Control.Monad.State       (State, get, put, execState, MonadIO(..))
 import           Data.Default              (Default(..))
@@ -67,7 +68,7 @@ mkBalanceTx utxosAddresses utxosExternal txs = do
 
     let ?txWalletAddr = walletAddr
         ?txWalletPKH  = unPaymentPubKeyHash walletPKH
-        ?txWalletSKC  = stakingCredential walletAddr 
+        ?txWalletSKC  = stakingCredential walletAddr
         ?txCt         = ct
         ?txUtxos      = utxos
         ?txParams     = ledgerParams
@@ -78,8 +79,11 @@ mkBalanceTx utxosAddresses utxosExternal txs = do
             (walletPKH, walletSKH)
             ct
             utxos
-        constr = fromJust $ selectTxConstructor $ map (`execState` constrInit) txs
-        (lookups, cons) = fromJust $ txConstructorResult constr
+        constructors = map (`execState` constrInit) txs
+    when (null constructors) $ do
+        logMsg "\tNo transactions can be constructed. Last error:"
+        logSmth $ head $ txConstructorErrors $ last $ map (`execState` constrInit) txs
+    let (lookups, cons) = fromJust $ txConstructorResult $ fromJust $ selectTxConstructor constructors
     logMsg "\tLookups:"
     logSmth lookups
     logMsg "\tConstraints:"
