@@ -97,8 +97,8 @@ mkTx :: forall a m. MkTxConstraints a m
     -> Map.Map TxOutRef DecoratedTxOut
     -> (HasTxEnv => [State (TxConstructor a (RedeemerType a) (DatumType a)) ()])
     -> m CardanoTx
-mkTx utxosAddresses utxosExternal txs = do
-    balancedTx <- mkBalanceTx utxosAddresses utxosExternal txs
+mkTx addressesTracked utxosExternal txs = do
+    balancedTx <- mkBalanceTx addressesTracked utxosExternal txs
     logPretty balancedTx
     logMsg "Signing..."
     signedTx <- signTx balancedTx

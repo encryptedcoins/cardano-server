@@ -40,7 +40,7 @@ class ( HasServer s
 
     txEndpointsErrorHanlder :: TxEndpointsErrorOf s -> AppM s (Union (TxApiResultOf s))
 
-    getTrackedAddresses :: HasWallet m => m [Address]
+    getTrackedAddresses :: (MonadReader (Env s) m, HasWallet m) => m [Address]
     getTrackedAddresses = (:[]) <$> getWalletAddr
 
     txEndpointsTxBuilders :: (MonadReader (Env s) m, HasWallet m) => RedeemerOf s -> m [State (TxConstructor Any (RedeemerType Any) (DatumType Any)) ()]
