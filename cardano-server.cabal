@@ -34,7 +34,9 @@ library
       Client.Opts
       Server.Config
       Server.Endpoints.Funds 
-      Server.Endpoints.SubmitTx 
+      Server.Endpoints.Tx.Submit
+      Server.Endpoints.Tx.New
+      Server.Endpoints.Tx.Internal
       Server.Endpoints.Ping
       Server.Internal
       Server.Main
@@ -65,7 +67,7 @@ library
       http-types                             -any,
       mtl                                    -any,
       optparse-applicative                   -any,
-      plutus-common                          -any,
+      plutus-apps-extra                      -any,
       plutus-chain-index-core                -any,
       plutus-tx-plugin                       -any,
       plutus-tx                              -any,
@@ -79,6 +81,7 @@ library
       servant-server                         -any,
       text                                   -any,
       time                                   -any,
+      wai-cors                               -any,
       warp                                   -any,
 
     hs-source-dirs: src
@@ -98,7 +101,7 @@ test-suite cardano-server-test
     cardano-server                         -any,
     containers                             -any,
     mtl                                    -any,
-    plutus-common                          -any,
+    plutus-apps-extra                      -any,
     plutus-tx                              -any,
     plutus-ledger                          -any,
     text                                   -any,

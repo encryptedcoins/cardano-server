@@ -10,26 +10,21 @@
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE TupleSections              #-}
 {-# LANGUAGE UndecidableInstances       #-}
-{-# LANGUAGE DerivingVia #-}
 
 module TestingServer.Main (TestingServer) where
 
-import Client.Internal           (HasClient(..))
-import Control.Monad.Catch       (Exception, throwM)
-import Control.Monad             (replicateM, when, void)
-import Data.List                 (nub)
-import Data.Text                 (Text)
-import IO.Wallet                 (getWalletAddr)
-import Options.Applicative       (argument, metavar, str)
-import Plutus.V2.Ledger.Api      (BuiltinByteString)
-import PlutusTx.Builtins.Class   (stringToBuiltinByteString)
-import Servant                   (NoContent, WithStatus)
-import Server.Endpoints.SubmitTx (HasSubmitTxEndpoint(..))
-import Server.Internal           (HasServer(..))
-import Server.Tx                 (mkTx)
-import System.Random             (randomRIO, randomIO)
-import TestingServer.OffChain    (testCurrencySymbol, testMintTx)
-import Utils.Servant             (respondWithStatus)
+import Client.Internal              (HasClient(..))
+import Control.Monad                (when, replicateM)
+import Control.Monad.Catch          (Exception, throwM)
+import Data.List                    (nub)
+import Options.Applicative          (argument, metavar, str)
+import Plutus.V2.Ledger.Api         (BuiltinByteString)
+import PlutusTx.Builtins.Class      (stringToBuiltinByteString)
+import Server.Endpoints.Tx.Internal (HasTxEndpoints(..), DefaultTxApiResult)
+import Server.Internal              (HasServer(..))
+import System.Random                (randomRIO, randomIO)
+import TestingServer.OffChain       (testCurrencySymbol, testMintTx)
+import Utils.Servant                (respondWithStatus)
 
 data TestingServer
 
@@ -43,22 +38,20 @@ instance HasServer TestingServer where
 
     getCurrencySymbol = pure testCurrencySymbol
 
-    processTokens bbs = do
-        addr <- getWalletAddr
-        void $ mkTx [addr] [testMintTx bbs]
+instance HasTxEndpoints TestingServer where
 
-instance HasSubmitTxEndpoint TestingServer where
+    type TxApiResultOf TestingServer = DefaultTxApiResult
 
-    type SubmitTxApiResultOf TestingServer = '[NoContent, WithStatus 422 Text]
-
-    data (SubmitTxErrorOf TestingServer) = HasDuplicates
+    data (TxEndpointsErrorOf TestingServer) = HasDuplicates
         deriving (Show, Exception)
 
-    checkForSubmitTxErros bbs =
+    txEndpointsTxBuilders bbs = pure [testMintTx bbs]
+
+    checkForTxEndpointsErros bbs =
         let hasDuplicates = length bbs /= length (nub bbs)
         in  when hasDuplicates $ throwM HasDuplicates
         
-    submitTxErrorHanlder _ = respondWithStatus @422
+    txEndpointsErrorHanlder _ = respondWithStatus @422
         "The request contains duplicate tokens and will not be processed."
 
 instance HasClient TestingServer where

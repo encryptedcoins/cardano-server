@@ -21,7 +21,7 @@ import           Utils.Logger            (HasLogger(..))
 postReferenceScript :: IO ()
 postReferenceScript = void $ runTestM @TestingServer $ do
     addr <- getWalletAddr
-    mkTx @Any [addr]
+    mkTx @Any [addr] Map.empty
         [ postMintingPolicyTx 
             ?txWalletAddr 
             testPolicyV 
@@ -37,7 +37,7 @@ runReferenceTest = void $ runTestM @TestingServer $ do
     logMsg "\n\n\n\t\t\tMINT2:"
     mkTest "token2" addr
   where
-    mkTest token addr = mkTx @Any [addr]
+    mkTest token addr = mkTx @Any [addr] Map.empty
         [ referenceMintingPolicyTx 
             testPolicy
             (head $ Map.keys ?txUtxos) 
