@@ -3,17 +3,19 @@
 
 module Tests.TestingServer where
 
-import           Control.Monad.IO.Class  (MonadIO(..))
-import qualified Data.Map                as Map
-import           IO.ChainIndex           (getUtxosAt)
-import           IO.Wallet               (getWalletAddr)
-import           PlutusTx.Builtins.Class (stringToBuiltinByteString)
-import           Server.Internal         (HasServer(..))
-import           Server.Tx               (mkWalletTxOutRefs) 
-import           Tests.Internal          (runTestM, testFunds, testFundsAll)
-import           TestingServer.Main      (TestingServer)
-import           Utils.ChainIndex        (filterCleanUtxos)
-import           Utils.Logger            (HasLogger(..), logSmth, (.<))
+import           Control.Monad.IO.Class     (MonadIO(..))
+import qualified Data.Map                   as Map
+import           IO.ChainIndex              (getUtxosAt)
+import           IO.Wallet                  (getWalletAddr)
+import           PlutusTx.Builtins.Class    (stringToBuiltinByteString)
+import           Server.Endpoints.Tx.Submit (processTokens)
+import           Server.Internal            (HasServer(..))
+import           Server.Tx                  (mkWalletTxOutRefs) 
+import           Tests.Internal             (runTestM, testFunds, testFundsAll)
+import           TestingServer.Main         (TestingServer)
+import           Utils.ChainIndex           (filterCleanUtxos)
+import           Utils.Logger               (HasLogger(..), logSmth, (.<))
+
 
 testFundsTS :: IO ()
 testFundsTS = testFunds @TestingServer
