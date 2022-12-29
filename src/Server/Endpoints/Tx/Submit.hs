@@ -17,22 +17,21 @@ import           Control.Monad.IO.Class           (MonadIO(..))
 import           Control.Monad.Catch              (SomeException, catch, handle, MonadThrow, MonadCatch)
 import           Control.Monad.Reader             (ReaderT(..), MonadReader, asks)
 import           Data.IORef                       (atomicWriteIORef, atomicModifyIORef, readIORef)
-import qualified Data.Map                         as Map
 import           Data.Sequence                    (Seq(..), (|>))
 import           IO.Wallet                        (HasWallet(..))
-import           Ledger                           (DecoratedTxOut, TxOutRef)
 import           Servant                          (NoContent(..), JSON, (:>), ReqBody, respond, StdMethod(POST), UVerb, Union)
 import           Server.Endpoints.Tx.Internal     (HasTxEndpoints(..))     
 import           Server.Internal                  (getQueueRef, AppM, Env(..), HasServer(..), QueueRef, checkForCleanUtxos, QueueElem, Queue)
 import           Server.Tx                        (mkTx)
+import           Utils.ChainIndex                 (MapUTXO)
 import           Utils.Logger                     (HasLogger(..), (.<), logSmth)
 import           Utils.Wait                       (waitTime)
 
 type SubmitTxApi s = "relayRequestSubmitTx"
-              :> ReqBody '[JSON] (RedeemerOf s, Map.Map TxOutRef DecoratedTxOut)
+              :> ReqBody '[JSON] (RedeemerOf s, MapUTXO)
               :> UVerb 'POST '[JSON] (TxApiResultOf s)
 
-submitTxHandler :: forall s. HasTxEndpoints s => (RedeemerOf s, Map.Map TxOutRef DecoratedTxOut) ->  AppM s (Union (TxApiResultOf s))
+submitTxHandler :: forall s. HasTxEndpoints s => (RedeemerOf s, MapUTXO) ->  AppM s (Union (TxApiResultOf s))
 submitTxHandler arg@(red, utxosExternal) = handle txEndpointsErrorHanlder $ do
     logMsg $ "New submitTx request received:" 
         <> "\nRedeemer:" .< red
@@ -76,10 +75,10 @@ processQueue env = runQueueM env $ do
         logIdle n = when (n `mod` 100 == 0) $ logMsg "No new redeemers to process."
 
 processQueueElem :: forall s. HasTxEndpoints s => QueueRef s -> QueueElem s -> Queue s -> QueueM s ()
-processQueueElem qRef red reds = do
-    liftIO $ atomicWriteIORef qRef reds
-    logMsg $ "New redeemer to process:" .< red
-    processTokens @s red
+processQueueElem qRef qElem@(red, externalUtxos) elems = do
+    liftIO $ atomicWriteIORef qRef elems
+    logMsg $ "New redeemer to process:" .< red <> "\nUtxos:" .< externalUtxos
+    processTokens @s qElem
 
 processTokens :: forall s m. (HasTxEndpoints s, HasWallet m, HasLogger m, MonadReader (Env s) m) => QueueElem s -> m ()
 processTokens (red, utxosExternal) = do

@@ -16,7 +16,8 @@ import           Data.Default              (Default(..))
 import qualified Data.Map                  as Map
 import           Data.Maybe                (fromJust, isNothing)
 import           Data.Void                 (Void)
-import           Ledger                    (Address, CardanoTx(..), DecoratedTxOut, Params(..), POSIXTime, PubKeyHash, TxOutRef, PaymentPubKeyHash (..), StakingCredential, stakingCredential, pParamsFromProtocolParams)
+import           Ledger                    (Address, CardanoTx(..), Params(..), POSIXTime, PubKeyHash, TxOutRef,
+                                            PaymentPubKeyHash(..), StakingCredential, stakingCredential, pParamsFromProtocolParams)
 import           Ledger.Ada                (lovelaceValueOf) 
 import           Ledger.Constraints        (ScriptLookups, mustPayToPubKey, mustPayToPubKeyAddress)
 import           Ledger.Tx.CardanoAPI      (unspentOutputsTx)
@@ -28,6 +29,7 @@ import           IO.Wallet                 (HasWallet(..), signTx, balanceTx, su
                                             getWalletAddrBech32, getWalletKeyHashes)
 import           Server.Config             (decodeOrErrorFromFile)
 import           Types.Tx                  (TxConstructor (..), selectTxConstructor, mkTxConstructor)
+import           Utils.ChainIndex          (MapUTXO)
 import           Utils.Logger              (HasLogger(..), logPretty, logSmth)
 
 type HasTxEnv =
@@ -35,7 +37,7 @@ type HasTxEnv =
     , ?txWalletPKH  :: PubKeyHash
     , ?txWalletSKC  :: Maybe StakingCredential
     , ?txCt         :: POSIXTime
-    , ?txUtxos      :: Map.Map TxOutRef DecoratedTxOut
+    , ?txUtxos      :: MapUTXO
     , ?txParams     :: Params
     )
 
@@ -51,7 +53,7 @@ type MkTxConstraints a m =
 
 mkBalanceTx :: forall a m. MkTxConstraints a m 
     => [Address]
-    -> Map.Map TxOutRef DecoratedTxOut
+    -> MapUTXO
     -> (HasTxEnv => [State (TxConstructor a (RedeemerType a) (DatumType a)) ()])
     -> m CardanoTx
 mkBalanceTx addressesTracked utxosExternal txs = do
@@ -94,7 +96,7 @@ mkBalanceTx addressesTracked utxosExternal txs = do
 
 mkTx :: forall a m. MkTxConstraints a m 
     => [Address]
-    -> Map.Map TxOutRef DecoratedTxOut
+    -> MapUTXO
     -> (HasTxEnv => [State (TxConstructor a (RedeemerType a) (DatumType a)) ()])
     -> m CardanoTx
 mkTx addressesTracked utxosExternal txs = do
