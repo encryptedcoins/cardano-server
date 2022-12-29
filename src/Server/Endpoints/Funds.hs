@@ -64,4 +64,4 @@ getFunds cs addr = do
         coins <- liftIO $ Map.toList . Map.map getNames <$> getUtxosAt addr
         pure $ Funds $ concatMap (\(ref, names) -> zip names (repeat ref)) coins
     where
-        getNames = maybe [] PAM.keys . PAM.lookup cs . getValue . _decoratedTxOutValue . fst
+        getNames = maybe [] PAM.keys . PAM.lookup cs . getValue . _decoratedTxOutValue
