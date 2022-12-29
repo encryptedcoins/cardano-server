@@ -16,7 +16,6 @@ import           TestingServer.Main         (TestingServer)
 import           Utils.ChainIndex           (filterCleanUtxos)
 import           Utils.Logger               (HasLogger(..), logSmth, (.<))
 
-
 testFundsTS :: IO ()
 testFundsTS = testFunds @TestingServer
 
