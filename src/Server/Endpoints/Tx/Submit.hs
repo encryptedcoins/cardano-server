@@ -20,23 +20,26 @@ import           Data.IORef                       (atomicWriteIORef, atomicModif
 import qualified Data.Map                         as Map
 import           Data.Sequence                    (Seq(..), (|>))
 import           IO.Wallet                        (HasWallet(..))
+import           Ledger                           (DecoratedTxOut, TxOutRef)
 import           Servant                          (NoContent(..), JSON, (:>), ReqBody, respond, StdMethod(POST), UVerb, Union)
 import           Server.Endpoints.Tx.Internal     (HasTxEndpoints(..))     
-import           Server.Internal                  (getQueueRef, AppM, Env(..), HasServer(..), QueueRef, checkForCleanUtxos)
+import           Server.Internal                  (getQueueRef, AppM, Env(..), HasServer(..), QueueRef, checkForCleanUtxos, QueueElem, Queue)
 import           Server.Tx                        (mkTx)
 import           Utils.Logger                     (HasLogger(..), (.<), logSmth)
 import           Utils.Wait                       (waitTime)
 
 type SubmitTxApi s = "relayRequestSubmitTx"
-              :> ReqBody '[JSON] (RedeemerOf s)
+              :> ReqBody '[JSON] (RedeemerOf s, Map.Map TxOutRef DecoratedTxOut)
               :> UVerb 'POST '[JSON] (TxApiResultOf s)
 
-submitTxHandler :: forall s. HasTxEndpoints s => RedeemerOf s -> AppM s (Union (TxApiResultOf s))
-submitTxHandler red = handle txEndpointsErrorHanlder $ do
-    logMsg $ "New submitTx request received:\n" .< red
+submitTxHandler :: forall s. HasTxEndpoints s => (RedeemerOf s, Map.Map TxOutRef DecoratedTxOut) ->  AppM s (Union (TxApiResultOf s))
+submitTxHandler arg@(red, utxosExternal) = handle txEndpointsErrorHanlder $ do
+    logMsg $ "New submitTx request received:" 
+        <> "\nRedeemer:" .< red
+        <> "\nUtxos:"    .< utxosExternal
     checkForTxEndpointsErros red
     ref <- getQueueRef
-    liftIO $ atomicModifyIORef ref ((,()) . (|> red))
+    liftIO $ atomicModifyIORef ref ((,()) . (|> arg))
     respond NoContent
 
 newtype QueueM s a = QueueM { unQueueM :: ReaderT (Env s) IO a }
@@ -69,16 +72,16 @@ processQueue env = runQueueM env $ do
             qRef <- asks envQueueRef
             liftIO (readIORef qRef) >>= \case
                 Empty -> logIdle n >> waitTime 3 >> checkQueue (n + 1)
-                red :<| reds -> processRedeemer qRef red reds >> go
+                red :<| reds -> processQueueElem qRef red reds >> go
         logIdle n = when (n `mod` 100 == 0) $ logMsg "No new redeemers to process."
 
-processRedeemer :: forall s. HasTxEndpoints s => QueueRef s -> RedeemerOf s -> Seq (RedeemerOf s) -> QueueM s ()
-processRedeemer qRef red reds = do
+processQueueElem :: forall s. HasTxEndpoints s => QueueRef s -> QueueElem s -> Queue s -> QueueM s ()
+processQueueElem qRef red reds = do
     liftIO $ atomicWriteIORef qRef reds
     logMsg $ "New redeemer to process:" .< red
     processTokens @s red
 
-processTokens :: forall s m. (HasTxEndpoints s, HasWallet m, HasLogger m, MonadReader (Env s) m) => RedeemerOf s -> m ()
-processTokens red = do
+processTokens :: forall s m. (HasTxEndpoints s, HasWallet m, HasLogger m, MonadReader (Env s) m) => QueueElem s -> m ()
+processTokens (red, utxosExternal) = do
     checkForCleanUtxos
-    void $ join $ liftM3 mkTx (getTrackedAddresses @s) (pure Map.empty) $ txEndpointsTxBuilders @s red
+    void $ join $ liftM3 mkTx (getTrackedAddresses @s) (pure utxosExternal) $ txEndpointsTxBuilders @s red

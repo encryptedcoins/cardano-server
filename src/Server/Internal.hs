@@ -18,10 +18,11 @@ import           Control.Monad.Reader   (ReaderT(ReaderT, runReaderT), MonadRead
 import           Data.Aeson             (FromJSON(..), ToJSON)
 import           Data.IORef             (IORef, newIORef)
 import           Data.Kind              (Type)
+import qualified Data.Map               as Map
 import           Data.Sequence          (Seq, empty)
 import           IO.ChainIndex          (getWalletUtxos)
 import           IO.Wallet              (HasWallet(..), RestoredWallet, getWalletAddr)
-import           Ledger                 (CurrencySymbol)
+import           Ledger                 (CurrencySymbol, TxOutRef, DecoratedTxOut)
 import           Servant                (Handler, MimeUnrender, JSON)
 import           Server.Config          (Config(..), configFile, decodeOrErrorFromFile)
 import           Server.Tx              (mkWalletTxOutRefs)
@@ -67,7 +68,9 @@ instance HasLogger (AppM s) where
 instance (Monad m, MonadIO m) => HasWallet (ReaderT (Env s) m) where
     getRestoreWallet = asks envWallet
 
-type Queue s = Seq (RedeemerOf s)
+type QueueElem s = (RedeemerOf s, Map.Map TxOutRef DecoratedTxOut)
+
+type Queue s = Seq (QueueElem s)
 
 type QueueRef s = IORef (Queue s)
 
