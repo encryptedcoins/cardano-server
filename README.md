@@ -29,7 +29,7 @@ This is a main cardano-server class where you need to define your server redeeme
 
 A class for your client that parses list of tokens, builds redeemer from it and sends it to your server. Here you need to define type of parsing result of single token (RequestPieceOf), how to parse it (parseRequestPiece), how to gen it (genRequestPiece) and how to build redeemer (mkRedeemer). Note that in addition to redeemer mkRedeemer produce some action, that will be executed after successful response. You can use it for some file manipulations for example.
 
-3. [HasTxEndpoints] (https://github.com/encryptedcoins/cardano-server/blob/main/src/Server/Endpoints/Tx/Internal.hs):
+3. [HasTxEndpoints](https://github.com/encryptedcoins/cardano-server/blob/main/src/Server/Endpoints/Tx/Internal.hs):
 
 The last class for newTx and sumbitTx server endpoints. If you are using cycleTx and don't need to deploy a server you can freely skip it. Here you need to define data type with your custom errors (TxEndpointsErrorOf), error handler for it (txEndpointsErrorHanlder), error-checking function (checkForTxEndpointsErros) and function that will build list with constructors to make transactions in these endpoints (txEndpointsTxBuilders). In addition you need to define sum type with all possible results in these two endpoints (TxApiResultOf), but you can use DefaultTxApiResult if it fits your server. Also, here is an optional method that you can use to provide more addresses for your transactions if they need to interact with some external UTXO's.
 
