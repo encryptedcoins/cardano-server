@@ -8,6 +8,7 @@
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE TypeApplications           #-}
 {-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE DefaultSignatures #-}
 
 module Server.Internal where
 
@@ -29,7 +30,6 @@ import           Utils.ChainIndex       (filterCleanUtxos, MapUTXO)
 import           Utils.Logger           (HasLogger(..))
 
 class ( Show (AuxiliaryEnvOf s)
-      , FromJSON (AuxiliaryEnvOf s)
       , MimeUnrender JSON (RedeemerOf s)
       , ToJSON (RedeemerOf s)
       , Show (RedeemerOf s)
@@ -38,6 +38,8 @@ class ( Show (AuxiliaryEnvOf s)
     type AuxiliaryEnvOf s :: Type
 
     loadAuxiliaryEnv :: FilePath -> IO (AuxiliaryEnvOf s)
+    default loadAuxiliaryEnv :: FromJSON (AuxiliaryEnvOf s) => FilePath -> IO (AuxiliaryEnvOf s)
+    loadAuxiliaryEnv = decodeOrErrorFromFile
 
     type RedeemerOf s :: Type
 
