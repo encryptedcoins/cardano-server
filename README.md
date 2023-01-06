@@ -16,16 +16,16 @@ Key features:
 
 # How to use
 
-This library comes with [one predefined instance for server and client] (https://github.com/encryptedcoins/cardano-server/blob/main/src/TestingServer/Main.hs). You can use it freely as a guide.
+This library comes with [one predefined instance for server and client](https://github.com/encryptedcoins/cardano-server/blob/main/src/TestingServer/Main.hs). You can use it freely as a guide.
 
 To use this library you need to define your own server data and make instances of
 next classes for it. 
 
-1. [HasServer] (https://github.com/encryptedcoins/cardano-server/blob/main/src/Server/Internal.hs):
+1. [HasServer](https://github.com/encryptedcoins/cardano-server/blob/main/src/Server/Internal.hs):
 
 This is a main cardano-server class where you need to define your server redeemer type (RedeemerOf), some auxiliary environment (AuxiliaryEnvOf) and how to get currency symbol (getCurrencySymbol). It also has some optional methods if you have any complex logic to get your environment (loadAuxiliaryEnv) or need to do something before starting server (setupServer). Besides, it has cycleTx method that you can use to make some transactions instead of deploying a whole server.
 
-2. [HasClient] (https://github.com/encryptedcoins/cardano-server/blob/main/src/Client/Internal.hs):
+2. [HasClient](https://github.com/encryptedcoins/cardano-server/blob/main/src/Client/Internal.hs):
 
 A class for your client that parses list of tokens, builds redeemer from it and sends it to your server. Here you need to define type of parsing result of single token (RequestPieceOf), how to parse it (parseRequestPiece), how to gen it (genRequestPiece) and how to build redeemer (mkRedeemer). Note that in addition to redeemer mkRedeemer produce some action, that will be executed after successful response. You can use it for some file manipulations for example.
 
