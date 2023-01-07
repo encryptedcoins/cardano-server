@@ -1,6 +1,6 @@
 # Cardano-server
 
-A library with various utilities needed to deploy cardano-server.
+A lightweight backend server for hosting Cardano dApps. It is a robust alternative to Plutus Application Backend (PAB).
 
 Key features:
 
@@ -16,26 +16,25 @@ Key features:
 
 # How to use
 
-This library comes with [one predefined instance for server and client](https://github.com/encryptedcoins/cardano-server/blob/main/src/TestingServer/Main.hs). You can use it freely as a guide.
-
-To use this library you need to define your own server data and make instances of
-next classes for it. 
+To use this library you need to make a new data type and define instances of (some of) the following classes.
 
 1. [HasServer](https://github.com/encryptedcoins/cardano-server/blob/main/src/Server/Internal.hs):
 
-This is a main cardano-server class where you need to define your server redeemer type (RedeemerOf), some auxiliary environment (AuxiliaryEnvOf) and how to get currency symbol (getCurrencySymbol). It also has some optional methods if you have any complex logic to get your environment (loadAuxiliaryEnv) or need to do something before starting server (setupServer). Besides, it has cycleTx method that you can use to make some transactions instead of deploying a whole server.
+This is the main class for defining a cardano-server. You need to define a redeemer type (`RedeemerOf`) for your application, auxiliary environment data that the server must be aware of (`AuxiliaryEnvOf`) and how to get currency symbol (`getCurrencySymbol`). Additionally, you may define the following functions: `loadAuxiliaryEnv` to get your environment data and `setupServer` to perform some actions during the server startup. You may use `cycleTx` function to define transactions that must be submitted to the network whenever possible.
 
 2. [HasClient](https://github.com/encryptedcoins/cardano-server/blob/main/src/Client/Internal.hs):
 
-A class for your client that parses list of tokens, builds redeemer from it and sends it to your server. Here you need to define type of parsing result of single token (RequestPieceOf), how to parse it (parseRequestPiece), how to gen it (genRequestPiece) and how to build redeemer (mkRedeemer). Note that in addition to redeemer mkRedeemer produce some action, that will be executed after successful response. You can use it for some file manipulations for example.
+A class for your client that parses list of tokens, builds redeemer from it and sends it to your server. Here you need to define a type for parsing a single request term (`RequestPieceOf`), how to parse it (`parseRequestPiece`), how to gen it (genRequestPiece) and how to build redeemer (mkRedeemer). Note that in addition to redeemer mkRedeemer produce some action, that will be executed after successful response. You can use it for some file manipulations for example.
 
 3. [HasTxEndpoints](https://github.com/encryptedcoins/cardano-server/blob/main/src/Server/Endpoints/Tx/Internal.hs):
 
-The last class for newTx and sumbitTx server endpoints. If you are using cycleTx and don't need to deploy a server you can freely skip it. Here you need to define data type with your custom errors (TxEndpointsErrorOf), error handler for it (txEndpointsErrorHanlder), error-checking function (checkForTxEndpointsErros) and function that will build list with constructors to make transactions in these endpoints (txEndpointsTxBuilders). In addition you need to define sum type with all possible results in these two endpoints (TxApiResultOf), but you can use DefaultTxApiResult if it fits your server. Also, here is an optional method that you can use to provide more addresses for your transactions if they need to interact with some external UTXO's.
+You can use this class to define server endpoints: `newTx` and `sumbitTx`. If you are using `cycleTx` and do not need to accept user requests, you do not need to define an instance of this class.
+
+To make an instance of this class, define a data type with your own custom errors (`TxEndpointsErrorOf`), error handler for it (`txEndpointsErrorHanlder`), error-checking function (`checkForTxEndpointsErros`) and a monad action that returns a list of transaction builders for these endpoints (`txEndpointsTxBuilders`). In addition, you need to define sum type with all possible results in these two endpoints (TxApiResultOf), though you can use `DefaultTxApiResult` if it is suitable for your server. Also, there is an optional monad action that returns the list of addresses with UTXOs which may be used for constructing transactions.
 
 # Test server commands
 
-This library includes the test-server which is the simplest backend application that can be built on top of cardano-server. Here is how to use the test-server and test-client.
+This library includes the [test-server](https://github.com/encryptedcoins/cardano-server/blob/main/src/TestingServer/Main.hs) which is the simplest backend application that can be built on top of cardano-server. You can use it as a starting point for your own app development. Here is how to use the test-server and test-client.
 
 1. Run server which works with test tokens:</br>
 ```console
