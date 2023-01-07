@@ -8,6 +8,7 @@
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE TypeApplications           #-}
 {-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE DefaultSignatures #-}
 
 module Server.Internal where
 
@@ -25,11 +26,10 @@ import           Ledger                 (CurrencySymbol)
 import           Servant                (Handler, MimeUnrender, JSON)
 import           Server.Config          (Config(..), configFile, decodeOrErrorFromFile)
 import           Server.Tx              (mkWalletTxOutRefs)
-import           Utils.ChainIndex       (filterCleanUtxos)
+import           Utils.ChainIndex       (filterCleanUtxos, MapUTXO)
 import           Utils.Logger           (HasLogger(..))
 
 class ( Show (AuxiliaryEnvOf s)
-      , FromJSON (AuxiliaryEnvOf s)
       , MimeUnrender JSON (RedeemerOf s)
       , ToJSON (RedeemerOf s)
       , Show (RedeemerOf s)
@@ -38,6 +38,8 @@ class ( Show (AuxiliaryEnvOf s)
     type AuxiliaryEnvOf s :: Type
 
     loadAuxiliaryEnv :: FilePath -> IO (AuxiliaryEnvOf s)
+    default loadAuxiliaryEnv :: FromJSON (AuxiliaryEnvOf s) => FilePath -> IO (AuxiliaryEnvOf s)
+    loadAuxiliaryEnv = decodeOrErrorFromFile
 
     type RedeemerOf s :: Type
 
@@ -67,7 +69,9 @@ instance HasLogger (AppM s) where
 instance (Monad m, MonadIO m) => HasWallet (ReaderT (Env s) m) where
     getRestoreWallet = asks envWallet
 
-type Queue s = Seq (RedeemerOf s)
+type QueueElem s = (RedeemerOf s, MapUTXO)
+
+type Queue s = Seq (QueueElem s)
 
 type QueueRef s = IORef (Queue s)
 

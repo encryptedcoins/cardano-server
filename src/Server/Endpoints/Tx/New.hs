@@ -9,8 +9,6 @@ module Server.Endpoints.Tx.New where
 
 import           Control.Monad                    (join, liftM3)
 import           Control.Monad.Catch              (handle)
-import qualified Data.Map                         as Map
-import           Ledger                           (TxOutRef, DecoratedTxOut)
 import           Servant                          (JSON, (:>), ReqBody, respond, StdMethod(POST), UVerb, Union)
 import           Server.Endpoints.Tx.Internal     (HasTxEndpoints(..), NewTxEndpointResult(..))
 import           Server.Internal                  (AppM, HasServer(..))
@@ -18,12 +16,13 @@ import           Server.Tx                        (mkBalanceTx)
 import           Utils.Logger                     (HasLogger(..), (.<))
 import           Utils.Servant                    (respondWithStatus)
 import           Utils.Tx                         (cardanoTxToText)
+import           Utils.ChainIndex                 (MapUTXO)
 
 type NewTxApi s = "relayRequestNewTx"
-              :> ReqBody '[JSON] (RedeemerOf s, Map.Map TxOutRef DecoratedTxOut)
+              :> ReqBody '[JSON] (RedeemerOf s, MapUTXO)
               :> UVerb 'POST '[JSON] (TxApiResultOf s)
 
-newTxHandler :: forall s. HasTxEndpoints s => (RedeemerOf s, Map.Map TxOutRef DecoratedTxOut) -> AppM s (Union (TxApiResultOf s))
+newTxHandler :: forall s. HasTxEndpoints s => (RedeemerOf s, MapUTXO) -> AppM s (Union (TxApiResultOf s))
 newTxHandler (red, utxosExternal) = handle txEndpointsErrorHanlder $ do
     logMsg $ "New newTx request received:\n" .< red
     checkForTxEndpointsErros red

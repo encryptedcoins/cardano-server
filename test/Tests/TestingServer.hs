@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications  #-}
+{-# LANGUAGE TupleSections     #-}
 
 module Tests.TestingServer where
 
@@ -23,7 +24,7 @@ testFundsAllTS :: IO ()
 testFundsAllTS = testFundsAll @TestingServer
 
 testSubmitTxTS :: [String] -> IO ()
-testSubmitTxTS = runTestM @TestingServer . processTokens . map stringToBuiltinByteString
+testSubmitTxTS = runTestM @TestingServer . processTokens . (,mempty) . map stringToBuiltinByteString
 
 mkRefs :: Int -> IO ()
 mkRefs n = runTestM @TestingServer $ do
