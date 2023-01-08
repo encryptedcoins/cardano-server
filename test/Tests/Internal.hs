@@ -14,7 +14,8 @@ import qualified Data.Text.IO             as T
 import           IO.Wallet                (HasWallet(..), getWalletAddr, ownAddresses)
 import           Ledger                   (Address)
 import           Server.Endpoints.Funds   (getFunds, Funds(..))
-import           Server.Internal          (HasServer(getCurrencySymbol), Env(..), loadEnv)
+import           Server.Class             (HasServer(..), Env(..), loadEnv)
+import           TestingServer.OffChain   (testCurrencySymbol)
 import           Utils.Address            (bech32ToAddress)
 import           Utils.Logger             (HasLogger(..))
 
@@ -28,7 +29,7 @@ testFundsAll = runTestM @s $ ownAddresses >>= printFunds
 
 printFunds :: forall s. HasServer s => [Address] -> TestM s ()
 printFunds addreses = do
-    cs <- getCurrencySymbol
+    let cs = testCurrencySymbol
     forM_ addreses $ \addr -> do
         Funds b <- getFunds cs addr
         unless (null b) $ liftIO $ print b

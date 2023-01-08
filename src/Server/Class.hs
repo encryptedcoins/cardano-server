@@ -10,7 +10,7 @@
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE DefaultSignatures #-}
 
-module Server.Internal where
+module Server.Class where
 
 import           Control.Monad          (void, when)
 import           Control.Monad.Catch    (MonadThrow, MonadCatch)
@@ -22,7 +22,6 @@ import           Data.Kind              (Type)
 import           Data.Sequence          (Seq, empty)
 import           IO.ChainIndex          (getWalletUtxos)
 import           IO.Wallet              (HasWallet(..), RestoredWallet, getWalletAddr)
-import           Ledger                 (CurrencySymbol)
 import           Servant                (Handler, MimeUnrender, JSON)
 import           Server.Config          (Config(..), configFile, decodeOrErrorFromFile)
 import           Server.Tx              (mkWalletTxOutRefs)
@@ -30,9 +29,9 @@ import           Utils.ChainIndex       (filterCleanUtxos, MapUTXO)
 import           Utils.Logger           (HasLogger(..))
 
 class ( Show (AuxiliaryEnvOf s)
-      , MimeUnrender JSON (RedeemerOf s)
-      , ToJSON (RedeemerOf s)
-      , Show (RedeemerOf s)
+      , MimeUnrender JSON (InputOf s)
+      , ToJSON (InputOf s)
+      , Show (InputOf s)
       ) => HasServer s where
 
     type AuxiliaryEnvOf s :: Type
@@ -41,15 +40,13 @@ class ( Show (AuxiliaryEnvOf s)
     default loadAuxiliaryEnv :: FromJSON (AuxiliaryEnvOf s) => FilePath -> IO (AuxiliaryEnvOf s)
     loadAuxiliaryEnv = decodeOrErrorFromFile
 
-    type RedeemerOf s :: Type
+    type InputOf s :: Type
 
-    getCurrencySymbol :: MonadReader (Env s) m => m CurrencySymbol
+    serverSetup :: SetupM s ()
+    serverSetup = pure ()
 
-    setupServer :: SetupM s ()
-    setupServer = pure ()
-
-    cycleTx :: SetupM s ()
-    cycleTx = pure ()
+    serverTx :: SetupM s ()
+    serverTx = pure ()
 
 newtype AppM s a = AppM { unAppM :: ReaderT (Env s) Handler a }
     deriving newtype
@@ -69,7 +66,7 @@ instance HasLogger (AppM s) where
 instance (Monad m, MonadIO m) => HasWallet (ReaderT (Env s) m) where
     getRestoredWallet = asks envWallet
 
-type QueueElem s = (RedeemerOf s, MapUTXO)
+type QueueElem s = (InputOf s, MapUTXO)
 
 type Queue s = Seq (QueueElem s)
 

@@ -20,23 +20,23 @@ import           Data.IORef                       (atomicWriteIORef, atomicModif
 import           Data.Sequence                    (Seq(..), (|>))
 import           IO.Wallet                        (HasWallet(..))
 import           Servant                          (NoContent(..), JSON, (:>), ReqBody, respond, StdMethod(POST), UVerb, Union)
-import           Server.Endpoints.Tx.Internal     (HasTxEndpoints(..))     
-import           Server.Internal                  (getQueueRef, AppM, Env(..), HasServer(..), QueueRef, checkForCleanUtxos, QueueElem, Queue)
+import           Server.Endpoints.Tx.Class        (HasTxEndpoints(..))     
+import           Server.Class                     (getQueueRef, AppM, Env(..), HasServer(..), QueueRef, checkForCleanUtxos, QueueElem, Queue)
 import           Server.Tx                        (mkTx)
 import           Utils.ChainIndex                 (MapUTXO)
 import           Utils.Logger                     (HasLogger(..), (.<), logSmth)
 import           Utils.Wait                       (waitTime)
 
 type SubmitTxApi s = "relayRequestSubmitTx"
-              :> ReqBody '[JSON] (RedeemerOf s, MapUTXO)
+              :> ReqBody '[JSON] (InputOf s, MapUTXO)
               :> UVerb 'POST '[JSON] (TxApiResultOf s)
 
-submitTxHandler :: forall s. HasTxEndpoints s => (RedeemerOf s, MapUTXO) ->  AppM s (Union (TxApiResultOf s))
+submitTxHandler :: forall s. HasTxEndpoints s => (InputOf s, MapUTXO) ->  AppM s (Union (TxApiResultOf s))
 submitTxHandler arg@(red, utxosExternal) = handle txEndpointsErrorHanlder $ do
     logMsg $ "New submitTx request received:" 
         <> "\nRedeemer:" .< red
         <> "\nUtxos:"    .< utxosExternal
-    checkForTxEndpointsErros red
+    checkForTxEndpointsErrors red
     ref <- getQueueRef
     liftIO $ atomicModifyIORef ref ((,()) . (|> arg))
     respond NoContent

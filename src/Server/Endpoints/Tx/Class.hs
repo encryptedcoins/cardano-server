@@ -8,7 +8,7 @@
 {-# LANGUAGE UndecidableInstances       #-}
 {-# LANGUAGE UndecidableSuperClasses    #-}
 
-module Server.Endpoints.Tx.Internal where
+module Server.Endpoints.Tx.Class where
 
 import           Control.Monad.Catch              (Exception)
 import           Control.Monad.Reader             (MonadReader)
@@ -21,7 +21,7 @@ import           IO.Wallet                        (HasWallet(..), getWalletAddr)
 import           Ledger                           (Address)
 import           Plutus.Script.Utils.Typed        (Any, ValidatorTypes(..))
 import           Servant                          (NoContent(..), Union, IsMember, WithStatus, HasStatus)
-import           Server.Internal                  (AppM, HasServer(..), Env)
+import           Server.Class                     (AppM, HasServer(..), Env)
 import           Types.Tx                         (TxConstructor)
 
 class ( HasServer s
@@ -36,14 +36,14 @@ class ( HasServer s
 
     data TxEndpointsErrorOf s
 
-    checkForTxEndpointsErros :: RedeemerOf s -> AppM s ()
+    checkForTxEndpointsErrors :: InputOf s -> AppM s ()
 
     txEndpointsErrorHanlder :: TxEndpointsErrorOf s -> AppM s (Union (TxApiResultOf s))
 
     getTrackedAddresses :: (MonadReader (Env s) m, HasWallet m) => m [Address]
     getTrackedAddresses = (:[]) <$> getWalletAddr
 
-    txEndpointsTxBuilders :: (MonadReader (Env s) m, HasWallet m) => RedeemerOf s -> m [State (TxConstructor Any (RedeemerType Any) (DatumType Any)) ()]
+    txEndpointsTxBuilders :: (MonadReader (Env s) m, HasWallet m) => InputOf s -> m [State (TxConstructor Any (RedeemerType Any) (DatumType Any)) ()]
 
 type DefaultTxApiResult = '[WithStatus 422 Text, NoContent, NewTxEndpointResult]
 

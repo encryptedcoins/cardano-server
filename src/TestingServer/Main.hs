@@ -13,17 +13,17 @@
 
 module TestingServer.Main (TestingServer) where
 
-import Client.Internal              (HasClient(..))
+import Client.Class                 (HasClient(..))
 import Control.Monad                (when, replicateM)
 import Control.Monad.Catch          (Exception, throwM)
 import Data.List                    (nub)
 import Options.Applicative          (argument, metavar, str)
 import Plutus.V2.Ledger.Api         (BuiltinByteString)
 import PlutusTx.Builtins.Class      (stringToBuiltinByteString)
-import Server.Endpoints.Tx.Internal (HasTxEndpoints(..), DefaultTxApiResult)
-import Server.Internal              (HasServer(..))
+import Server.Endpoints.Tx.Class    (HasTxEndpoints(..), DefaultTxApiResult)
+import Server.Class                 (HasServer(..))
 import System.Random                (randomRIO, randomIO)
-import TestingServer.OffChain       (testCurrencySymbol, testMintTx)
+import TestingServer.OffChain       (testMintTx)
 import Utils.Servant                (respondWithStatus)
 
 data TestingServer
@@ -34,9 +34,7 @@ instance HasServer TestingServer where
 
     loadAuxiliaryEnv _ = pure ()
 
-    type RedeemerOf TestingServer = [BuiltinByteString]
-
-    getCurrencySymbol = pure testCurrencySymbol
+    type InputOf TestingServer = [BuiltinByteString]
 
 instance HasTxEndpoints TestingServer where
 
@@ -47,7 +45,7 @@ instance HasTxEndpoints TestingServer where
 
     txEndpointsTxBuilders bbs = pure [testMintTx bbs]
 
-    checkForTxEndpointsErros bbs =
+    checkForTxEndpointsErrors bbs =
         let hasDuplicates = length bbs /= length (nub bbs)
         in  when hasDuplicates $ throwM HasDuplicates
         
@@ -56,11 +54,11 @@ instance HasTxEndpoints TestingServer where
 
 instance HasClient TestingServer where
 
-    type RequestPieceOf TestingServer = BuiltinByteString
+    type RequestTermOf TestingServer = BuiltinByteString
 
-    parseRequestPiece = stringToBuiltinByteString <$> argument str (metavar "token name")
+    parseRequestTerm = stringToBuiltinByteString <$> argument str (metavar "token name")
 
-    genRequestPiece = fmap stringToBuiltinByteString $
+    genRequestTerm = fmap stringToBuiltinByteString $
         randomRIO (2, 8) >>= (`replicateM` randomIO)
 
     mkRedeemer = pure . (pure (),)
