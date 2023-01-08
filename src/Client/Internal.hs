@@ -28,7 +28,7 @@ instance HasLogger (ClientM s) where
     loggerFilePath = "client.log"
 
 instance HasWallet (ClientM s) where
-    getRestoreWallet = asks envWallet
+    getRestoredWallet = asks envWallet
 
 class ( Server.HasServer c
       , Show (RequestPieceOf c)

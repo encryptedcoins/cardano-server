@@ -47,4 +47,4 @@ instance HasLogger (TestM s) where
     logMsg = liftIO . T.putStrLn
 
 instance HasWallet (TestM s) where
-    getRestoreWallet = asks envWallet
+    getRestoredWallet = asks envWallet

@@ -67,7 +67,7 @@ instance HasLogger (AppM s) where
     loggerFilePath = "server.log"
 
 instance (Monad m, MonadIO m) => HasWallet (ReaderT (Env s) m) where
-    getRestoreWallet = asks envWallet
+    getRestoredWallet = asks envWallet
 
 type QueueElem s = (RedeemerOf s, MapUTXO)
 
@@ -104,7 +104,7 @@ instance HasLogger (SetupM s) where
     loggerFilePath = "server.log"
 
 instance HasWallet (SetupM s) where
-    getRestoreWallet = asks envWallet
+    getRestoredWallet = asks envWallet
 
 checkForCleanUtxos :: (HasWallet m, HasLogger m, MonadReader (Env s) m) => m ()
 checkForCleanUtxos = do
