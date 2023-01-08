@@ -32,7 +32,7 @@ type SubmitTxApi s = "relayRequestSubmitTx"
               :> UVerb 'POST '[JSON] (TxApiResultOf s)
 
 submitTxHandler :: forall s. HasTxEndpoints s => (InputOf s, MapUTXO) ->  AppM s (Union (TxApiResultOf s))
-submitTxHandler arg@(red, utxosExternal) = handle txEndpointsErrorHanlder $ do
+submitTxHandler arg@(red, utxosExternal) = handle txEndpointsErrorHandler $ do
     logMsg $ "New submitTx request received:" 
         <> "\nRedeemer:" .< red
         <> "\nUtxos:"    .< utxosExternal
@@ -83,4 +83,4 @@ processQueueElem qRef qElem@(red, externalUtxos) elems = do
 processTokens :: forall s m. (HasTxEndpoints s, HasWallet m, HasLogger m, MonadReader (Env s) m) => QueueElem s -> m ()
 processTokens (red, utxosExternal) = do
     checkForCleanUtxos
-    void $ join $ liftM3 mkTx (getTrackedAddresses @s) (pure utxosExternal) $ txEndpointsTxBuilders @s red
+    void $ join $ liftM3 mkTx (serverTrackedAddresses @s) (pure utxosExternal) $ txEndpointsTxBuilders @s red

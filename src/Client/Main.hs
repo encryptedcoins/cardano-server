@@ -47,7 +47,7 @@ startClient = do
 mkRequest :: forall s. HasClient s => Request -> Manager -> ClientRequestOf s -> ClientM s ()
 mkRequest nakedReq manager clientReq = do
         logMsg $ "New tokens to send:\n" .< clientReq
-        (onSuccess, red) <- mkRedeemer clientReq
+        (onSuccess, red) <- makeServerInput clientReq
         let req = nakedReq
                 { method = "POST"
                 , requestBody = RequestBodyLBS $ encode red

@@ -23,10 +23,10 @@ type NewTxApi s = "relayRequestNewTx"
               :> UVerb 'POST '[JSON] (TxApiResultOf s)
 
 newTxHandler :: forall s. HasTxEndpoints s => (InputOf s, MapUTXO) -> AppM s (Union (TxApiResultOf s))
-newTxHandler (red, utxosExternal) = handle txEndpointsErrorHanlder $ do
+newTxHandler (red, utxosExternal) = handle txEndpointsErrorHandler $ do
     logMsg $ "New newTx request received:\n" .< red
     checkForTxEndpointsErrors red
-    balancedTx <- join $ liftM3 mkBalanceTx (getTrackedAddresses @s) (pure utxosExternal) (txEndpointsTxBuilders @s red)
+    balancedTx <- join $ liftM3 mkBalanceTx (serverTrackedAddresses @s) (pure utxosExternal) (txEndpointsTxBuilders @s red)
     case cardanoTxToText balancedTx of
         Just res -> respond $ NewTxEndpointResult res
         Nothing -> respondWithStatus @422 $ "Can't serialise balanced tx:" .< balancedTx

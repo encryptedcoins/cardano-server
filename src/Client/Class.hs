@@ -43,6 +43,6 @@ class ( Server.HasServer c
 
     -- here ClientM c () are some additional actions, that would be executed
     -- on successful response
-    mkRedeemer :: ClientRequestOf c -> ClientM c (ClientM c (), Server.InputOf c)
+    makeServerInput :: ClientRequestOf c -> ClientM c (ClientM c (), Server.InputOf c)
 
 type ClientRequestOf s = [RequestTermOf s]

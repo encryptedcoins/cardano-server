@@ -16,21 +16,35 @@ Key features:
 
 # How to use
 
-To use this library you need to make a new data type and define instances of (some of) the following classes.
+To specialize cardano-server for your own application, make a new data type and define instances of the following classes: `HasServer`, `HasClient` (optional), and `HasTxEndpoints` (optional).
 
-1. [HasServer](https://github.com/encryptedcoins/cardano-server/blob/main/src/Server/Internal.hs):
+1. [HasServer](https://github.com/encryptedcoins/cardano-server/blob/main/src/Server/Class.hs):
 
-This is the main class for defining a cardano-server. You need to define a redeemer type (`RedeemerOf`) for your application, auxiliary environment data that the server must be aware of (`AuxiliaryEnvOf`) and how to get currency symbol (`getCurrencySymbol`). Additionally, you may define the following functions: `loadAuxiliaryEnv` to get your environment data and `setupServer` to perform some actions during the server startup. You may use `cycleTx` function to define transactions that must be submitted to the network whenever possible.
+A class that defines a cardano-server:
+..* `AuxiliaryEnvOf` represents auxiliary environment data that the server must be aware of. Normally, this data contains parameters specific to your application.
+..* By default, the auxiliary environment data is loaded from a JSON file. You may change this behavior by redefining `loadAuxiliaryEnv` (optional).
+..* `InputOf` represents the type of an external input the server may receive during execution.
+..* `serverSetup` defines actions performed during the server startup, after all environment data is loaded.
+..* `serverIdle` defines actions that must be performed on repeat whenever the server is idle.
+..* `serverTrackedAddresses` defines actions that return the list of currently tracked Cardano network addresses. UTXOs from these addresses can be used for constructing transactions.
 
-2. [HasClient](https://github.com/encryptedcoins/cardano-server/blob/main/src/Client/Internal.hs):
+2. [HasClient](https://github.com/encryptedcoins/cardano-server/blob/main/src/Client/Class.hs):
 
-A class for your client that parses list of tokens, builds redeemer from it and sends it to your server. Here you need to define a type for parsing a single request term (`RequestPieceOf`), how to parse it (`parseRequestPiece`), how to gen it (genRequestPiece) and how to build redeemer (mkRedeemer). Note that in addition to redeemer mkRedeemer produce some action, that will be executed after successful response. You can use it for some file manipulations for example.
+A class that defines a console client corresponding to your cardano-server. The console client allows you to construct and send requests to the server using the command line.
 
-3. [HasTxEndpoints](https://github.com/encryptedcoins/cardano-server/blob/main/src/Server/Endpoints/Tx/Internal.hs):
+..* `RequestTermOf` is a type for internal representation of a command line term that the client may encounter.
+..* `parseRequestTerm` is the parser used to get the next `RequestTermOf` from the command line.
+..* `genRequestTerm` defines the actions that generate a `RequestTermOf` term.
+..* `makeServerInput` defines the actions that create an `InputOf` type that the server expects.
 
-You can use this class to define server endpoints: `newTx` and `sumbitTx`. If you are using `cycleTx` and do not need to accept user requests, you do not need to define an instance of this class.
+3. [HasTxEndpoints](https://github.com/encryptedcoins/cardano-server/blob/main/src/Server/Endpoints/Tx/Class.hs):
 
-To make an instance of this class, define a data type with your own custom errors (`TxEndpointsErrorOf`), error handler for it (`txEndpointsErrorHanlder`), error-checking function (`checkForTxEndpointsErros`) and a monad action that returns a list of transaction builders for these endpoints (`txEndpointsTxBuilders`). In addition, you need to define sum type with all possible results in these two endpoints (TxApiResultOf), though you can use `DefaultTxApiResult` if it is suitable for your server. Also, there is an optional monad action that returns the list of addresses with UTXOs which may be used for constructing transactions.
+A class that defines two API endpoints on the server: `newTx` and `sumbitTx`. This class defines the following:
+..* `TxApiResultOf` is a sum type containing all possible results returned by these two endpoints. You can use `DefaultTxApiResult` if it suits your case.
+..* `TxEndpointsErrorOf` is a type of errors that might be thrown while processing user requests to these endpoints.
+..* `txEndpointsTxBuilders` defines actions that process the server input and return a list of transaction builders.
+..* `checkForTxEndpointsErrors` defines actions that check the server input for errors.
+..* `txEndpointsErrorHandler` defines error-handling actions for `TxEndpointsErrorOf` errors.
 
 # Test server commands
 

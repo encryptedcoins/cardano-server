@@ -49,7 +49,7 @@ instance HasTxEndpoints TestingServer where
         let hasDuplicates = length bbs /= length (nub bbs)
         in  when hasDuplicates $ throwM HasDuplicates
         
-    txEndpointsErrorHanlder _ = respondWithStatus @422
+    txEndpointsErrorHandler _ = respondWithStatus @422
         "The request contains duplicate tokens and will not be processed."
 
 instance HasClient TestingServer where
@@ -61,4 +61,4 @@ instance HasClient TestingServer where
     genRequestTerm = fmap stringToBuiltinByteString $
         randomRIO (2, 8) >>= (`replicateM` randomIO)
 
-    mkRedeemer = pure . (pure (),)
+    makeServerInput = pure . (pure (),)

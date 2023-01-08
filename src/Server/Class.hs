@@ -22,6 +22,7 @@ import           Data.Kind              (Type)
 import           Data.Sequence          (Seq, empty)
 import           IO.ChainIndex          (getWalletUtxos)
 import           IO.Wallet              (HasWallet(..), RestoredWallet, getWalletAddr)
+import           Ledger.Address         (Address)
 import           Servant                (Handler, MimeUnrender, JSON)
 import           Server.Config          (Config(..), configFile, decodeOrErrorFromFile)
 import           Server.Tx              (mkWalletTxOutRefs)
@@ -42,11 +43,14 @@ class ( Show (AuxiliaryEnvOf s)
 
     type InputOf s :: Type
 
-    serverSetup :: SetupM s ()
+    serverSetup :: AppM s ()
     serverSetup = pure ()
 
-    serverTx :: SetupM s ()
-    serverTx = pure ()
+    serverIdle :: AppM s ()
+    serverIdle = pure ()
+
+    serverTrackedAddresses :: (MonadReader (Env s) m, HasWallet m) => m [Address]
+    serverTrackedAddresses = (:[]) <$> getWalletAddr
 
 newtype AppM s a = AppM { unAppM :: ReaderT (Env s) Handler a }
     deriving newtype
