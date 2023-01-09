@@ -39,6 +39,7 @@ library
       Server.Endpoints.Funds 
       Server.Endpoints.Ping
       Server.Endpoints.Tx.Class
+      Server.Endpoints.Tx.Internal
       Server.Endpoints.Tx.New
       Server.Endpoints.Tx.Submit      
       Server.Main
