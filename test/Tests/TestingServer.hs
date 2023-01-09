@@ -9,7 +9,7 @@ import qualified Data.Map                   as Map
 import           IO.ChainIndex              (getUtxosAt)
 import           IO.Wallet                  (getWalletAddr)
 import           PlutusTx.Builtins.Class    (stringToBuiltinByteString)
-import           Server.Class               (HasServer(..), runAppM)
+import           Server.Internal            (HasServer(..), runAppM)
 import           Server.Endpoints.Tx.Submit (processTokens)
 import           Server.Tx                  (mkWalletTxOutRefs) 
 import           Tests.Internal             (testFunds, testFundsAll)

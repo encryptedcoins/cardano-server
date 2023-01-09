@@ -1,33 +1,22 @@
 {-# LANGUAGE AllowAmbiguousTypes        #-}
-{-# LANGUAGE DerivingStrategies         #-}
+{-# LANGUAGE DefaultSignatures          #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE RecordWildCards            #-}
-{-# LANGUAGE ScopedTypeVariables        #-}
-{-# LANGUAGE TypeApplications           #-}
 {-# LANGUAGE TypeFamilies               #-}
-{-# LANGUAGE DefaultSignatures #-}
 
 module Server.Class where
 
-import           Control.Monad          (void, when)
-import           Control.Monad.Catch    (MonadThrow, MonadCatch)
 import           Control.Monad.IO.Class (MonadIO)
-import           Control.Monad.Reader   (ReaderT(ReaderT, runReaderT), MonadReader, asks)
+import           Control.Monad.Reader   (ReaderT, MonadReader, asks)
 import           Data.Aeson             (FromJSON(..), ToJSON)
-import           Data.IORef             (IORef, newIORef)
+import           Data.IORef             (IORef)
 import           Data.Kind              (Type)
-import           Data.Sequence          (Seq, empty)
-import           IO.ChainIndex          (getWalletUtxos)
+import           Data.Sequence          (Seq)
 import           IO.Wallet              (HasWallet(..), RestoredWallet, getWalletAddr)
 import           Ledger.Address         (Address)
-import           Servant                (Handler, MimeUnrender, JSON)
-import           Server.Config          (Config(..), configFile, decodeOrErrorFromFile)
-import           Server.Tx              (mkWalletTxOutRefs)
-import           Utils.ChainIndex       (filterCleanUtxos, MapUTXO)
-import           Utils.Logger           (HasLogger(..))
+import           Servant                (MimeUnrender, JSON)
+import           Server.Config          (decodeOrErrorFromFile)
+import           Utils.ChainIndex       (MapUTXO)
 
 class ( Show (AuxiliaryEnvOf s)
       , MimeUnrender JSON (InputOf s)
@@ -43,32 +32,14 @@ class ( Show (AuxiliaryEnvOf s)
 
     type InputOf s :: Type
 
-    serverSetup :: AppM s ()
+    serverSetup :: (MonadIO m, MonadReader (Env s) m) => m ()
     serverSetup = pure ()
 
-    serverIdle :: AppM s ()
+    serverIdle :: (MonadIO m, MonadReader (Env s) m) => m ()
     serverIdle = pure ()
 
     serverTrackedAddresses :: (MonadReader (Env s) m, HasWallet m) => m [Address]
     serverTrackedAddresses = (:[]) <$> getWalletAddr
-
-newtype NetworkM s a = NetworkM { unNetworkM :: ReaderT (Env s) Handler a }
-    deriving newtype
-        ( Functor
-        , Applicative
-        , Monad
-        , MonadIO
-        , MonadReader (Env s)
-        , HasWallet
-        , MonadThrow
-        , MonadCatch
-        )
-
-instance HasLogger (NetworkM s) where
-    loggerFilePath = "server.log"
-
-instance (Monad m, MonadIO m) => HasWallet (ReaderT (Env s) m) where
-    getRestoredWallet = asks envWallet
 
 type QueueElem s = (InputOf s, MapUTXO)
 
@@ -83,35 +54,5 @@ data Env s = Env
     , envMinUtxosAmount :: Int
     }
 
-getQueueRef :: NetworkM s (QueueRef s)
-getQueueRef = asks envQueueRef
-
-loadEnv :: forall s. HasServer s => IO (Env s)
-loadEnv = do
-    Config{..} <- decodeOrErrorFromFile configFile
-    let envMinUtxosAmount = cMinUtxosAmount
-    envQueueRef  <- newIORef empty
-    envWallet    <- decodeOrErrorFromFile cWalletFile
-    envAuxiliary <- loadAuxiliaryEnv @s cAuxiliaryEnvFile
-    pure Env{..}
-
-newtype AppM s a = AppM { unAppM :: ReaderT (Env s) IO a }
-    deriving newtype (Functor, Applicative, Monad, MonadIO, MonadReader (Env s))
-
-runAppM :: HasServer s => AppM s a -> IO a
-runAppM app = loadEnv >>= runReaderT (unAppM app)
-
-instance HasLogger (AppM s) where
-    loggerFilePath = "server.log"
-
-instance HasWallet (AppM s) where
+instance MonadIO m => HasWallet (ReaderT (Env s) m) where 
     getRestoredWallet = asks envWallet
-
-checkForCleanUtxos :: (HasWallet m, HasLogger m, MonadReader (Env s) m) => m ()
-checkForCleanUtxos = do
-    addr       <- getWalletAddr
-    cleanUtxos <- length . filterCleanUtxos <$> getWalletUtxos
-    minUtxos   <- asks envMinUtxosAmount
-    when (cleanUtxos < minUtxos) $ do
-        logMsg "Address doesn't has enough clean UTXO's."
-        void $ mkWalletTxOutRefs addr (cleanUtxos - minUtxos)

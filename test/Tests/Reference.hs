@@ -10,7 +10,7 @@ import           IO.Wallet               (getWalletAddr)
 import qualified Ledger.Ada              as Ada
 import           Ledger.Typed.Scripts    (Any)
 import           Constraints.OffChain    (postMintingPolicyTx, referenceMintingPolicyTx)
-import           Server.Class            (runAppM)
+import           Server.Internal         (runAppM)
 import           Server.Tx               (mkTx)
 import           TestingServer.Main      (TestingServer)
 import           TestingServer.OffChain  (testToken)

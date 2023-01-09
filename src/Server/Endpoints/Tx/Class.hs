@@ -12,8 +12,8 @@ import           Data.Kind                        (Type)
 import           Data.Text                        (Text)
 import           IO.Wallet                        (HasWallet(..))
 import           Servant                          (NoContent(..), Union, IsMember, WithStatus)
-import           Server.Class                     (NetworkM, HasServer(..), Env)
 import           Server.Endpoints.Tx.Internal     (NewTxEndpointResult)
+import           Server.Internal                  (NetworkM, HasServer(..), Env)
 import           Types.Tx                         (TransactionBuilder)
 
 class ( HasServer s

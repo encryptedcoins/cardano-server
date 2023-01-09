@@ -26,7 +26,7 @@ import qualified PlutusTx.AssocMap      as PAM
 import           PlutusTx.Builtins      (toBuiltin)
 import           Servant                ((:>), StdMethod(GET), JSON, respond, HasStatus,
                                          ReqBody, StatusOf, WithStatus, Union, UVerb)
-import           Server.Class           (NetworkM)
+import           Server.Internal        (NetworkM)
 import           Text.Hex               (decodeHex)
 import           Utils.Address          (bech32ToAddress)
 import           Utils.Logger           (logMsg)

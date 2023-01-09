@@ -18,7 +18,7 @@ import           Network.HTTP.Client       (httpLbs, defaultManagerSettings, new
                                             Manager, Request(..), RequestBody(..), responseStatus, responseTimeoutMicro)
 import           Network.HTTP.Types.Header (hContentType)
 import           Network.HTTP.Types.Status (status204)
-import           Server.Class              (AppM, runAppM)
+import           Server.Internal           (AppM, runAppM)
 import           Server.Config             (Config(..), loadConfig)       
 import           System.Random             (randomRIO)
 import           Utils.Logger              (HasLogger(..), (.<))

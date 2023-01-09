@@ -13,7 +13,7 @@ import qualified Data.Text.IO             as T
 import           IO.Wallet                (HasWallet(..), getWalletAddr, ownAddresses)
 import           Ledger                   (Address)
 import           Server.Endpoints.Funds   (getFunds, Funds(..))
-import           Server.Class             (HasServer(..), Env(..), loadEnv, AppM, runAppM)
+import           Server.Internal          (HasServer(..), Env(..), loadEnv, AppM, runAppM)
 import           TestingServer.OffChain   (testCurrencySymbol)
 import           Utils.Address            (bech32ToAddress)
 import           Utils.Logger             (HasLogger(..))

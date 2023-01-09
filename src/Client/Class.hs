@@ -7,7 +7,7 @@ module Client.Class where
 
 import           Data.Kind            (Type)
 import           Options.Applicative  (Parser)
-import           Server.Class         (HasServer(..), AppM)
+import           Server.Internal      (HasServer(..), AppM)
 
 class ( HasServer c
       , Show (RequestTermOf c)

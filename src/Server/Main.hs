@@ -24,7 +24,7 @@ import           Server.Endpoints.Tx.Class    (HasTxEndpoints)
 import           Server.Endpoints.Tx.Submit   (SubmitTxApi, submitTxHandler, processQueue)
 import           Server.Endpoints.Tx.New      (NewTxApi, newTxHandler)
 import           Server.Endpoints.Ping        (PingApi, pingHandler)
-import           Server.Class                 (NetworkM(unNetworkM), Env, loadEnv, checkForCleanUtxos)
+import           Server.Internal              (NetworkM(unNetworkM), Env, loadEnv, checkForCleanUtxos)
 import           System.IO                    (stdout, BufferMode(LineBuffering), hSetBuffering)
 
 type ServerAPI s

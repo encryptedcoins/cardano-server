@@ -42,6 +42,7 @@ library
       Server.Endpoints.Tx.Internal
       Server.Endpoints.Tx.New
       Server.Endpoints.Tx.Submit      
+      Server.Internal
       Server.Main
       Server.Tx
       TestingServer.Main
