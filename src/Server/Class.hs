@@ -43,10 +43,10 @@ class ( Show (AuxiliaryEnvOf s)
 
     type InputOf s :: Type
 
-    serverSetup :: NetworkM s ()
+    serverSetup :: AppM s ()
     serverSetup = pure ()
 
-    serverIdle :: NetworkM s ()
+    serverIdle :: AppM s ()
     serverIdle = pure ()
 
     serverTrackedAddresses :: (MonadReader (Env s) m, HasWallet m) => m [Address]
@@ -95,16 +95,16 @@ loadEnv = do
     envAuxiliary <- loadAuxiliaryEnv @s cAuxiliaryEnvFile
     pure Env{..}
 
-newtype SetupM s a = SetupM { unSetupM :: ReaderT (Env s) IO a }
+newtype AppM s a = AppM { unAppM :: ReaderT (Env s) IO a }
     deriving newtype (Functor, Applicative, Monad, MonadIO, MonadReader (Env s))
 
-runSetupM :: Env s -> SetupM s a -> IO a
-runSetupM env = (`runReaderT` env) . unSetupM
+runAppM :: HasServer s => AppM s a -> IO a
+runAppM app = loadEnv >>= runReaderT (unAppM app)
 
-instance HasLogger (SetupM s) where
+instance HasLogger (AppM s) where
     loggerFilePath = "server.log"
 
-instance HasWallet (SetupM s) where
+instance HasWallet (AppM s) where
     getRestoredWallet = asks envWallet
 
 checkForCleanUtxos :: (HasWallet m, HasLogger m, MonadReader (Env s) m) => m ()

@@ -9,10 +9,10 @@ import qualified Data.Map                   as Map
 import           IO.ChainIndex              (getUtxosAt)
 import           IO.Wallet                  (getWalletAddr)
 import           PlutusTx.Builtins.Class    (stringToBuiltinByteString)
-import           Server.Class               (HasServer(..))
+import           Server.Class               (HasServer(..), runAppM)
 import           Server.Endpoints.Tx.Submit (processTokens)
 import           Server.Tx                  (mkWalletTxOutRefs) 
-import           Tests.Internal             (runTestM, testFunds, testFundsAll)
+import           Tests.Internal             (testFunds, testFundsAll)
 import           TestingServer.Main         (TestingServer)
 import           Utils.ChainIndex           (filterCleanUtxos)
 import           Utils.Logger               (HasLogger(..), logSmth, (.<))
@@ -24,10 +24,10 @@ testFundsAllTS :: IO ()
 testFundsAllTS = testFundsAll @TestingServer
 
 testSubmitTxTS :: [String] -> IO ()
-testSubmitTxTS = runTestM @TestingServer . processTokens . (,mempty) . map stringToBuiltinByteString
+testSubmitTxTS = runAppM @TestingServer . processTokens . (,mempty) . map stringToBuiltinByteString
 
 mkRefs :: Int -> IO ()
-mkRefs n = runTestM @TestingServer $ do
+mkRefs n = runAppM @TestingServer $ do
     addr  <- getWalletAddr
     utxos <- liftIO (getUtxosAt addr)
     refs   <- mkWalletTxOutRefs addr n

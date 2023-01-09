@@ -10,16 +10,16 @@ import           IO.Wallet               (getWalletAddr)
 import qualified Ledger.Ada              as Ada
 import           Ledger.Typed.Scripts    (Any)
 import           Constraints.OffChain    (postMintingPolicyTx, referenceMintingPolicyTx)
+import           Server.Class            (runAppM)
 import           Server.Tx               (mkTx)
 import           TestingServer.Main      (TestingServer)
 import           TestingServer.OffChain  (testToken)
 import           TestingServer.OnChain   (testPolicyV, testPolicy)
-import           Tests.Internal          (runTestM)
 import qualified PlutusTx.Prelude        as Plutus
 import           Utils.Logger            (HasLogger(..))
 
 postReferenceScript :: IO ()
-postReferenceScript = void $ runTestM @TestingServer $ do
+postReferenceScript = void $ runAppM @TestingServer $ do
     addr <- getWalletAddr
     mkTx @Any [addr] Map.empty
         [ postMintingPolicyTx 
@@ -30,7 +30,7 @@ postReferenceScript = void $ runTestM @TestingServer $ do
         ]
 
 runReferenceTest :: IO ()
-runReferenceTest = void $ runTestM @TestingServer $ do
+runReferenceTest = void $ runAppM @TestingServer $ do
     addr <- getWalletAddr
     logMsg "\n\n\n\t\t\tMINT1:"
     mkTest "token1" addr
