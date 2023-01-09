@@ -7,7 +7,7 @@
 
 module Client.Main where
 
-import           Client.Internal           (HasClient(..), ClientM, ClientRequestOf, runClientM)
+import           Client.Class              (HasClient(..), ClientM, ClientRequestOf, runClientM)
 import           Client.Opts               (AutoOptions(..), Maximum, Options(..), runWithOpts)
 import           Control.Monad             (replicateM)
 import           Control.Monad.Reader      (MonadIO(..), forever, when)
@@ -19,7 +19,7 @@ import           Network.HTTP.Client       (httpLbs, defaultManagerSettings, new
 import           Network.HTTP.Types.Header (hContentType)
 import           Network.HTTP.Types.Status (status204)
 import           Server.Config             (Config(..), loadConfig)       
-import qualified Server.Internal           as Server
+import qualified Server.Class              as Server
 import           System.Random             (randomRIO)
 import           Utils.Logger              (HasLogger(..), (.<))
 import           Utils.Wait                (waitTime)
@@ -47,7 +47,7 @@ startClient = do
 mkRequest :: forall s. HasClient s => Request -> Manager -> ClientRequestOf s -> ClientM s ()
 mkRequest nakedReq manager clientReq = do
         logMsg $ "New tokens to send:\n" .< clientReq
-        (onSuccess, red) <- mkRedeemer clientReq
+        (onSuccess, red) <- makeServerInput clientReq
         let req = nakedReq
                 { method = "POST"
                 , requestBody = RequestBodyLBS $ encode red
@@ -63,4 +63,4 @@ mkRequest nakedReq manager clientReq = do
 genRequest :: forall s m. HasClient s => MonadIO m => Maximum -> m (ClientRequestOf s)
 genRequest ub = liftIO $ do
     len <- randomRIO (1, ub)
-    nub <$> replicateM len (genRequestPiece @s)
+    nub <$> replicateM len (genRequestTerm @s)

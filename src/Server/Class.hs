@@ -8,8 +8,9 @@
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE TypeApplications           #-}
 {-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE DefaultSignatures #-}
 
-module Server.Internal where
+module Server.Class where
 
 import           Control.Monad          (void, when)
 import           Control.Monad.Catch    (MonadThrow, MonadCatch)
@@ -21,33 +22,35 @@ import           Data.Kind              (Type)
 import           Data.Sequence          (Seq, empty)
 import           IO.ChainIndex          (getWalletUtxos)
 import           IO.Wallet              (HasWallet(..), RestoredWallet, getWalletAddr)
-import           Ledger                 (CurrencySymbol)
+import           Ledger.Address         (Address)
 import           Servant                (Handler, MimeUnrender, JSON)
 import           Server.Config          (Config(..), configFile, decodeOrErrorFromFile)
 import           Server.Tx              (mkWalletTxOutRefs)
-import           Utils.ChainIndex       (filterCleanUtxos)
+import           Utils.ChainIndex       (filterCleanUtxos, MapUTXO)
 import           Utils.Logger           (HasLogger(..))
 
 class ( Show (AuxiliaryEnvOf s)
-      , FromJSON (AuxiliaryEnvOf s)
-      , MimeUnrender JSON (RedeemerOf s)
-      , ToJSON (RedeemerOf s)
-      , Show (RedeemerOf s)
+      , MimeUnrender JSON (InputOf s)
+      , ToJSON (InputOf s)
+      , Show (InputOf s)
       ) => HasServer s where
 
     type AuxiliaryEnvOf s :: Type
 
     loadAuxiliaryEnv :: FilePath -> IO (AuxiliaryEnvOf s)
+    default loadAuxiliaryEnv :: FromJSON (AuxiliaryEnvOf s) => FilePath -> IO (AuxiliaryEnvOf s)
+    loadAuxiliaryEnv = decodeOrErrorFromFile
 
-    type RedeemerOf s :: Type
+    type InputOf s :: Type
 
-    getCurrencySymbol :: MonadReader (Env s) m => m CurrencySymbol
+    serverSetup :: AppM s ()
+    serverSetup = pure ()
 
-    setupServer :: SetupM s ()
-    setupServer = pure ()
+    serverIdle :: AppM s ()
+    serverIdle = pure ()
 
-    cycleTx :: SetupM s ()
-    cycleTx = pure ()
+    serverTrackedAddresses :: (MonadReader (Env s) m, HasWallet m) => m [Address]
+    serverTrackedAddresses = (:[]) <$> getWalletAddr
 
 newtype AppM s a = AppM { unAppM :: ReaderT (Env s) Handler a }
     deriving newtype
@@ -65,9 +68,11 @@ instance HasLogger (AppM s) where
     loggerFilePath = "server.log"
 
 instance (Monad m, MonadIO m) => HasWallet (ReaderT (Env s) m) where
-    getRestoreWallet = asks envWallet
+    getRestoredWallet = asks envWallet
 
-type Queue s = Seq (RedeemerOf s)
+type QueueElem s = (InputOf s, MapUTXO)
+
+type Queue s = Seq (QueueElem s)
 
 type QueueRef s = IORef (Queue s)
 
@@ -100,7 +105,7 @@ instance HasLogger (SetupM s) where
     loggerFilePath = "server.log"
 
 instance HasWallet (SetupM s) where
-    getRestoreWallet = asks envWallet
+    getRestoredWallet = asks envWallet
 
 checkForCleanUtxos :: (HasWallet m, HasLogger m, MonadReader (Env s) m) => m ()
 checkForCleanUtxos = do

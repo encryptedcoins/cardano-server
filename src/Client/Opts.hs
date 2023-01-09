@@ -4,7 +4,7 @@
 
 module Client.Opts where
 
-import           Client.Internal       (HasClient(..))
+import           Client.Class          (HasClient(..))
 import           Control.Applicative   (some, (<|>))
 import           Options.Applicative   (Parser, (<**>), auto, fullDesc, help, info, long, option, short, value, execParser,
                                         helper, flag')
@@ -17,7 +17,7 @@ optionsParser = autoModeParser <|> manualModeParser
 
 data Options s
     = Auto   AutoOptions
-    | Manual [RequestPieceOf s]
+    | Manual [RequestTermOf s]
 deriving instance HasClient s => Show (Options s)
 
 --------------------------------------------- Auto ---------------------------------------------
@@ -56,4 +56,4 @@ maxTokensParser = option auto
 
 manualModeParser :: forall s. HasClient s => Parser (Options s)
 manualModeParser = flag' Manual (long "manual")
-               <*> some (parseRequestPiece @s)
+               <*> some (parseRequestTerm @s)

@@ -8,21 +8,18 @@
 {-# LANGUAGE UndecidableInstances       #-}
 {-# LANGUAGE UndecidableSuperClasses    #-}
 
-module Server.Endpoints.Tx.Internal where
+module Server.Endpoints.Tx.Class where
 
 import           Control.Monad.Catch              (Exception)
 import           Control.Monad.Reader             (MonadReader)
-import           Control.Monad.State              (State)
 import           Data.Aeson                       (ToJSON)
 import           Data.Kind                        (Type)
 import           Data.Text                        (Text)
 import           GHC.Generics                     (Generic)
-import           IO.Wallet                        (HasWallet(..), getWalletAddr)
-import           Ledger                           (Address)
-import           Plutus.Script.Utils.Typed        (Any, ValidatorTypes(..))
+import           IO.Wallet                        (HasWallet(..))
 import           Servant                          (NoContent(..), Union, IsMember, WithStatus, HasStatus)
-import           Server.Internal                  (AppM, HasServer(..), Env)
-import           Types.Tx                         (TxConstructor)
+import           Server.Class                     (AppM, HasServer(..), Env)
+import           Types.Tx                         (TransactionBuilder)
 
 class ( HasServer s
       , IsMember NoContent             (TxApiResultOf s)
@@ -36,14 +33,11 @@ class ( HasServer s
 
     data TxEndpointsErrorOf s
 
-    checkForTxEndpointsErros :: RedeemerOf s -> AppM s ()
+    txEndpointsTxBuilders :: (MonadReader (Env s) m, HasWallet m) => InputOf s -> m [TransactionBuilder ()]
 
-    txEndpointsErrorHanlder :: TxEndpointsErrorOf s -> AppM s (Union (TxApiResultOf s))
+    checkForTxEndpointsErrors :: InputOf s -> AppM s ()
 
-    getTrackedAddresses :: (MonadReader (Env s) m, HasWallet m) => m [Address]
-    getTrackedAddresses = (:[]) <$> getWalletAddr
-
-    txEndpointsTxBuilders :: (MonadReader (Env s) m, HasWallet m) => RedeemerOf s -> m [State (TxConstructor Any (RedeemerType Any) (DatumType Any)) ()]
+    txEndpointsErrorHandler :: TxEndpointsErrorOf s -> AppM s (Union (TxApiResultOf s))
 
 type DefaultTxApiResult = '[WithStatus 422 Text, NoContent, NewTxEndpointResult]
 

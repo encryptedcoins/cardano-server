@@ -20,11 +20,11 @@ import qualified Servant
 import           Servant                      (Proxy(..), type (:<|>)(..), ServerT, Context(EmptyContext), hoistServer,
                                                serveWithContext, Application, runHandler')
 import           Server.Endpoints.Funds       (FundsApi, fundsHandler)
-import           Server.Endpoints.Tx.Internal (HasTxEndpoints)
+import           Server.Endpoints.Tx.Class    (HasTxEndpoints)
 import           Server.Endpoints.Tx.Submit   (SubmitTxApi, submitTxHandler, processQueue)
 import           Server.Endpoints.Tx.New      (NewTxApi, newTxHandler)
 import           Server.Endpoints.Ping        (PingApi, pingHandler)
-import           Server.Internal              (AppM(unAppM), Env, loadEnv, checkForCleanUtxos)
+import           Server.Class                 (AppM(unAppM), Env, loadEnv, checkForCleanUtxos)
 import           System.IO                    (stdout, BufferMode(LineBuffering), hSetBuffering)
 
 type ServerAPI s

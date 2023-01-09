@@ -12,25 +12,35 @@
 
 module Server.Endpoints.Funds where
 
+import           Control.Exception      (throw)
 import           Control.Monad.Catch    (Exception, handle, throwM)
 import           Control.Monad.IO.Class (MonadIO(..))
-import           Data.Aeson             (ToJSON)
+import           Data.Aeson             (ToJSON, FromJSON)
 import           Data.Text              (Text)
 import qualified Data.Map               as Map
 import           GHC.Generics           (Generic)
 import           IO.ChainIndex          (getUtxosAt)
 import           Ledger                 (DecoratedTxOut(..))
-import           Plutus.V2.Ledger.Api   (Address, CurrencySymbol, TokenName, TxOutRef, Value(..))
+import           Plutus.V2.Ledger.Api   (Address, CurrencySymbol (CurrencySymbol), TokenName, TxOutRef, Value(..))
 import qualified PlutusTx.AssocMap      as PAM
+import           PlutusTx.Builtins      (toBuiltin)
 import           Servant                ((:>), StdMethod(GET), JSON, respond, HasStatus,
                                          ReqBody, StatusOf, WithStatus, Union, UVerb)
-import           Server.Internal        (AppM, HasServer(..))
+import           Server.Class           (AppM)
+import           Text.Hex               (decodeHex)
 import           Utils.Address          (bech32ToAddress)
 import           Utils.Logger           (logMsg)
 import           Utils.Servant          (respondWithStatus)
 
+data FundsReqBody = FundsReqBody
+    {
+        fundsReqAddress :: Text,
+        fundsReqCS      :: Text
+    }
+    deriving (Show, Generic, ToJSON, FromJSON)
+
 type FundsApi = "relayRequestFunds"
-               :> ReqBody '[JSON] Text
+               :> ReqBody '[JSON] FundsReqBody
                :> UVerb 'GET '[JSON] FundsApiResult
 
 type FundsApiResult = '[Funds, WithStatus 400 Text]
@@ -43,21 +53,22 @@ instance HasStatus Funds where
     type StatusOf Funds = 200
 
 data FundsError
-    = UnparsableAddress
+    = UnparsableAddress | UnparsableCurrencySymbol
     deriving (Show, Exception)
 
-fundsHandler :: forall s. HasServer s => Text -> AppM s (Union FundsApiResult)
-fundsHandler addrBech32 = handle fundsErrorHandler $ do
+fundsHandler :: FundsReqBody -> AppM s (Union FundsApiResult)
+fundsHandler (FundsReqBody addrBech32 csHex) = handle fundsErrorHandler $ do
     logMsg $ "New funds request received:\n" <> addrBech32
     addr <- maybe (throwM UnparsableAddress) pure $ bech32ToAddress addrBech32
-    cs   <- getCurrencySymbol @s
+    let cs = CurrencySymbol $ maybe (throw UnparsableCurrencySymbol) toBuiltin $ decodeHex csHex
     respond =<< getFunds cs addr
 
 fundsErrorHandler :: FundsError -> AppM s (Union FundsApiResult)
 fundsErrorHandler = \case
-
-    UnparsableAddress -> respondWithStatus @400
+    UnparsableAddress        -> respondWithStatus @400
         "Incorrect wallet address."
+    UnparsableCurrencySymbol -> respondWithStatus @400
+        "Incorrect currency symbol."
 
 getFunds :: MonadIO m => CurrencySymbol -> Address -> m Funds
 getFunds cs addr = do

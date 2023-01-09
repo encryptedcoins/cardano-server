@@ -3,7 +3,9 @@ cabal-version:      3.0
 name:               cardano-server
 version:            0.1.0.0
 
-maintainer:         encoins.crypto@ud.me
+author:             Grigory Petrov
+                    Vladimir Sinyakov
+maintainer:         team@encoins.io
 
 -- Plutus language settings
 common lang
@@ -29,16 +31,16 @@ common lang
 library
     import: lang
     exposed-modules: 
-      Client.Internal
+      Client.Class
       Client.Main
       Client.Opts
+      Server.Class
       Server.Config
       Server.Endpoints.Funds 
-      Server.Endpoints.Tx.Submit
-      Server.Endpoints.Tx.New
-      Server.Endpoints.Tx.Internal
       Server.Endpoints.Ping
-      Server.Internal
+      Server.Endpoints.Tx.Class
+      Server.Endpoints.Tx.New
+      Server.Endpoints.Tx.Submit      
       Server.Main
       Server.Tx
       TestingServer.Main
@@ -63,6 +65,7 @@ library
       exceptions                             -any,
       extra                                  -any,
       filepath                               -any,
+      hex-text                               -any,
       http-client                            -any,
       http-types                             -any,
       mtl                                    -any,
@@ -82,8 +85,7 @@ library
       text                                   -any,
       time                                   -any,
       wai-cors                               -any,
-      warp                                   -any,
-
+      warp                                   -any
     hs-source-dirs: src
 
 test-suite cardano-server-test

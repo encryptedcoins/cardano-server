@@ -4,3 +4,7 @@ cradle:
       component: "cardano-server:lib:cardano-server"
     - path: "test"
       component: "cardano-server:test:cardano-server-test"
+    - path: "app"
+      component: "cardano-server:exe:testingServer"
+    - path: "app"
+      component: "cardano-server:exe:testingClient"

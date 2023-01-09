@@ -4,13 +4,13 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TypeFamilies               #-}
 
-module Client.Internal where
+module Client.Class where
 
 import           Data.Kind            (Type)
 import           Control.Monad.Reader (asks, MonadIO, MonadReader, ReaderT(..))
 import           IO.Wallet            (HasWallet(..), RestoredWallet)
 import           Options.Applicative  (Parser)
-import qualified Server.Internal      as Server
+import qualified Server.Class         as Server
 import           Utils.Logger         (HasLogger(..))
 
 newtype ClientM s a = ClientM { unClientM :: ReaderT (Env s) IO a }
@@ -28,21 +28,21 @@ instance HasLogger (ClientM s) where
     loggerFilePath = "client.log"
 
 instance HasWallet (ClientM s) where
-    getRestoreWallet = asks envWallet
+    getRestoredWallet = asks envWallet
 
 class ( Server.HasServer c
-      , Show (RequestPieceOf c)
-      , Eq (RequestPieceOf c)
+      , Show (RequestTermOf c)
+      , Eq (RequestTermOf c)
       ) => HasClient c where
 
-    type RequestPieceOf c :: Type
+    type RequestTermOf c :: Type
 
-    parseRequestPiece :: Parser (RequestPieceOf c)
+    parseRequestTerm :: Parser (RequestTermOf c)
 
-    genRequestPiece :: IO (RequestPieceOf c)
+    genRequestTerm :: IO (RequestTermOf c)
 
     -- here ClientM c () are some additional actions, that would be executed
     -- on successful response
-    mkRedeemer :: ClientRequestOf c -> ClientM c (ClientM c (), Server.RedeemerOf c)
+    makeServerInput :: ClientRequestOf c -> ClientM c (ClientM c (), Server.InputOf c)
 
-type ClientRequestOf s = [RequestPieceOf s]
+type ClientRequestOf s = [RequestTermOf s]
