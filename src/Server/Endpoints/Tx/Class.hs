@@ -18,7 +18,7 @@ import           Data.Text                        (Text)
 import           GHC.Generics                     (Generic)
 import           IO.Wallet                        (HasWallet(..))
 import           Servant                          (NoContent(..), Union, IsMember, WithStatus, HasStatus)
-import           Server.Class                     (AppM, HasServer(..), Env)
+import           Server.Class                     (NetworkM, HasServer(..), Env)
 import           Types.Tx                         (TransactionBuilder)
 
 class ( HasServer s
@@ -35,9 +35,9 @@ class ( HasServer s
 
     txEndpointsTxBuilders :: (MonadReader (Env s) m, HasWallet m) => InputOf s -> m [TransactionBuilder ()]
 
-    checkForTxEndpointsErrors :: InputOf s -> AppM s ()
+    checkForTxEndpointsErrors :: InputOf s -> NetworkM s ()
 
-    txEndpointsErrorHandler :: TxEndpointsErrorOf s -> AppM s (Union (TxApiResultOf s))
+    txEndpointsErrorHandler :: TxEndpointsErrorOf s -> NetworkM s (Union (TxApiResultOf s))
 
 type DefaultTxApiResult = '[WithStatus 422 Text, NoContent, NewTxEndpointResult]
 

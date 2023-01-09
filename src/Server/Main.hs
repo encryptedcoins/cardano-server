@@ -24,7 +24,7 @@ import           Server.Endpoints.Tx.Class    (HasTxEndpoints)
 import           Server.Endpoints.Tx.Submit   (SubmitTxApi, submitTxHandler, processQueue)
 import           Server.Endpoints.Tx.New      (NewTxApi, newTxHandler)
 import           Server.Endpoints.Ping        (PingApi, pingHandler)
-import           Server.Class                 (AppM(unAppM), Env, loadEnv, checkForCleanUtxos)
+import           Server.Class                 (NetworkM(unNetworkM), Env, loadEnv, checkForCleanUtxos)
 import           System.IO                    (stdout, BufferMode(LineBuffering), hSetBuffering)
 
 type ServerAPI s
@@ -38,7 +38,7 @@ type ServerConstraints s =
     , Servant.HasServer (ServerAPI s) '[]
     )
 
-server :: HasTxEndpoints s => ServerT (ServerAPI s) (AppM s)
+server :: HasTxEndpoints s => ServerT (ServerAPI s) (NetworkM s)
 server = pingHandler
     :<|> submitTxHandler
     :<|> newTxHandler
@@ -58,10 +58,10 @@ runServer = do
         prepareServer env 
         Warp.run port $ mkApp @s env
     where
-        prepareServer env = runExceptT . runHandler' . flip runReaderT env . unAppM $ do 
+        prepareServer env = runExceptT . runHandler' . flip runReaderT env . unNetworkM $ do 
             logMsg "Starting server..."
             checkForCleanUtxos
 
 mkApp :: forall s. ServerConstraints s => Env s -> Application
 mkApp env = Cors.simpleCors $ serveWithContext (serverAPI @s) EmptyContext $
-    hoistServer (serverAPI @s) ((`runReaderT` env) . unAppM) server
+    hoistServer (serverAPI @s) ((`runReaderT` env) . unNetworkM) server

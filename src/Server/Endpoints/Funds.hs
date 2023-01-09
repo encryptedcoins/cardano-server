@@ -26,7 +26,7 @@ import qualified PlutusTx.AssocMap      as PAM
 import           PlutusTx.Builtins      (toBuiltin)
 import           Servant                ((:>), StdMethod(GET), JSON, respond, HasStatus,
                                          ReqBody, StatusOf, WithStatus, Union, UVerb)
-import           Server.Class           (AppM)
+import           Server.Class           (NetworkM)
 import           Text.Hex               (decodeHex)
 import           Utils.Address          (bech32ToAddress)
 import           Utils.Logger           (logMsg)
@@ -56,14 +56,14 @@ data FundsError
     = UnparsableAddress | UnparsableCurrencySymbol
     deriving (Show, Exception)
 
-fundsHandler :: FundsReqBody -> AppM s (Union FundsApiResult)
+fundsHandler :: FundsReqBody -> NetworkM s (Union FundsApiResult)
 fundsHandler (FundsReqBody addrBech32 csHex) = handle fundsErrorHandler $ do
     logMsg $ "New funds request received:\n" <> addrBech32
     addr <- maybe (throwM UnparsableAddress) pure $ bech32ToAddress addrBech32
     let cs = CurrencySymbol $ maybe (throw UnparsableCurrencySymbol) toBuiltin $ decodeHex csHex
     respond =<< getFunds cs addr
 
-fundsErrorHandler :: FundsError -> AppM s (Union FundsApiResult)
+fundsErrorHandler :: FundsError -> NetworkM s (Union FundsApiResult)
 fundsErrorHandler = \case
     UnparsableAddress        -> respondWithStatus @400
         "Incorrect wallet address."

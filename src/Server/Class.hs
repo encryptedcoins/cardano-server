@@ -43,16 +43,16 @@ class ( Show (AuxiliaryEnvOf s)
 
     type InputOf s :: Type
 
-    serverSetup :: AppM s ()
+    serverSetup :: NetworkM s ()
     serverSetup = pure ()
 
-    serverIdle :: AppM s ()
+    serverIdle :: NetworkM s ()
     serverIdle = pure ()
 
     serverTrackedAddresses :: (MonadReader (Env s) m, HasWallet m) => m [Address]
     serverTrackedAddresses = (:[]) <$> getWalletAddr
 
-newtype AppM s a = AppM { unAppM :: ReaderT (Env s) Handler a }
+newtype NetworkM s a = NetworkM { unNetworkM :: ReaderT (Env s) Handler a }
     deriving newtype
         ( Functor
         , Applicative
@@ -64,7 +64,7 @@ newtype AppM s a = AppM { unAppM :: ReaderT (Env s) Handler a }
         , MonadCatch
         )
 
-instance HasLogger (AppM s) where
+instance HasLogger (NetworkM s) where
     loggerFilePath = "server.log"
 
 instance (Monad m, MonadIO m) => HasWallet (ReaderT (Env s) m) where
@@ -83,7 +83,7 @@ data Env s = Env
     , envMinUtxosAmount :: Int
     }
 
-getQueueRef :: AppM s (QueueRef s)
+getQueueRef :: NetworkM s (QueueRef s)
 getQueueRef = asks envQueueRef
 
 loadEnv :: forall s. HasServer s => IO (Env s)
