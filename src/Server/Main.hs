@@ -14,8 +14,9 @@ import           Control.Concurrent           (forkIO)
 import           Control.Monad.Except         (runExceptT)
 import           Control.Monad.Reader         (ReaderT(runReaderT))
 import           Utils.Logger                 (HasLogger(logMsg))
+import qualified Network.Wai                  as Wai
 import qualified Network.Wai.Handler.Warp     as Warp
-import qualified Network.Wai.Middleware.Cors  as Cors
+import           Network.Wai.Middleware.Cors  (CorsResourcePolicy(..), simpleCorsResourcePolicy, cors)
 import qualified Servant
 import           Servant                      (Proxy(..), type (:<|>)(..), ServerT, Context(EmptyContext), hoistServer,
                                                serveWithContext, Application, runHandler')
@@ -62,6 +63,10 @@ runServer = do
             logMsg "Starting server..."
             checkForCleanUtxos
 
+corsWithContentType :: Wai.Middleware
+corsWithContentType = cors (const $ Just policy)
+    where policy = simpleCorsResourcePolicy { corsRequestHeaders = ["Content-Type"] }
+
 mkApp :: forall s. ServerConstraints s => Env s -> Application
-mkApp env = Cors.simpleCors $ serveWithContext (serverAPI @s) EmptyContext $
+mkApp env = corsWithContentType $ serveWithContext (serverAPI @s) EmptyContext $
     hoistServer (serverAPI @s) ((`runReaderT` env) . unAppM) server
