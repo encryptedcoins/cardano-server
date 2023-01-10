@@ -12,6 +12,7 @@ import           PlutusTx.Builtins.Class    (stringToBuiltinByteString)
 import           Server.Internal            (HasServer(..), runAppM)
 import           Server.Endpoints.Tx.Submit (processTokens)
 import           Server.Tx                  (mkWalletTxOutRefs) 
+import           Tests.DefaultClient        (testDefaultClient)
 import           Tests.Internal             (testFunds, testFundsAll)
 import           TestingServer.Main         (TestingServer)
 import           Utils.ChainIndex           (filterCleanUtxos)
@@ -25,6 +26,9 @@ testFundsAllTS = testFundsAll @TestingServer
 
 testSubmitTxTS :: [String] -> IO ()
 testSubmitTxTS = runAppM @TestingServer . processTokens . (,mempty) . map stringToBuiltinByteString
+
+testDefaultClientTS :: IO ()
+testDefaultClientTS = testDefaultClient @TestingServer
 
 mkRefs :: Int -> IO ()
 mkRefs n = runAppM @TestingServer $ do

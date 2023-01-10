@@ -98,13 +98,17 @@ test-suite cardano-server-test
   Ghc-Options:          -rtsopts
                         -fplugin-opt PlutusTx.Plugin:defer-errors
   Main-Is:              Main.hs
-  Other-Modules:        Tests.Internal
+  Other-Modules:        Tests.DefaultClient
+                        Tests.Internal
                         Tests.Reference
                         Tests.TestingServer
   Build-Depends:
     base                          >= 4.9 && < 5,
+    aeson                                  -any,
+    bytestring                             -any,
     cardano-server                         -any,
     containers                             -any,
+    directory                              -any,
     mtl                                    -any,
     plutus-apps-extra                      -any,
     plutus-tx                              -any,
