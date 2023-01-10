@@ -32,7 +32,8 @@ library
     import: lang
     exposed-modules: 
       Client.Class
-      Client.Main
+      Client.Client
+      Client.Default
       Client.Opts
       Server.Class
       Server.Config

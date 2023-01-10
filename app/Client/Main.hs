@@ -2,7 +2,7 @@
 
 module Main where
 
-import Client.Main        (startClient)
+import Client.Client      (startClient)
 import TestingServer.Main (TestingServer)
 
 main :: IO ()

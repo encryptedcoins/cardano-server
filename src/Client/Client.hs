@@ -1,19 +1,21 @@
 {-# LANGUAGE AllowAmbiguousTypes        #-}
+{-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE NumericUnderscores         #-}
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE RecordWildCards            #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE TypeApplications           #-}
 
-module Client.Main where
+module Client.Client where
 
 import           Client.Class              (HasClient(..))
 import           Client.Opts               (Options(..), runWithOpts, Mode (..))
 import           Control.Monad.Reader      (MonadIO(..), forever, when)
 import           Data.Aeson                (encode)
+import           Data.ByteString.Lazy      (ByteString)
 import qualified Data.Text                 as T
 import           Network.HTTP.Client       (httpLbs, defaultManagerSettings, newManager, parseRequest,
-                                            Manager, Request(..), RequestBody(..), responseStatus, responseTimeoutMicro)
+                                            Manager, Request(..), RequestBody(..), responseStatus, responseTimeoutMicro, Response)
 import           Network.HTTP.Types.Header (hContentType)
 import           Network.HTTP.Types.Status (status204)
 import           Server.Internal           (AppM, runAppM, HasServer(..))
@@ -28,31 +30,36 @@ startClient = do
     Config{..} <- loadConfig 
     let fullAddress = concat 
             ["http://", T.unpack cServerAddress, "/relayRequest", show optsEndpoint]
-    nakedRequest <- parseRequest fullAddress
     manager <- newManager defaultManagerSettings
-    let mkRequest' = mkRequest @s nakedRequest manager
+    let client' = client @s fullAddress manager
     runAppM $ withGreetings $ case optsMode of
-        Manual serverInput          -> mkRequest' serverInput
+        Manual serverInput          -> client' serverInput
         Auto   averageInterval -> forever $ do
             serverInput <- genServerInput @s
-            mkRequest' serverInput
+            client' serverInput
             waitTime =<< randomRIO (1, averageInterval * 2)
     where
         withGreetings = (logMsg "Starting client..." >>)
 
-mkRequest :: forall s. HasClient s => Request -> Manager -> InputOf s -> AppM s ()
-mkRequest nakedReq manager serverInput = do
-        logMsg $ "New input to send:\n" .< serverInput
+client :: forall s. HasClient s => String -> Manager -> InputOf s -> AppM s ()
+client fullAddress manager serverInput = do
         (beforeRequestSend, onSuccessfulResponse) <- extractActionsFromInput serverInput
-        let req = nakedReq
-                { method = "POST"
-                , requestBody = RequestBodyLBS $ encode serverInput
-                , requestHeaders = [(hContentType, "application/json")]
-                , responseTimeout = responseTimeoutMicro (3 * 60 * 1_000_000)
-                }
         beforeRequestSend
-        resp <- liftIO $ httpLbs req manager
-        logMsg $ "Received response:" .< resp
+        resp <- mkRequest fullAddress manager serverInput
         when (successful resp) onSuccessfulResponse
     where
         successful = (== status204) . responseStatus
+
+mkRequest :: HasServer s => String -> Manager -> InputOf s -> AppM s (Response ByteString)
+mkRequest fullAddress manager serverInput = do
+    logMsg $ "New input to send:\n" .< serverInput
+    nakedRequest <- liftIO $ parseRequest fullAddress
+    let req = nakedRequest
+            { method = "POST"
+            , requestBody = RequestBodyLBS $ encode serverInput
+            , requestHeaders = [(hContentType, "application/json")]
+            , responseTimeout = responseTimeoutMicro (3 * 60 * 1_000_000)
+            }
+    resp <- liftIO $ httpLbs req manager
+    logMsg $ "Received response:" .< resp
+    pure resp
