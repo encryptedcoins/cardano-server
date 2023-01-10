@@ -3,12 +3,14 @@
 {-# LANGUAGE DerivingStrategies         #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE TupleSections #-}
 
 module Client.Class where
 
 import           Options.Applicative  -- (Parser)
 import           Server.Internal      (HasServer(..), AppM)
 import           System.Random        (Random, randomIO)
+import           Utils.ChainIndex     (MapUTXO)
 
 class HasServer c => HasClient c where
 
@@ -28,3 +30,7 @@ class HasServer c => HasClient c where
     -- Use the default implementation if you don't need either of them.
     extractActionsFromInput :: InputOf c -> AppM c (AppM c (), AppM c ())
     extractActionsFromInput _ = pure (pure (), pure ())
+
+    -- Function that adds external utxos to your input before sending a request
+    addExternalUtxosToInput :: InputOf c -> AppM c (InputOf c, MapUTXO)
+    addExternalUtxosToInput = pure . (, mempty)

@@ -15,6 +15,7 @@ import           Network.HTTP.Client       (defaultManagerSettings, newManager)
 import           Server.Internal           (runAppM, HasServer(..))
 import           Server.Config             (Config(..), loadConfig, decodeOrErrorFromFile)       
 import           Options.Applicative       ((<**>), auto, fullDesc, help, info, long, option, short, value, execParser, helper)
+import           Utils.ChainIndex          (MapUTXO)
 
 -- Running a client that only needs fromJSON instance of server input
 -- instead of defining a full HasClient class.
@@ -36,5 +37,5 @@ defaultClient fp = void $ do
     manager     <- newManager defaultManagerSettings
     let fullAddress = concat 
             ["http://", T.unpack cServerAddress, "/relayRequestSubmitTx"]
-    runAppM @s $ mkRequest fullAddress manager serverInput
+    runAppM @s $ mkRequest fullAddress manager (serverInput, mempty :: MapUTXO)
     

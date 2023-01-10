@@ -35,6 +35,7 @@ A class that defines a console client corresponding to your cardano-server. The 
 * `parseServerInput` is the parser used to get `InputOf` your server from the command line. Optional if `InputOf` your server has a read instance.
 * `genServerInput` is the generator used to generate `InputOf` your server. Optional if `InputOf` your server has a random instance. 
 * `extractActionsFromInput` is function, used to get actions from the `InputOf` your server that will be performed before the request is sent and after a successful response is received, respectively. It can be useful, for example, if you need to write some additional information about your inputs to external files. Optional if you don't need to execute any actions.
+* `addExternalUtxosToInput` is function that will add external UTXOs to your input before sending a request. Optional if you don't have them.
 
 Alternatively, you can use the [defaultClient](https://github.com/encryptedcoins/cardano-server/blob/main/src/Client/Default.hs) which requires only `FromJSON` instance of `InputOf` your server instead of `HasClient` class. It will read `InputOf` your server from the file and send respective request to `sumbitTx` endpoint of your server.
 

@@ -11,7 +11,7 @@ module Client.Client where
 import           Client.Class              (HasClient(..))
 import           Client.Opts               (Options(..), runWithOpts, Mode (..))
 import           Control.Monad.Reader      (MonadIO(..), forever, when)
-import           Data.Aeson                (encode)
+import           Data.Aeson                (encode, ToJSON)
 import           Data.ByteString.Lazy      (ByteString)
 import qualified Data.Text                 as T
 import           Network.HTTP.Client       (httpLbs, defaultManagerSettings, newManager, parseRequest,
@@ -45,18 +45,18 @@ client :: forall s. HasClient s => String -> Manager -> InputOf s -> AppM s ()
 client fullAddress manager serverInput = do
         (beforeRequestSend, onSuccessfulResponse) <- extractActionsFromInput serverInput
         beforeRequestSend
-        resp <- mkRequest fullAddress manager serverInput
+        resp <- addExternalUtxosToInput serverInput >>= mkRequest fullAddress manager 
         when (successful resp) onSuccessfulResponse
     where
         successful = (== status204) . responseStatus
 
-mkRequest :: HasServer s => String -> Manager -> InputOf s -> AppM s (Response ByteString)
-mkRequest fullAddress manager serverInput = do
-    logMsg $ "New input to send:\n" .< serverInput
+mkRequest :: (ToJSON body, Show body) => String -> Manager -> body -> AppM s (Response ByteString)
+mkRequest fullAddress manager body = do
+    logMsg $ "New request to send:\n" .< body
     nakedRequest <- liftIO $ parseRequest fullAddress
     let req = nakedRequest
             { method = "POST"
-            , requestBody = RequestBodyLBS $ encode serverInput
+            , requestBody = RequestBodyLBS $ encode body
             , requestHeaders = [(hContentType, "application/json")]
             , responseTimeout = responseTimeoutMicro (3 * 60 * 1_000_000)
             }
