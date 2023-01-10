@@ -8,7 +8,7 @@
 module Client.Main where
 
 import           Client.Class              (HasClient(..), ClientRequestOf)
-import           Client.Opts               (AutoOptions(..), Maximum, Options(..), runWithOpts)
+import           Client.Opts               (AutoOptions(..), Maximum, Options(..), runWithOpts, Mode (..))
 import           Control.Monad             (replicateM)
 import           Control.Monad.Reader      (MonadIO(..), forever, when)
 import           Data.Aeson                (encode)
@@ -26,15 +26,14 @@ import           Utils.Wait                (waitTime)
 
 startClient :: forall s. HasClient s => IO ()
 startClient = do
-    opts <- runWithOpts @s
+    Options{..} <- runWithOpts @s
     Config{..} <- loadConfig 
-    let fullAddress = "http://"
-                   <> T.unpack cServerAddress
-                   <> "/relayRequestSubmitTx"
+    let fullAddress = concat 
+            ["http://", T.unpack cServerAddress, "/relayRequest", show optsEndpoint]
     nakedRequest <- parseRequest fullAddress
     manager <- newManager defaultManagerSettings
     let mkRequest' = mkRequest @s nakedRequest manager
-    runAppM $ withGreetings $ case opts of
+    runAppM $ withGreetings $ case optsMode of
         Manual cReq          -> mkRequest' cReq
         Auto AutoOptions{..} -> forever $ do
             cReq <- genRequest @s maxTokensInReq

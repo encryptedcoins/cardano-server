@@ -7,18 +7,35 @@ module Client.Opts where
 import           Client.Class          (HasClient(..))
 import           Control.Applicative   (some, (<|>))
 import           Options.Applicative   (Parser, (<**>), auto, fullDesc, help, info, long, option, short, value, execParser,
-                                        helper, flag')
+                                        helper, flag', metavar, argument)
 
 runWithOpts :: HasClient s => IO (Options s)
 runWithOpts = execParser $ info (optionsParser <**> helper) fullDesc
 
 optionsParser :: HasClient s => Parser (Options s)
-optionsParser = autoModeParser <|> manualModeParser
+optionsParser = Options <$> serverEndpointParser <*> (autoModeParser <|> manualModeParser)
 
-data Options s
+data Options s = Options
+    { optsEndpoint :: ServerEndpoint
+    , optsMode     :: Mode s
+    } deriving Show
+
+data ServerEndpoint
+    = Ping
+    | NewTx
+    | SubmitTx
+    deriving (Show, Read)
+
+serverEndpointParser :: Parser ServerEndpoint
+serverEndpointParser = argument auto 
+    (  value SubmitTx
+    <> metavar "Ping | SubmitTx | NewTx" 
+    )
+
+data Mode s
     = Auto   AutoOptions
     | Manual [RequestTermOf s]
-deriving instance HasClient s => Show (Options s)
+deriving instance HasClient s => Show (Mode s)
 
 --------------------------------------------- Auto ---------------------------------------------
 
@@ -30,7 +47,7 @@ data AutoOptions = AutoOptions
 type Interval = Int
 type Maximum  = Int
 
-autoModeParser :: Parser (Options s)
+autoModeParser :: Parser (Mode s)
 autoModeParser
     = fmap Auto $ flag' AutoOptions (long "auto")
     <*> intervalParser
@@ -54,6 +71,6 @@ maxTokensParser = option auto
 
 -------------------------------------------- Manual --------------------------------------------
 
-manualModeParser :: forall s. HasClient s => Parser (Options s)
+manualModeParser :: forall s. HasClient s => Parser (Mode s)
 manualModeParser = flag' Manual (long "manual")
                <*> some (parseRequestTerm @s)

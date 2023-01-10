@@ -55,20 +55,20 @@ This library includes the [test-server](https://github.com/encryptedcoins/cardan
 $ cabal run testingServer
 ```
 
-2. Run client in automatic mode in which it will send up to *maximum* test tokens at an average *interval* seconds:</br>
+2. Run client in automatic mode in which it will send request to mint up to *maximum* test tokens to selected endpoint (default is SubmitTx) at an average *interval* seconds :</br>
 ```console
-$ cabal run testingClient -- --auto -i interval -m maximum
+$ cabal run testingClient -- [Ping | SubmitTx | NewTx] --auto -i interval -m maximum
 ```
 &emsp;&emsp;For example:
 ```console
-$ cabal run testingClient -- --auto -i 30 -m 5
+$ cabal run testingClient -- SubmitTx --auto -i 30 -m 5
 ```
 
-3. Run client in manual mode in which it will mint specified test *tokens*:</br>
+3. Run client in manual mode in which it will send request to mint specified test *tokens* to selected endpoint (default is SubmitTx):</br>
 ```console
-$ cabal run testingClient -- --manual token token ...
+$ cabal run testingClient -- [Ping | SubmitTx | NewTx] --manual token token ...
 ```
 &emsp;&emsp;For example:
 ```console
-$ cabal run testingClient -- --manual a72kf wjr82ar4 ...
+$ cabal run testingClient -- NewTx --manual a72kf wjr82ar4 ...
 ```
