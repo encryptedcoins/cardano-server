@@ -1,27 +1,30 @@
 {-# LANGUAGE AllowAmbiguousTypes        #-}
+{-# LANGUAGE DefaultSignatures          #-}
 {-# LANGUAGE DerivingStrategies         #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE TypeFamilies               #-}
 
 module Client.Class where
 
-import           Data.Kind            (Type)
-import           Options.Applicative  (Parser)
+import           Options.Applicative  -- (Parser)
 import           Server.Internal      (HasServer(..), AppM)
+import           System.Random        (Random, randomIO)
 
-class ( HasServer c
-      , Show (RequestTermOf c)
-      , Eq (RequestTermOf c)
-      ) => HasClient c where
+class HasServer c => HasClient c where
 
-    type RequestTermOf c :: Type
+    -- Input parser for manual client mode.
+    parseServerInput :: Parser (InputOf c)
+    default parseServerInput :: Read (InputOf c) => Parser (InputOf c)
+    parseServerInput = argument auto (metavar "Server input")
 
-    parseRequestTerm :: Parser (RequestTermOf c)
+    -- Input generator for automatic client mode.
+    genServerInput :: AppM c (InputOf c)
+    default genServerInput :: Random (InputOf c) => AppM c (InputOf c)
+    genServerInput = randomIO
 
-    genRequestTerm :: IO (RequestTermOf c)
-
-    -- here ClientM c () are some additional actions, that would be executed
-    -- on successful response
-    makeServerInput :: ClientRequestOf c -> AppM c (AppM c (), InputOf c)
-
-type ClientRequestOf s = [RequestTermOf s]
+    -- A function that extracts some actions from the input that will be performed before the request is sent 
+    -- and after a successful response is received, respectively. 
+    -- It can be useful, for example, if you need to write some additional information about your inputs to external files.
+    -- Use the default implementation if you don't need either of them.
+    extractActionsFromInput :: InputOf c -> AppM c (AppM c (), AppM c ())
+    extractActionsFromInput _ = pure (pure (), pure ())

@@ -5,9 +5,10 @@
 module Client.Opts where
 
 import           Client.Class          (HasClient(..))
-import           Control.Applicative   (some, (<|>))
+import           Control.Applicative   ((<|>))
 import           Options.Applicative   (Parser, (<**>), auto, fullDesc, help, info, long, option, short, value, execParser,
                                         helper, flag', metavar, argument)
+import           Server.Class          (HasServer(..))
 
 runWithOpts :: HasClient s => IO (Options s)
 runWithOpts = execParser $ info (optionsParser <**> helper) fullDesc
@@ -33,25 +34,17 @@ serverEndpointParser = argument auto
     )
 
 data Mode s
-    = Auto   AutoOptions
-    | Manual [RequestTermOf s]
+    = Auto   Interval
+    | Manual (InputOf s)
 deriving instance HasClient s => Show (Mode s)
 
 --------------------------------------------- Auto ---------------------------------------------
 
-data AutoOptions = AutoOptions
-    { averageRequestInterval :: Interval
-    , maxTokensInReq         :: Maximum
-    } deriving Show
-
 type Interval = Int
-type Maximum  = Int
 
 autoModeParser :: Parser (Mode s)
 autoModeParser
-    = fmap Auto $ flag' AutoOptions (long "auto")
-    <*> intervalParser
-    <*> maxTokensParser
+    = flag' Auto (long "auto") <*> intervalParser
 
 intervalParser :: Parser Interval
 intervalParser = option auto
@@ -61,16 +54,7 @@ intervalParser = option auto
     <> value 30
     )
 
-maxTokensParser :: Parser Maximum
-maxTokensParser = option auto
-    (  long  "max"
-    <> short 'm'
-    <> help  "Upper bound on the number of generated tokens in a single request."
-    <> value 1
-    )
-
 -------------------------------------------- Manual --------------------------------------------
 
 manualModeParser :: forall s. HasClient s => Parser (Mode s)
-manualModeParser = flag' Manual (long "manual")
-               <*> some (parseRequestTerm @s)
+manualModeParser = flag' Manual (long "manual") <*> parseServerInput @s

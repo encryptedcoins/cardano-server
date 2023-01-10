@@ -32,10 +32,9 @@ A class that defines a cardano-server:
 
 A class that defines a console client corresponding to your cardano-server. The console client allows you to construct and send requests to the server using the command line.
 
-* `RequestTermOf` is a type for the internal representation of a command line term that the client may encounter.
-* `parseRequestTerm` is the parser used to get the next `RequestTermOf` from the command line.
-* `genRequestTerm` defines the actions that generate a `RequestTermOf` term.
-* `makeServerInput` defines the actions that create an `InputOf` type that the server expects.
+* `parseServerInput` is the parser used to get `InputOf` your server from the command line. Optional if `InputOf` your server has a read instance.
+* `genServerInput` is the generator used to generate `InputOf` your server. Optional if `InputOf` your server has a random instance. 
+* `extractActionsFromInput` is function, used to get actions from the `InputOf` your server that will be performed before the request is sent and after a successful response is received, respectively. It can be useful, for example, if you need to write some additional information about your inputs to external files. Optional if you don't need to execute any actions.
 
 3. [HasTxEndpoints](https://github.com/encryptedcoins/cardano-server/blob/main/src/Server/Endpoints/Tx/Class.hs):
 
@@ -55,13 +54,13 @@ This library includes the [test-server](https://github.com/encryptedcoins/cardan
 $ cabal run testingServer
 ```
 
-2. Run client in automatic mode in which it will send request to mint up to *maximum* test tokens to selected endpoint (default is SubmitTx) at an average *interval* seconds :</br>
+2. Run client in automatic mode in which it will send request to mint test tokens to selected endpoint (default is SubmitTx) at an average *interval* seconds :</br>
 ```console
-$ cabal run testingClient -- [Ping | SubmitTx | NewTx] --auto -i interval -m maximum
+$ cabal run testingClient -- [Ping | SubmitTx | NewTx] --auto -i interval
 ```
 &emsp;&emsp;For example:
 ```console
-$ cabal run testingClient -- SubmitTx --auto -i 30 -m 5
+$ cabal run testingClient -- SubmitTx --auto -i 30
 ```
 
 3. Run client in manual mode in which it will send request to mint specified test *tokens* to selected endpoint (default is SubmitTx):</br>
