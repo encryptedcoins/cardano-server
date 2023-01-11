@@ -23,20 +23,17 @@ import           Servant                          (NoContent(..), JSON, (:>), Re
 import           Server.Endpoints.Tx.Class        (HasTxEndpoints(..))     
 import           Server.Class                     (getQueueRef, AppM, Env(..), HasServer(..), QueueRef, checkForCleanUtxos, QueueElem, Queue)
 import           Server.Tx                        (mkTx)
-import           Utils.ChainIndex                 (MapUTXO)
 import           Utils.Logger                     (HasLogger(..), (.<), logSmth)
 import           Utils.Wait                       (waitTime)
 
 type SubmitTxApi s = "relayRequestSubmitTx"
-              :> ReqBody '[JSON] (InputOf s, MapUTXO)
+              :> ReqBody '[JSON] (TxApiRequestOf s)
               :> UVerb 'POST '[JSON] (TxApiResultOf s)
 
-submitTxHandler :: forall s. HasTxEndpoints s => (InputOf s, MapUTXO) ->  AppM s (Union (TxApiResultOf s))
-submitTxHandler arg@(red, utxosExternal) = handle txEndpointsErrorHandler $ do
-    logMsg $ "New submitTx request received:" 
-        <> "\nRedeemer:" .< red
-        <> "\nUtxos:"    .< utxosExternal
-    checkForTxEndpointsErrors red
+submitTxHandler :: forall s. HasTxEndpoints s => TxApiRequestOf s ->  AppM s (Union (TxApiResultOf s))
+submitTxHandler req = handle txEndpointsErrorHandler $ do
+    logMsg $ "New submitTx request received:\n" .< req
+    arg <- txEndpointsProcessRequest req
     ref <- getQueueRef
     liftIO $ atomicModifyIORef ref ((,()) . (|> arg))
     respond NoContent

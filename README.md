@@ -40,10 +40,11 @@ A class that defines a console client corresponding to your cardano-server. The 
 3. [HasTxEndpoints](https://github.com/encryptedcoins/cardano-server/blob/main/src/Server/Endpoints/Tx/Class.hs):
 
 A class that defines two API endpoints on the server: `newTx` and `sumbitTx`. This class defines the following:
+* `TxApiRequestOf` is a type of request body that we expect to receive.
 * `TxApiResultOf` is a sum type containing all possible results returned by these two endpoints. You can use `DefaultTxApiResult` if it suits your case.
 * `TxEndpointsErrorOf` is a type of errors that might be thrown while processing user requests to these endpoints.
+* `txEndpointsProcessRequest` defines actions that convert `TxApiRequestOf s` into `(InputOf s, MapUTXO)` or throw a `TxEndpointsErrorOf s` error.
 * `txEndpointsTxBuilders` defines actions that process the server input and return a list of transaction builders.
-* `checkForTxEndpointsErrors` defines actions that check the server input for errors.
 * `txEndpointsErrorHandler` defines error-handling actions for `TxEndpointsErrorOf` errors.
 
 # Test server commands
