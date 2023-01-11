@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts     #-}
 {-# LANGUAGE TypeApplications     #-}
 {-# LANGUAGE ImplicitParams       #-}
 {-# LANGUAGE OverloadedStrings    #-}

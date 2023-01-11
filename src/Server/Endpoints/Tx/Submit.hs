@@ -21,9 +21,9 @@ import           Data.Sequence                    (Seq(..), (|>))
 import           IO.Wallet                        (HasWallet(..))
 import           Servant                          (NoContent(..), JSON, (:>), ReqBody, respond, StdMethod(POST), UVerb, Union)
 import           Server.Endpoints.Tx.Class        (HasTxEndpoints(..))     
-import           Server.Internal                  (getQueueRef, NetworkM, Env(..), HasServer(..), QueueRef, checkForCleanUtxos,
+import           Server.Internal                  (getQueueRef, NetworkM, Env(..), HasServer(..), QueueRef,
                                                    QueueElem, Queue)
-import           Server.Tx                        (mkTx)
+import           Server.Tx                        (mkTx, checkForCleanUtxos)
 import           Utils.ChainIndex                 (MapUTXO)
 import           Utils.Logger                     (HasLogger(..), (.<), logSmth)
 import           Utils.Wait                       (waitTime)

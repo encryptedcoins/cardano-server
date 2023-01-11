@@ -13,6 +13,7 @@ import           Data.IORef             (IORef)
 import           Data.Kind              (Type)
 import           Data.Sequence          (Seq)
 import           IO.Wallet              (HasWallet(..), RestoredWallet, getWalletAddr)
+import           Ledger                 (Params)
 import           Ledger.Address         (Address)
 import           Servant                (MimeUnrender, JSON)
 import           Server.Config          (decodeOrErrorFromFile)
@@ -48,10 +49,11 @@ type Queue s = Seq (QueueElem s)
 type QueueRef s = IORef (Queue s)
 
 data Env s = Env
-    { envQueueRef       :: QueueRef s
-    , envWallet         :: RestoredWallet
-    , envAuxiliary      :: AuxiliaryEnvOf s
-    , envMinUtxosAmount :: Int
+    { envQueueRef           :: QueueRef s
+    , envWallet             :: RestoredWallet
+    , envAuxiliary          :: AuxiliaryEnvOf s
+    , envMinUtxosAmount     :: Int
+    , envLedgerParams       :: Params
     }
 
 instance MonadIO m => HasWallet (ReaderT (Env s) m) where 
