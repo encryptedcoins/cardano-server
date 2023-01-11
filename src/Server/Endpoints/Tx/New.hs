@@ -10,11 +10,11 @@ module Server.Endpoints.Tx.New where
 import           Control.Monad                    (join, liftM3)
 import           Control.Monad.Catch              (handle)
 import           Servant                          (JSON, (:>), ReqBody, respond, StdMethod(POST), UVerb, Union)
+import           Server.Endpoints.Servant         (respondWithStatus)
 import           Server.Endpoints.Tx.Class        (HasTxEndpoints(..), NewTxEndpointResult(..))
 import           Server.Class                     (AppM, HasServer(..))
 import           Server.Tx                        (mkBalanceTx)
 import           Utils.Logger                     (HasLogger(..), (.<))
-import           Utils.Servant                    (respondWithStatus)
 import           Utils.Tx                         (cardanoTxToText)
 
 type NewTxApi s = "relayRequestNewTx"

@@ -38,6 +38,7 @@ library
       Server.Config
       Server.Endpoints.Funds 
       Server.Endpoints.Ping
+      Server.Endpoints.Servant
       Server.Endpoints.Tx.Class
       Server.Endpoints.Tx.New
       Server.Endpoints.Tx.Submit      
@@ -47,7 +48,6 @@ library
       TestingServer.OnChain
       TestingServer.OffChain
       Utils.Logger
-      Utils.Servant
       Utils.Wait
     other-modules:
     default-extensions:

@@ -20,11 +20,11 @@ import Data.List                    (nub)
 import Options.Applicative          (argument, metavar, str)
 import Plutus.V2.Ledger.Api         (BuiltinByteString)
 import PlutusTx.Builtins.Class      (stringToBuiltinByteString)
+import Server.Endpoints.Servant     (respondWithStatus)
 import Server.Endpoints.Tx.Class    (HasTxEndpoints(..), DefaultTxApiResult)
 import Server.Class                 (HasServer(..))
 import System.Random                (randomRIO, randomIO)
 import TestingServer.OffChain       (testMintTx)
-import Utils.Servant                (respondWithStatus)
 
 import Utils.ChainIndex             (MapUTXO)
 

@@ -6,7 +6,7 @@
 {-# LANGUAGE ScopedTypeVariables  #-}
 {-# LANGUAGE TypeApplications     #-}
 
-module Utils.Servant where
+module Server.Endpoints.Servant where
 
 import Data.Text          (Text)
 import GHC.Base           (Nat)

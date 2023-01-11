@@ -4,19 +4,20 @@
 
 module Tests.Reference where
 
-import           Control.Monad           (void)
-import qualified Data.Map                as Map
-import           IO.Wallet               (getWalletAddr)
-import qualified Ledger.Ada              as Ada
-import           Ledger.Typed.Scripts    (Any)
-import           Constraints.OffChain    (postMintingPolicyTx, referenceMintingPolicyTx)
-import           Server.Tx               (mkTx)
-import           TestingServer.Main      (TestingServer)
-import           TestingServer.OffChain  (testToken)
-import           TestingServer.OnChain   (testPolicyV, testPolicy)
-import           Tests.Internal          (runTestM)
-import qualified PlutusTx.Prelude        as Plutus
-import           Utils.Logger            (HasLogger(..))
+import           Control.Monad            (void)
+import qualified Data.Map                 as Map
+import           IO.Wallet                (getWalletAddr)
+import qualified Ledger.Ada               as Ada
+import           Ledger.Typed.Scripts     (Any)
+import           Constraints.OffChain     (postMintingPolicyTx, referenceMintingPolicyTx)
+import           Server.Endpoints.Servant (respondWithStatus)
+import           Server.Tx                (mkTx)
+import           TestingServer.Main       (TestingServer)
+import           TestingServer.OffChain   (testToken)
+import           TestingServer.OnChain    (testPolicyV, testPolicy)
+import           Tests.Internal           (runTestM)
+import qualified PlutusTx.Prelude         as Plutus
+import           Utils.Logger             (HasLogger(..))
 
 postReferenceScript :: IO ()
 postReferenceScript = void $ runTestM @TestingServer $ do
