@@ -20,6 +20,7 @@ class ( HasServer s
       , IsMember NoContent             (TxApiResultOf s)
       , IsMember NewTxEndpointResult   (TxApiResultOf s)
       , IsMember (WithStatus 422 Text) (TxApiResultOf s)
+      , IsMember (WithStatus 503 Text) (TxApiResultOf s)
       , Show (TxEndpointsErrorOf s)
       , Exception (TxEndpointsErrorOf s)
       ) => HasTxEndpoints s where

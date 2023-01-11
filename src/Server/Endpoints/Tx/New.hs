@@ -12,6 +12,7 @@ import           Control.Monad.Catch              (handle)
 import           Servant                          (JSON, (:>), ReqBody, respond, StdMethod(POST), UVerb, Union)
 import           Server.Endpoints.Tx.Class        (HasTxEndpoints(..))
 import           Server.Endpoints.Tx.Internal     (NewTxEndpointResult(..))
+import           Server.Error                     (handleUnavailableEndpoints)
 import           Server.Internal                  (NetworkM, HasServer(..))
 import           Server.Tx                        (mkBalanceTx)
 import           Utils.Logger                     (HasLogger(..), (.<))
@@ -24,7 +25,7 @@ type NewTxApi s = "relayRequestNewTx"
               :> UVerb 'POST '[JSON] (TxApiResultOf s)
 
 newTxHandler :: forall s. HasTxEndpoints s => (InputOf s, MapUTXO) -> NetworkM s (Union (TxApiResultOf s))
-newTxHandler (red, utxosExternal) = handle txEndpointsErrorHandler $ do
+newTxHandler (red, utxosExternal) = handleUnavailableEndpoints @s $ handle txEndpointsErrorHandler $ do
     logMsg $ "New newTx request received:\n" .< red
     checkForTxEndpointsErrors red
     balancedTx <- join $ liftM3 mkBalanceTx (serverTrackedAddresses @s) (pure utxosExternal) (txEndpointsTxBuilders @s red)

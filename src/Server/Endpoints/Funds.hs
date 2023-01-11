@@ -31,6 +31,7 @@ import           Text.Hex               (decodeHex)
 import           Utils.Address          (bech32ToAddress)
 import           Utils.Logger           (logMsg)
 import           Utils.Servant          (respondWithStatus)
+import Server.Error (handleUnavailableEndpoints)
 
 data FundsReqBody = FundsReqBody
     {
@@ -43,7 +44,7 @@ type FundsApi = "relayRequestFunds"
                :> ReqBody '[JSON] FundsReqBody
                :> UVerb 'GET '[JSON] FundsApiResult
 
-type FundsApiResult = '[Funds, WithStatus 400 Text]
+type FundsApiResult = '[Funds, WithStatus 400 Text, WithStatus 503 Text]
 
 newtype Funds = Funds [(TokenName, TxOutRef)]
     deriving (Show, Generic)
@@ -57,18 +58,18 @@ data FundsError
     deriving (Show, Exception)
 
 fundsHandler :: FundsReqBody -> NetworkM s (Union FundsApiResult)
-fundsHandler (FundsReqBody addrBech32 csHex) = handle fundsErrorHandler $ do
+fundsHandler (FundsReqBody addrBech32 csHex) = fundsErrorHandler $ do
     logMsg $ "New funds request received:\n" <> addrBech32
     addr <- maybe (throwM UnparsableAddress) pure $ bech32ToAddress addrBech32
     let cs = CurrencySymbol $ maybe (throw UnparsableCurrencySymbol) toBuiltin $ decodeHex csHex
     respond =<< getFunds cs addr
 
-fundsErrorHandler :: FundsError -> NetworkM s (Union FundsApiResult)
-fundsErrorHandler = \case
+fundsErrorHandler :: forall s. NetworkM s (Union FundsApiResult) -> NetworkM s (Union FundsApiResult)
+fundsErrorHandler = handleUnavailableEndpoints @s . handle (\case
     UnparsableAddress        -> respondWithStatus @400
         "Incorrect wallet address."
     UnparsableCurrencySymbol -> respondWithStatus @400
-        "Incorrect currency symbol."
+        "Incorrect currency symbol.")
 
 getFunds :: MonadIO m => CurrencySymbol -> Address -> m Funds
 getFunds cs addr = do

@@ -21,6 +21,7 @@ import           Data.Sequence                    (Seq(..), (|>))
 import           IO.Wallet                        (HasWallet(..))
 import           Servant                          (NoContent(..), JSON, (:>), ReqBody, respond, StdMethod(POST), UVerb, Union)
 import           Server.Endpoints.Tx.Class        (HasTxEndpoints(..))     
+import           Server.Error                     (handleUnavailableEndpoints)
 import           Server.Internal                  (getQueueRef, NetworkM, Env(..), HasServer(..), QueueRef,
                                                    QueueElem, Queue)
 import           Server.Tx                        (mkTx, checkForCleanUtxos)
@@ -33,7 +34,7 @@ type SubmitTxApi s = "relayRequestSubmitTx"
               :> UVerb 'POST '[JSON] (TxApiResultOf s)
 
 submitTxHandler :: forall s. HasTxEndpoints s => (InputOf s, MapUTXO) ->  NetworkM s (Union (TxApiResultOf s))
-submitTxHandler arg@(red, utxosExternal) = handle txEndpointsErrorHandler $ do
+submitTxHandler arg@(red, utxosExternal) = handleUnavailableEndpoints @s $ handle txEndpointsErrorHandler $ do
     logMsg $ "New submitTx request received:" 
         <> "\nRedeemer:" .< red
         <> "\nUtxos:"    .< utxosExternal
