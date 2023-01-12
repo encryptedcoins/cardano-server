@@ -16,7 +16,6 @@ import           Server.Class                     (AppM, HasServer(..))
 import           Server.Tx                        (mkBalanceTx)
 import           Utils.Logger                     (HasLogger(..), (.<))
 import           Utils.Tx                         (cardanoTxToText)
-import           Utils.ChainIndex                 (MapUTXO)
 
 type NewTxApi s = "newTx"
               :> ReqBody '[JSON] (TxApiRequestOf s)

@@ -21,9 +21,8 @@ import           Data.Sequence                    (Seq(..), (|>))
 import           IO.Wallet                        (HasWallet(..))
 import           Servant                          (NoContent(..), JSON, (:>), ReqBody, respond, StdMethod(POST), UVerb, Union)
 import           Server.Endpoints.Tx.Class        (HasTxEndpoints(..))     
-import           Server.Class                     (getQueueRef, AppM, Env(..), HasServer(..), QueueRef, checkForCleanUtxos, QueueElem, Queue)
+import           Server.Class                     (AppM, Env(..), HasServer(..), QueueRef, QueueElem, Queue, getQueueRef, checkForCleanUtxos)
 import           Server.Tx                        (mkTx)
-import           Utils.ChainIndex                 (MapUTXO)
 import           Utils.Logger                     (HasLogger(..), (.<), logSmth)
 import           Utils.Wait                       (waitTime)
 
@@ -70,12 +69,12 @@ processQueue env = runQueueM env $ do
             liftIO (readIORef qRef) >>= \case
                 Empty -> logIdle n >> waitTime 3 >> checkQueue (n + 1)
                 red :<| reds -> processQueueElem qRef red reds >> go
-        logIdle n = when (n `mod` 100 == 0) $ logMsg "No new redeemers to process."
+        logIdle n = when (n `mod` 100 == 0) $ logMsg "No new inputs to process."
 
 processQueueElem :: forall s. HasTxEndpoints s => QueueRef s -> QueueElem s -> Queue s -> QueueM s ()
 processQueueElem qRef qElem@(red, externalUtxos) elems = do
     liftIO $ atomicWriteIORef qRef elems
-    logMsg $ "New redeemer to process:" .< red <> "\nUtxos:" .< externalUtxos
+    logMsg $ "New input to process:" .< red <> "\nUtxos:" .< externalUtxos
     processTokens @s qElem
 
 processTokens :: forall s m. (HasTxEndpoints s, HasWallet m, HasLogger m, MonadReader (Env s) m) => QueueElem s -> m ()
