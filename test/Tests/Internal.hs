@@ -14,6 +14,7 @@ import qualified Data.Text.IO             as T
 import           IO.Wallet                (HasWallet(..), getWalletAddr, ownAddresses)
 import           Ledger                   (Address)
 import           Server.Endpoints.Funds   (getFunds, Funds(..))
+import           Server.Endpoints.Servant (respondWithStatus)
 import           Server.Class             (HasServer(..), Env(..), loadEnv)
 import           TestingServer.OffChain   (testCurrencySymbol)
 import           Utils.Address            (bech32ToAddress)

@@ -10,26 +10,29 @@
 
 module Server.Main where
 
-import           Control.Concurrent           (forkIO)
-import           Control.Monad.Except         (runExceptT)
-import           Control.Monad.Reader         (ReaderT(runReaderT))
-import           Utils.Logger                 (HasLogger(logMsg))
-import qualified Network.Wai.Handler.Warp     as Warp
-import qualified Network.Wai.Middleware.Cors  as Cors
+import           Control.Concurrent                 (forkIO)
+import           Control.Monad.Except               (runExceptT)
+import           Control.Monad.Reader               (ReaderT(runReaderT))
+import           Utils.Logger                       (HasLogger(logMsg))
+import qualified Network.Wai                        as Wai
+import qualified Network.Wai.Handler.Warp           as Warp
+import           Network.Wai.Middleware.Cors        (CorsResourcePolicy(..), simpleCorsResourcePolicy, cors)
 import qualified Servant
-import           Servant                      (Proxy(..), type (:<|>)(..), ServerT, Context(EmptyContext), hoistServer,
-                                               serveWithContext, Application, runHandler')
-import           Server.Endpoints.Funds       (FundsApi, fundsHandler)
-import           Server.Endpoints.Tx.Class    (HasTxEndpoints)
-import           Server.Endpoints.Tx.Submit   (SubmitTxApi, submitTxHandler, processQueue)
-import           Server.Endpoints.Tx.New      (NewTxApi, newTxHandler)
-import           Server.Endpoints.Ping        (PingApi, pingHandler)
-import           Server.Class                 (AppM(unAppM), Env, loadEnv, checkForCleanUtxos)
-import           System.IO                    (stdout, BufferMode(LineBuffering), hSetBuffering)
+import           Servant                            (Proxy(..), type (:<|>)(..), ServerT, Context(EmptyContext), hoistServer,
+                                                        serveWithContext, Application, runHandler')
+import           Server.Endpoints.AddSignature      (AddSignatureApi, addSignatureHandler)
+import           Server.Endpoints.Funds             (FundsApi, fundsHandler)
+import           Server.Endpoints.Tx.Class          (HasTxEndpoints)
+import           Server.Endpoints.Tx.Submit         (SubmitTxApi, submitTxHandler, processQueue)
+import           Server.Endpoints.Tx.New            (NewTxApi, newTxHandler)
+import           Server.Endpoints.Ping              (PingApi, pingHandler)
+import           Server.Class                       (AppM(unAppM), Env, loadEnv, checkForCleanUtxos)
+import           System.IO                          (stdout, BufferMode(LineBuffering), hSetBuffering)
 
 type ServerAPI s
     =    PingApi
     :<|> SubmitTxApi s
+    :<|> AddSignatureApi s
     :<|> NewTxApi s
     :<|> FundsApi
 
@@ -41,6 +44,7 @@ type ServerConstraints s =
 server :: HasTxEndpoints s => ServerT (ServerAPI s) (AppM s)
 server = pingHandler
     :<|> submitTxHandler
+    :<|> addSignatureHandler
     :<|> newTxHandler
     :<|> fundsHandler
 
@@ -62,6 +66,10 @@ runServer = do
             logMsg "Starting server..."
             checkForCleanUtxos
 
+corsWithContentType :: Wai.Middleware
+corsWithContentType = cors (const $ Just policy)
+    where policy = simpleCorsResourcePolicy { corsRequestHeaders = ["Content-Type"] }
+
 mkApp :: forall s. ServerConstraints s => Env s -> Application
-mkApp env = Cors.simpleCors $ serveWithContext (serverAPI @s) EmptyContext $
+mkApp env = corsWithContentType $ serveWithContext (serverAPI @s) EmptyContext $
     hoistServer (serverAPI @s) ((`runReaderT` env) . unAppM) server

@@ -12,25 +12,25 @@
 
 module Server.Endpoints.Funds where
 
-import           Control.Exception      (throw)
-import           Control.Monad.Catch    (Exception, handle, throwM)
-import           Control.Monad.IO.Class (MonadIO(..))
-import           Data.Aeson             (ToJSON, FromJSON)
-import           Data.Text              (Text)
-import qualified Data.Map               as Map
-import           GHC.Generics           (Generic)
-import           IO.ChainIndex          (getUtxosAt)
-import           Ledger                 (DecoratedTxOut(..))
-import           Plutus.V2.Ledger.Api   (Address, CurrencySymbol (CurrencySymbol), TokenName, TxOutRef, Value(..))
-import qualified PlutusTx.AssocMap      as PAM
-import           PlutusTx.Builtins      (toBuiltin)
-import           Servant                ((:>), StdMethod(GET), JSON, respond, HasStatus,
-                                         ReqBody, StatusOf, WithStatus, Union, UVerb)
-import           Server.Class           (AppM)
-import           Text.Hex               (decodeHex)
-import           Utils.Address          (bech32ToAddress)
-import           Utils.Logger           (logMsg)
-import           Utils.Servant          (respondWithStatus)
+import           Control.Exception        (throw)
+import           Control.Monad.Catch      (Exception, handle, throwM)
+import           Control.Monad.IO.Class   (MonadIO(..))
+import           Data.Aeson               (ToJSON, FromJSON)
+import           Data.Text                (Text)
+import qualified Data.Map                 as Map
+import           GHC.Generics             (Generic)
+import           IO.ChainIndex            (getUtxosAt)
+import           Ledger                   (DecoratedTxOut(..))
+import           Plutus.V2.Ledger.Api     (Address, CurrencySymbol (CurrencySymbol), TokenName, TxOutRef, Value(..))
+import qualified PlutusTx.AssocMap        as PAM
+import           PlutusTx.Builtins        (toBuiltin)
+import           Servant                  ((:>), StdMethod(GET), JSON, respond, HasStatus,
+                                            ReqBody, StatusOf, WithStatus, Union, UVerb)
+import           Server.Class             (AppM)
+import           Server.Endpoints.Servant (respondWithStatus)
+import           Text.Hex                 (decodeHex)
+import           Utils.Address            (bech32ToAddress)
+import           Utils.Logger             (logMsg)
 
 data FundsReqBody = FundsReqBody
     {
@@ -39,7 +39,7 @@ data FundsReqBody = FundsReqBody
     }
     deriving (Show, Generic, ToJSON, FromJSON)
 
-type FundsApi = "relayRequestFunds"
+type FundsApi = "funds"
                :> ReqBody '[JSON] FundsReqBody
                :> UVerb 'GET '[JSON] FundsApiResult
 

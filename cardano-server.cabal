@@ -36,18 +36,19 @@ library
       Client.Opts
       Server.Class
       Server.Config
+      Server.Endpoints.AddSignature
       Server.Endpoints.Funds 
       Server.Endpoints.Ping
+      Server.Endpoints.Servant
       Server.Endpoints.Tx.Class
       Server.Endpoints.Tx.New
-      Server.Endpoints.Tx.Submit      
+      Server.Endpoints.Tx.Submit
       Server.Main
       Server.Tx
       TestingServer.Main
       TestingServer.OnChain
       TestingServer.OffChain
       Utils.Logger
-      Utils.Servant
       Utils.Wait
     other-modules:
     default-extensions:
@@ -84,6 +85,7 @@ library
       servant-server                         -any,
       text                                   -any,
       time                                   -any,
+      wai                                    -any,
       wai-cors                               -any,
       warp                                   -any
     hs-source-dirs: src
