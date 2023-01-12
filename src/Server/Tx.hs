@@ -92,9 +92,7 @@ mkBalanceTx addressesTracked utxosExternal txs = do
     logSmth cons
 
     logMsg "Balancing..."
-    balancedTx <- balanceTx ledgerParams lookups cons
-    logMsg "Signing..."
-    signTx balancedTx
+    balanceTx ledgerParams lookups cons
 
 mkTx :: forall a m. MkTxConstraints a m 
     => [Address]

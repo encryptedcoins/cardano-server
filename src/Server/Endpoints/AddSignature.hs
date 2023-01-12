@@ -9,7 +9,7 @@
 
 module Server.Endpoints.AddSignature where
 
-import           Control.Monad.Catch              (Exception, handle)
+import           Control.Monad.Catch              (Exception, MonadThrow (..), handle)
 import           Data.Text                        (Text)
 import           Servant                          (JSON, (:>), ReqBody, StdMethod(POST), UVerb, Union, WithStatus)
 import           Server.Endpoints.Servant         (respondWithStatus)
@@ -25,7 +25,7 @@ type AddSignatureApi s = "addSignature"
 
 type AddSignatureApiResult = '[WithStatus 200 Text, WithStatus 400 Text]
 
-data AddSignatureError = UnparsableTx | UnparsableSignature
+data AddSignatureError = UnparsableTx Text | UnparsableSignature Text
     deriving (Show, Exception)
 
 addSignatureHandler :: AddSignatureReqBody -> AppM s (Union AddSignatureApiResult)
@@ -35,12 +35,12 @@ addSignatureHandler req@(tx, sig) = handle addSignatureErrorHandler $ do
       Just _ -> do
         logMsg tx
         logMsg sig
-        respondWithStatus @400 $ "Adding signature here..."
-      Nothing  -> respondWithStatus @400 $ "Cannot deserialise to CardanoTx:" .< tx
+        respondWithStatus @200 $ "Adding signature here..."
+      Nothing  -> throwM $ UnparsableTx tx
 
 addSignatureErrorHandler :: AddSignatureError -> AppM s (Union AddSignatureApiResult)
 addSignatureErrorHandler = \case
-    UnparsableTx        -> respondWithStatus @400
-        "Incorrect wallet address."
-    UnparsableSignature -> respondWithStatus @400
-        "Incorrect currency symbol."
+    UnparsableTx tx         -> respondWithStatus @400 $
+        "Cannot deserialise to CardanoTx:" .< tx
+    UnparsableSignature sig -> respondWithStatus @400 $
+        "Cannot deserialise to CardanoTx:" .< sig
