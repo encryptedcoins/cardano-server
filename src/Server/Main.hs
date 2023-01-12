@@ -29,7 +29,6 @@ import           Server.Endpoints.Ping              (PingApi, pingHandler)
 import           Server.Class                       (AppM(unAppM), Env, loadEnv, checkForCleanUtxos)
 import           System.IO                          (stdout, BufferMode(LineBuffering), hSetBuffering)
 
-
 type ServerAPI s
     =    PingApi
     :<|> SubmitTxApi s

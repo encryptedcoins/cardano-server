@@ -23,6 +23,7 @@ import           Servant                          (NoContent(..), JSON, (:>), Re
 import           Server.Endpoints.Tx.Class        (HasTxEndpoints(..))     
 import           Server.Class                     (getQueueRef, AppM, Env(..), HasServer(..), QueueRef, checkForCleanUtxos, QueueElem, Queue)
 import           Server.Tx                        (mkTx)
+import           Utils.ChainIndex                 (MapUTXO)
 import           Utils.Logger                     (HasLogger(..), (.<), logSmth)
 import           Utils.Wait                       (waitTime)
 
