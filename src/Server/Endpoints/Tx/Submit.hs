@@ -26,7 +26,7 @@ import           Server.Tx                        (mkTx)
 import           Utils.Logger                     (HasLogger(..), (.<), logSmth)
 import           Utils.Wait                       (waitTime)
 
-type SubmitTxApi s = "relayRequestSubmitTx"
+type SubmitTxApi s = "submitTx"
               :> ReqBody '[JSON] (TxApiRequestOf s)
               :> UVerb 'POST '[JSON] (TxApiResultOf s)
 

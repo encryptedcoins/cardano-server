@@ -36,12 +36,13 @@ library
       Client.Opts
       Server.Class
       Server.Config
+      Server.Endpoints.AddSignature
       Server.Endpoints.Funds 
       Server.Endpoints.Ping
       Server.Endpoints.Servant
       Server.Endpoints.Tx.Class
       Server.Endpoints.Tx.New
-      Server.Endpoints.Tx.Submit      
+      Server.Endpoints.Tx.Submit
       Server.Main
       Server.Tx
       TestingServer.Main

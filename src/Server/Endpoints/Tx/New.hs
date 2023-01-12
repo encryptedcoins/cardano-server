@@ -17,7 +17,7 @@ import           Server.Tx                        (mkBalanceTx)
 import           Utils.Logger                     (HasLogger(..), (.<))
 import           Utils.Tx                         (cardanoTxToText)
 
-type NewTxApi s = "relayRequestNewTx"
+type NewTxApi s = "newTx"
               :> ReqBody '[JSON] (TxApiRequestOf s)
               :> UVerb 'POST '[JSON] (TxApiResultOf s)
 

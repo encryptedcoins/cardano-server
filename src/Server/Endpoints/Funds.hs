@@ -39,7 +39,7 @@ data FundsReqBody = FundsReqBody
     }
     deriving (Show, Generic, ToJSON, FromJSON)
 
-type FundsApi = "relayRequestFunds"
+type FundsApi = "funds"
                :> ReqBody '[JSON] FundsReqBody
                :> UVerb 'GET '[JSON] FundsApiResult
 
