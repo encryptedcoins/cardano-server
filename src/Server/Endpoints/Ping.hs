@@ -8,7 +8,7 @@ import           Utils.Logger       (HasLogger(logMsg))
 import           Servant            (type (:>), NoContent(..), JSON, Get)
 import           Server.Internal    (NetworkM)
 
-type PingApi = "relayRequestPing" :> Get '[JSON] NoContent
+type PingApi = "ping" :> Get '[JSON] NoContent
 
 pingHandler :: NetworkM s NoContent
 pingHandler = NoContent <$ logMsg "Received ping request."

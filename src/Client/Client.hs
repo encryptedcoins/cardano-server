@@ -29,7 +29,7 @@ startClient = do
     Options{..} <- runWithOpts @s
     Config{..} <- loadConfig 
     let fullAddress = concat 
-            ["http://", T.unpack cServerAddress, "/relayRequest", show optsEndpoint]
+            ["http://", T.unpack cServerAddress, show optsEndpoint]
     manager <- newManager defaultManagerSettings
     let client' = client @s fullAddress manager
     runAppM $ withGreetings $ case optsMode of

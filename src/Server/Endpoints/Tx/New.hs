@@ -16,19 +16,18 @@ import           Server.Error                     (handleUnavailableEndpoints)
 import           Server.Internal                  (NetworkM, HasServer(..))
 import           Server.Tx                        (mkBalanceTx)
 import           Utils.Logger                     (HasLogger(..), (.<))
-import           Utils.Servant                    (respondWithStatus)
 import           Utils.Tx                         (cardanoTxToText)
-import           Utils.ChainIndex                 (MapUTXO)
+import           Server.Endpoints.Servant         (respondWithStatus)
 
-type NewTxApi s = "relayRequestNewTx"
-              :> ReqBody '[JSON] (InputOf s, MapUTXO)
+type NewTxApi s = "newTx"
+              :> ReqBody '[JSON] (TxApiRequestOf s)
               :> UVerb 'POST '[JSON] (TxApiResultOf s)
 
-newTxHandler :: forall s. HasTxEndpoints s => (InputOf s, MapUTXO) -> NetworkM s (Union (TxApiResultOf s))
-newTxHandler (red, utxosExternal) = handleUnavailableEndpoints @s $ handle txEndpointsErrorHandler $ do
-    logMsg $ "New newTx request received:\n" .< red
-    checkForTxEndpointsErrors red
-    balancedTx <- join $ liftM3 mkBalanceTx (serverTrackedAddresses @s) (pure utxosExternal) (txEndpointsTxBuilders @s red)
+newTxHandler :: forall s. HasTxEndpoints s => TxApiRequestOf s-> NetworkM s (Union (TxApiResultOf s))
+newTxHandler req = handleUnavailableEndpoints $ handle txEndpointsErrorHandler $ do
+    logMsg $ "New newTx request received:\n" .< req
+    (input, utxosExternal) <- txEndpointsProcessRequest req
+    balancedTx <- join $ liftM3 mkBalanceTx (serverTrackedAddresses @s) (pure utxosExternal) (txEndpointsTxBuilders @s input)
     case cardanoTxToText balancedTx of
         Just res -> respond $ NewTxEndpointResult res
         Nothing -> respondWithStatus @422 $ "Can't serialise balanced tx:" .< balancedTx

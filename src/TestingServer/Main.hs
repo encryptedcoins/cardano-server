@@ -3,6 +3,7 @@
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE TypeApplications           #-}
 {-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE UndecidableInstances       #-}
 
 module TestingServer.Main (TestingServer) where
 
@@ -15,10 +16,11 @@ import Plutus.V2.Ledger.Api         (BuiltinByteString)
 import PlutusTx.Builtins.Class      (stringToBuiltinByteString)
 import Server.Endpoints.Tx.Class    (HasTxEndpoints(..))
 import Server.Endpoints.Tx.Internal (DefaultTxApiResult)
+import Server.Endpoints.Servant     (respondWithStatus) 
 import Server.Class                 (HasServer(..))
 import System.Random                (randomRIO, randomIO)
 import TestingServer.OffChain       (testMintTx)
-import Utils.Servant                (respondWithStatus)
+import Utils.ChainIndex             (MapUTXO)
 
 data TestingServer
 
@@ -32,17 +34,20 @@ instance HasServer TestingServer where
 
 instance HasTxEndpoints TestingServer where
 
+    type TxApiRequestOf TestingServer = (InputOf TestingServer, MapUTXO)
+
     type TxApiResultOf TestingServer = DefaultTxApiResult
 
     data (TxEndpointsErrorOf TestingServer) = HasDuplicates
         deriving (Show, Exception)
 
-    txEndpointsTxBuilders bbs = pure [testMintTx bbs]
-
-    checkForTxEndpointsErrors bbs =
+    txEndpointsProcessRequest req@(bbs, _) = do
         let hasDuplicates = length bbs /= length (nub bbs)
-        in  when hasDuplicates $ throwM HasDuplicates
-        
+        when hasDuplicates $ throwM HasDuplicates
+        return req
+
+    txEndpointsTxBuilders bbs = pure [testMintTx bbs]
+    
     txEndpointsErrorHandler _ = respondWithStatus @422
         "The request contains duplicate tokens and will not be processed."
 

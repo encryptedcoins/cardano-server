@@ -25,20 +25,17 @@ import           Server.Error                     (handleUnavailableEndpoints)
 import           Server.Internal                  (getQueueRef, NetworkM, Env(..), HasServer(..), QueueRef,
                                                    QueueElem, Queue)
 import           Server.Tx                        (mkTx, checkForCleanUtxos)
-import           Utils.ChainIndex                 (MapUTXO)
 import           Utils.Logger                     (HasLogger(..), (.<), logSmth)
 import           Utils.Wait                       (waitTime)
 
-type SubmitTxApi s = "relayRequestSubmitTx"
-              :> ReqBody '[JSON] (InputOf s, MapUTXO)
+type SubmitTxApi s = "submitTx"
+              :> ReqBody '[JSON] (TxApiRequestOf s)
               :> UVerb 'POST '[JSON] (TxApiResultOf s)
 
-submitTxHandler :: forall s. HasTxEndpoints s => (InputOf s, MapUTXO) ->  NetworkM s (Union (TxApiResultOf s))
-submitTxHandler arg@(red, utxosExternal) = handleUnavailableEndpoints @s $ handle txEndpointsErrorHandler $ do
-    logMsg $ "New submitTx request received:" 
-        <> "\nRedeemer:" .< red
-        <> "\nUtxos:"    .< utxosExternal
-    checkForTxEndpointsErrors red
+submitTxHandler :: forall s. HasTxEndpoints s => TxApiRequestOf s -> NetworkM s (Union (TxApiResultOf s))
+submitTxHandler req = handleUnavailableEndpoints @s $ handle txEndpointsErrorHandler $ do
+    logMsg $ "New submitTx request received:\n" .< req
+    arg <- txEndpointsProcessRequest req
     ref <- getQueueRef
     liftIO $ atomicModifyIORef ref ((,()) . (|> arg))
     respond NoContent
@@ -74,12 +71,12 @@ processQueue env = runQueueM env $ do
             liftIO (readIORef qRef) >>= \case
                 Empty -> logIdle n >> waitTime 3 >> checkQueue (n + 1)
                 red :<| reds -> processQueueElem qRef red reds >> go
-        logIdle n = when (n `mod` 100 == 0) $ logMsg "No new redeemers to process."
+        logIdle n = when (n `mod` 100 == 0) $ logMsg "No new inputs to process."
 
 processQueueElem :: forall s. HasTxEndpoints s => QueueRef s -> QueueElem s -> Queue s -> QueueM s ()
 processQueueElem qRef qElem@(red, externalUtxos) elems = do
     liftIO $ atomicWriteIORef qRef elems
-    logMsg $ "New redeemer to process:" .< red <> "\nUtxos:" .< externalUtxos
+    logMsg $ "New input to process:" .< red <> "\nUtxos:" .< externalUtxos
     processTokens @s qElem
 
 processTokens :: forall s m. (HasTxEndpoints s, HasWallet m, HasLogger m, MonadReader (Env s) m) => QueueElem s -> m ()

@@ -31,7 +31,7 @@ import           Server.Internal        (NetworkM)
 import           Text.Hex               (decodeHex)
 import           Utils.Address          (bech32ToAddress)
 import           Utils.Logger           (logMsg)
-import           Utils.Servant          (respondWithStatus)
+import           Server.Endpoints.Servant          (respondWithStatus)
 import Server.Error (handleUnavailableEndpoints)
 
 data FundsReqBody = FundsReqBody
@@ -41,7 +41,7 @@ data FundsReqBody = FundsReqBody
     }
     deriving (Show, Generic, ToJSON, FromJSON)
 
-type FundsApi = "relayRequestFunds"
+type FundsApi = "funds"
                :> ReqBody '[JSON] FundsReqBody
                :> UVerb 'GET '[JSON] FundsApiResult
 

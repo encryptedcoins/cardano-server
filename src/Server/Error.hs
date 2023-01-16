@@ -7,13 +7,13 @@
 
 module Server.Error where
 
-import           Data.Text           (Text)
-import           Control.Monad.Catch (Exception(..), MonadThrow(..), handle)
-import           IO.ChainIndex       (pattern ChainIndexConnectionError)
-import           IO.Wallet           (pattern WalletApiConnectionError)
-import           Server.Internal     (NetworkM)
-import           Servant             (WithStatus, IsMember, Union)
-import           Utils.Servant       (respondWithStatus)
+import           Data.Text                (Text)
+import           Control.Monad.Catch      (Exception(..), MonadThrow(..), handle)
+import           IO.ChainIndex            (pattern ChainIndexConnectionError)
+import           IO.Wallet                (pattern WalletApiConnectionError)
+import           Server.Internal          (NetworkM)
+import           Servant                  (WithStatus, IsMember, Union)
+import           Server.Endpoints.Servant (respondWithStatus)
 
 handleUnavailableEndpoints :: forall s res. (IsMember (WithStatus 503 Text) res) => 
     NetworkM s (Union res) -> NetworkM s (Union res)
