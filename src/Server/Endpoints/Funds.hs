@@ -1,7 +1,7 @@
 {-# LANGUAGE DataKinds                  #-}
 {-# LANGUAGE DeriveAnyClass             #-}
 {-# LANGUAGE DeriveGeneric              #-}
-{-# LANGUAGE DerivingStrategies         #-}
+{-# LANGUAGE DerivingVia                #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase                 #-}
 {-# LANGUAGE OverloadedStrings          #-}
@@ -9,6 +9,7 @@
 {-# LANGUAGE TypeApplications           #-}
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE TypeOperators              #-}
+{-# LANGUAGE UndecidableInstances       #-}
 
 module Server.Endpoints.Funds where
 
@@ -24,8 +25,8 @@ import           Ledger                 (DecoratedTxOut(..))
 import           Plutus.V2.Ledger.Api   (Address, CurrencySymbol (CurrencySymbol), TokenName, TxOutRef, Value(..))
 import qualified PlutusTx.AssocMap      as PAM
 import           PlutusTx.Builtins      (toBuiltin)
-import           Servant                ((:>), StdMethod(GET), JSON, respond, HasStatus,
-                                         ReqBody, StatusOf, WithStatus, Union, UVerb)
+import           Servant                ((:>), StdMethod(GET), JSON, respond, HasStatus, ReqBody, WithStatus,
+                                         Union, UVerb)
 import           Server.Internal        (NetworkM)
 import           Text.Hex               (decodeHex)
 import           Utils.Address          (bech32ToAddress)
@@ -49,9 +50,7 @@ type FundsApiResult = '[Funds, WithStatus 400 Text, WithStatus 503 Text]
 newtype Funds = Funds [(TokenName, TxOutRef)]
     deriving (Show, Generic)
     deriving newtype ToJSON
-
-instance HasStatus Funds where
-    type StatusOf Funds = 200
+    deriving HasStatus via WithStatus 200 Funds
 
 data FundsError
     = UnparsableAddress | UnparsableCurrencySymbol
