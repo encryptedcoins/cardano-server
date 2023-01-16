@@ -5,19 +5,19 @@
 {-# LANGUAGE TypeApplications           #-}
 {-# LANGUAGE TypeOperators              #-}
 
-module Server.Endpoints.Tx.New where
+module Cardano.Server.Endpoints.Tx.New where
 
-import           Control.Monad                    (join, liftM3)
-import           Control.Monad.Catch              (handle)
-import           Servant                          (JSON, (:>), ReqBody, respond, StdMethod(POST), UVerb, Union)
-import           Server.Endpoints.Tx.Class        (HasTxEndpoints(..))
-import           Server.Endpoints.Tx.Internal     (NewTxEndpointResult(..))
-import           Server.Error                     (handleUnavailableEndpoints)
-import           Server.Internal                  (NetworkM, HasServer(..))
-import           Server.Tx                        (mkBalanceTx)
-import           Utils.Logger                     (HasLogger(..), (.<))
-import           Utils.Tx                         (cardanoTxToText)
-import           Server.Endpoints.Servant         (respondWithStatus)
+import           Cardano.Server.Endpoints.Servant     (respondWithStatus)
+import           Cardano.Server.Endpoints.Tx.Class    (HasTxEndpoints(..))
+import           Cardano.Server.Endpoints.Tx.Internal (NewTxEndpointResult(..))
+import           Cardano.Server.Error                 (handleUnavailableEndpoints)
+import           Cardano.Server.Internal              (NetworkM, HasServer(..))
+import           Cardano.Server.Tx                    (mkBalanceTx)
+import           Cardano.Server.Utils.Logger          (HasLogger(..), (.<))
+import           Control.Monad                        (join, liftM3)
+import           Control.Monad.Catch                  (handle)
+import           Servant                              (JSON, (:>), ReqBody, respond, StdMethod(POST), UVerb, Union)
+import           Utils.Tx                             (cardanoTxToText)
 
 type NewTxApi s = "newTx"
               :> ReqBody '[JSON] (TxApiRequestOf s)

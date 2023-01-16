@@ -4,7 +4,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE UndecidableInstances       #-}
 
-module Server.Endpoints.Tx.Internal where
+module Cardano.Server.Endpoints.Tx.Internal where
 
 import           Data.Aeson                       (ToJSON)
 import           Data.Text                        (Text)

@@ -2,7 +2,7 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE OverloadedStrings  #-}
 
-module Server.Config where
+module Cardano.Server.Config where
 
 import           Cardano.Api          (NetworkId(..))
 import           Data.Aeson           (FromJSON(..), eitherDecode, genericParseJSON)
@@ -12,6 +12,7 @@ import qualified Data.ByteString.Lazy as LBS
 import           Data.Text            (Text)
 import           Ledger.Params        ()
 import           GHC.Generics         (Generic)
+
 data Config = Config
     { cServerAddress     :: Text
     , cNodeAddress       :: Text

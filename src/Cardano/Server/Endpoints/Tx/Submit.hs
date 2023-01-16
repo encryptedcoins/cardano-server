@@ -10,23 +10,23 @@
 {-# LANGUAGE TypeOperators              #-}
 {-# LANGUAGE TupleSections              #-}
 
-module Server.Endpoints.Tx.Submit where
+module Cardano.Server.Endpoints.Tx.Submit where
 
-import           Control.Monad                    (join, void, when, liftM3)
-import           Control.Monad.IO.Class           (MonadIO(..))
-import           Control.Monad.Catch              (SomeException, catch, handle, MonadThrow, MonadCatch)
-import           Control.Monad.Reader             (ReaderT(..), MonadReader, asks)
-import           Data.IORef                       (atomicWriteIORef, atomicModifyIORef, readIORef)
-import           Data.Sequence                    (Seq(..), (|>))
-import           IO.Wallet                        (HasWallet(..))
-import           Servant                          (NoContent(..), JSON, (:>), ReqBody, respond, StdMethod(POST), UVerb, Union)
-import           Server.Endpoints.Tx.Class        (HasTxEndpoints(..))     
-import           Server.Error                     (handleUnavailableEndpoints)
-import           Server.Internal                  (getQueueRef, NetworkM, Env(..), HasServer(..), QueueRef,
-                                                   QueueElem, Queue)
-import           Server.Tx                        (mkTx, checkForCleanUtxos)
-import           Utils.Logger                     (HasLogger(..), (.<), logSmth)
-import           Utils.Wait                       (waitTime)
+import           Cardano.Server.Endpoints.Tx.Class (HasTxEndpoints(..))     
+import           Cardano.Server.Error              (handleUnavailableEndpoints)
+import           Cardano.Server.Internal           (getQueueRef, NetworkM, Env(..), HasServer(..), QueueRef, QueueElem, Queue)
+import           Cardano.Server.Tx                 (mkTx, checkForCleanUtxos)
+import           Cardano.Server.Utils.Logger       (HasLogger(..), (.<), logSmth)
+import           Cardano.Server.Utils.Wait         (waitTime)
+import           Control.Monad                     (join, void, when, liftM3)
+import           Control.Monad.IO.Class            (MonadIO(..))
+import           Control.Monad.Catch               (SomeException, catch, handle, MonadThrow, MonadCatch)
+import           Control.Monad.Reader              (ReaderT(..), MonadReader, asks)
+import           Data.IORef                        (atomicWriteIORef, atomicModifyIORef, readIORef)
+import           Data.Sequence                     (Seq(..), (|>))
+import           IO.Wallet                         (HasWallet(..))
+import           Servant                           (NoContent(..), JSON, (:>), ReqBody, respond, StdMethod(POST),
+                                                    UVerb, Union)
 
 type SubmitTxApi s = "submitTx"
               :> ReqBody '[JSON] (TxApiRequestOf s)

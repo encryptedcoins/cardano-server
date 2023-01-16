@@ -5,12 +5,12 @@
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE TupleSections #-}
 
-module Client.Class where
+module Cardano.Server.Client.Class where
 
-import           Options.Applicative  -- (Parser)
-import           Server.Internal      (HasServer(..), AppM)
-import           System.Random        (Random, randomIO)
-import           Utils.ChainIndex     (MapUTXO)
+import           Cardano.Server.Internal (HasServer(..), AppM)
+import           Options.Applicative     (Parser, argument, auto, metavar)
+import           System.Random           (Random, randomIO)
+import           Utils.ChainIndex        (MapUTXO)
 
 class HasServer c => HasClient c where
 

@@ -2,8 +2,8 @@
 
 module Main where
 
-import Client.Client      (startClient)
-import TestingServer.Main (TestingServer)
+import Cardano.Server.Client.Client      (startClient)
+import Cardano.Server.TestingServer.Main (TestingServer)
 
 main :: IO ()
 main = startClient @TestingServer

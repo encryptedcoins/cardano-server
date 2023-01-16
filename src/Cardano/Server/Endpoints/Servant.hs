@@ -6,13 +6,13 @@
 {-# LANGUAGE ScopedTypeVariables  #-}
 {-# LANGUAGE TypeApplications     #-}
 
-module Server.Endpoints.Servant where
+module Cardano.Server.Endpoints.Servant where
 
-import Data.Text          (Text)
-import GHC.Base           (Nat)
-import Servant            (respond, WithStatus(..), Union, IsMember)
-import Servant.API.Status (KnownStatus)
-import Utils.Logger       (HasLogger(..))
+import Cardano.Server.Utils.Logger (HasLogger(..))
+import Data.Text                   (Text)
+import GHC.Base                    (Nat)
+import Servant                     (respond, WithStatus(..), Union, IsMember)
+import Servant.API.Status          (KnownStatus)
 
 respondWithStatus :: forall (status :: Nat) res m. 
     ( IsMember (WithStatus status Text) res

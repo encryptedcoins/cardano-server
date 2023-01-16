@@ -2,8 +2,8 @@
 
 module Main where
 
-import Server.Main        (runServer)
-import TestingServer.Main (TestingServer)
+import Cardano.Server.Main               (runServer)
+import Cardano.Server.TestingServer.Main (TestingServer)
 
 main :: IO ()
 main = runServer @TestingServer

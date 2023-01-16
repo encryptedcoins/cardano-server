@@ -2,11 +2,11 @@
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE TypeOperators         #-}
 
-module Server.Endpoints.Ping where
+module Cardano.Server.Endpoints.Ping where
 
-import           Utils.Logger       (HasLogger(logMsg))
-import           Servant            (type (:>), NoContent(..), JSON, Get)
-import           Server.Internal    (NetworkM)
+import           Cardano.Server.Internal     (NetworkM)
+import           Cardano.Server.Utils.Logger (HasLogger(logMsg))
+import           Servant                     (type (:>), NoContent(..), JSON, Get)
 
 type PingApi = "ping" :> Get '[JSON] NoContent
 

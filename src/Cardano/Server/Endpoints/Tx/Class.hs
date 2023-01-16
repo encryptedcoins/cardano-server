@@ -4,18 +4,18 @@
 {-# LANGUAGE UndecidableInstances       #-}
 {-# LANGUAGE UndecidableSuperClasses    #-}
 
-module Server.Endpoints.Tx.Class where
+module Cardano.Server.Endpoints.Tx.Class where
 
-import           Control.Monad.Catch              (Exception)
-import           Control.Monad.Reader             (MonadReader)
-import           Data.Kind                        (Type)
-import           Data.Text                        (Text)
-import           IO.Wallet                        (HasWallet(..))
-import           Servant                          (NoContent(..), Union, IsMember, WithStatus)
-import           Server.Endpoints.Tx.Internal     (NewTxEndpointResult)
-import           Server.Internal                  (NetworkM, HasServer(..), Env)
-import           Types.Tx                         (TransactionBuilder)
-import           Utils.ChainIndex                 (MapUTXO)
+import           Cardano.Server.Endpoints.Tx.Internal (NewTxEndpointResult)
+import           Cardano.Server.Internal              (NetworkM, HasServer(..), Env)
+import           Control.Monad.Catch                  (Exception)
+import           Control.Monad.Reader                 (MonadReader)
+import           Data.Kind                            (Type)
+import           Data.Text                            (Text)
+import           IO.Wallet                            (HasWallet(..))
+import           Servant                              (NoContent(..), Union, IsMember, WithStatus)
+import           Types.Tx                             (TransactionBuilder)
+import           Utils.ChainIndex                     (MapUTXO)
 
 class ( HasServer s
       , IsMember NoContent             (TxApiResultOf s)

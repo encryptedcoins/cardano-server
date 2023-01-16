@@ -4,8 +4,9 @@
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE TypeFamilies               #-}
 
-module Server.Class where
+module Cardano.Server.Class where
 
+import           Cardano.Server.Config  (decodeOrErrorFromFile)
 import           Control.Monad.IO.Class (MonadIO)
 import           Control.Monad.Reader   (ReaderT, MonadReader, asks)
 import           Data.Aeson             (FromJSON(..), ToJSON)
@@ -16,7 +17,6 @@ import           IO.Wallet              (HasWallet(..), RestoredWallet, getWalle
 import           Ledger                 (Params)
 import           Ledger.Address         (Address)
 import           Servant                (MimeUnrender, JSON)
-import           Server.Config          (decodeOrErrorFromFile)
 import           Utils.ChainIndex       (MapUTXO)
 
 class ( Show (AuxiliaryEnvOf s)

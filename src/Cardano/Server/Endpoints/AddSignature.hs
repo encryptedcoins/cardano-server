@@ -7,14 +7,14 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE DeriveAnyClass #-}
 
-module Server.Endpoints.AddSignature where
+module Cardano.Server.Endpoints.AddSignature where
 
+import           Cardano.Server.Endpoints.Servant (respondWithStatus)
+import           Cardano.Server.Internal          (NetworkM)
+import           Cardano.Server.Utils.Logger      (HasLogger(..), (.<))
 import           Control.Monad.Catch              (Exception, MonadThrow (..), handle)
 import           Data.Text                        (Text)
 import           Servant                          (JSON, (:>), ReqBody, StdMethod(POST), UVerb, Union, WithStatus)
-import           Server.Endpoints.Servant         (respondWithStatus)
-import           Server.Internal                  (NetworkM)
-import           Utils.Logger                     (HasLogger(..), (.<))
 import           Utils.Tx                         (textToCardanoTx)
 
 type AddSignatureReqBody = (Text, Text)

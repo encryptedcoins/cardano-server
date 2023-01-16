@@ -6,30 +6,30 @@
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Server.Tx where
+module Cardano.Server.Tx where
 
-import           Control.Monad.Extra       (mconcatMapM, when, void)
-import           Control.Monad.IO.Class    (MonadIO(..))
-import           Control.Monad.Reader      (MonadReader, asks)
-import           Control.Monad.State       (State, get, put, execState)
-import qualified Data.Map                  as Map
-import           Data.Maybe                (fromJust, isNothing)
-import           Data.Void                 (Void)
-import           Ledger                    (Address, CardanoTx(..), Params(..), POSIXTime, PubKeyHash, TxOutRef,
-                                            PaymentPubKeyHash(..), StakingCredential, stakingCredential)
-import           Ledger.Ada                (lovelaceValueOf) 
-import           Ledger.Constraints        (ScriptLookups, mustPayToPubKey, mustPayToPubKeyAddress)
-import           Ledger.Tx.CardanoAPI      (unspentOutputsTx)
-import           PlutusTx                  (FromData(..), ToData(..))
-import           Plutus.Script.Utils.Typed (RedeemerType, DatumType)
-import           IO.ChainIndex             (getUtxosAt, getWalletUtxos)
-import           IO.Time                   (currentTime)
-import           IO.Wallet                 (HasWallet(..), signTx, balanceTx, submitTxConfirmed, getWalletAddr,
-                                            getWalletAddrBech32, getWalletKeyHashes)
-import           Server.Internal           (Env(..))
-import           Types.Tx                  (TxConstructor (..), selectTxConstructor, mkTxConstructor)
-import           Utils.ChainIndex          (MapUTXO, filterCleanUtxos)
-import           Utils.Logger              (HasLogger(..), logPretty, logSmth)
+import           Cardano.Server.Internal     (Env(..))
+import           Cardano.Server.Utils.Logger (HasLogger(..), logPretty, logSmth)
+import           Control.Monad.Extra         (mconcatMapM, when, void)
+import           Control.Monad.IO.Class      (MonadIO(..))
+import           Control.Monad.Reader        (MonadReader, asks)
+import           Control.Monad.State         (State, get, put, execState)
+import qualified Data.Map                    as Map
+import           Data.Maybe                  (fromJust, isNothing)
+import           Data.Void                   (Void)
+import           Ledger                      (Address, CardanoTx(..), Params(..), POSIXTime, PubKeyHash, TxOutRef,
+                                              PaymentPubKeyHash(..), StakingCredential, stakingCredential)
+import           Ledger.Ada                  (lovelaceValueOf) 
+import           Ledger.Constraints          (ScriptLookups, mustPayToPubKey, mustPayToPubKeyAddress)
+import           Ledger.Tx.CardanoAPI        (unspentOutputsTx)
+import           PlutusTx                    (FromData(..), ToData(..))
+import           Plutus.Script.Utils.Typed   (RedeemerType, DatumType)
+import           IO.ChainIndex               (getUtxosAt, getWalletUtxos)
+import           IO.Time                     (currentTime)
+import           IO.Wallet                   (HasWallet(..), signTx, balanceTx, submitTxConfirmed, getWalletAddr,
+                                              getWalletAddrBech32, getWalletKeyHashes)
+import           Types.Tx                    (TxConstructor (..), selectTxConstructor, mkTxConstructor)
+import           Utils.ChainIndex            (MapUTXO, filterCleanUtxos)
 
 type HasTxEnv =
     ( ?txWalletAddr :: Address

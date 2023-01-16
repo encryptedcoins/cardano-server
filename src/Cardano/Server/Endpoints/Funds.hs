@@ -11,28 +11,28 @@
 {-# LANGUAGE TypeOperators              #-}
 {-# LANGUAGE UndecidableInstances       #-}
 
-module Server.Endpoints.Funds where
+module Cardano.Server.Endpoints.Funds where
 
-import           Control.Exception      (throw)
-import           Control.Monad.Catch    (Exception, handle, throwM)
-import           Control.Monad.IO.Class (MonadIO(..))
-import           Data.Aeson             (ToJSON, FromJSON)
-import           Data.Text              (Text)
-import qualified Data.Map               as Map
-import           GHC.Generics           (Generic)
-import           IO.ChainIndex          (getUtxosAt)
-import           Ledger                 (DecoratedTxOut(..))
-import           Plutus.V2.Ledger.Api   (Address, CurrencySymbol (CurrencySymbol), TokenName, TxOutRef, Value(..))
-import qualified PlutusTx.AssocMap      as PAM
-import           PlutusTx.Builtins      (toBuiltin)
-import           Servant                ((:>), StdMethod(GET), JSON, respond, HasStatus, ReqBody, WithStatus,
-                                         Union, UVerb)
-import           Server.Internal        (NetworkM)
-import           Text.Hex               (decodeHex)
-import           Utils.Address          (bech32ToAddress)
-import           Utils.Logger           (logMsg)
-import           Server.Endpoints.Servant          (respondWithStatus)
-import Server.Error (handleUnavailableEndpoints)
+import           Cardano.Server.Internal          (NetworkM)
+import           Cardano.Server.Utils.Logger      (logMsg)
+import           Cardano.Server.Endpoints.Servant (respondWithStatus)
+import           Cardano.Server.Error             (handleUnavailableEndpoints)
+import           Control.Exception                (throw)
+import           Control.Monad.Catch              (Exception, handle, throwM)
+import           Control.Monad.IO.Class           (MonadIO(..))
+import           Data.Aeson                       (ToJSON, FromJSON)
+import           Data.Text                        (Text)
+import qualified Data.Map                         as Map
+import           GHC.Generics                     (Generic)
+import           IO.ChainIndex                    (getUtxosAt)
+import           Ledger                           (DecoratedTxOut(..))
+import           Plutus.V2.Ledger.Api             (Address, CurrencySymbol (CurrencySymbol), TokenName, TxOutRef, Value(..))
+import qualified PlutusTx.AssocMap                as PAM
+import           PlutusTx.Builtins                (toBuiltin)
+import           Servant                          ((:>), StdMethod(GET), JSON, respond, HasStatus, ReqBody, WithStatus,
+                                                   Union, UVerb)
+import           Text.Hex                         (decodeHex)
+import           Utils.Address                    (bech32ToAddress)
 
 data FundsReqBody = FundsReqBody
     {

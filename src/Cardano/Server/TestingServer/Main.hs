@@ -5,22 +5,22 @@
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE UndecidableInstances       #-}
 
-module TestingServer.Main (TestingServer) where
+module Cardano.Server.TestingServer.Main (TestingServer) where
 
-import Client.Class                 (HasClient(..))
-import Control.Monad                (when, replicateM)
-import Control.Monad.Catch          (Exception, throwM)
-import Data.List                    (nub)
-import Options.Applicative          (argument, metavar, str, some)
-import Plutus.V2.Ledger.Api         (BuiltinByteString)
-import PlutusTx.Builtins.Class      (stringToBuiltinByteString)
-import Server.Endpoints.Tx.Class    (HasTxEndpoints(..))
-import Server.Endpoints.Tx.Internal (DefaultTxApiResult)
-import Server.Endpoints.Servant     (respondWithStatus) 
-import Server.Class                 (HasServer(..))
-import System.Random                (randomRIO, randomIO)
-import TestingServer.OffChain       (testMintTx)
-import Utils.ChainIndex             (MapUTXO)
+import Cardano.Server.Endpoints.Tx.Class     (HasTxEndpoints(..))
+import Cardano.Server.Endpoints.Tx.Internal  (DefaultTxApiResult)
+import Cardano.Server.Endpoints.Servant      (respondWithStatus) 
+import Cardano.Server.Class                  (HasServer(..))
+import Cardano.Server.Client.Class           (HasClient(..))
+import Cardano.Server.TestingServer.OffChain (testMintTx)
+import Control.Monad                         (when, replicateM)
+import Control.Monad.Catch                   (Exception, throwM)
+import Data.List                             (nub)
+import Options.Applicative                   (argument, metavar, str, some)
+import Plutus.V2.Ledger.Api                  (BuiltinByteString)
+import PlutusTx.Builtins.Class               (stringToBuiltinByteString)
+import System.Random                         (randomRIO, randomIO)
+import Utils.ChainIndex                      (MapUTXO)
 
 data TestingServer
 

@@ -2,13 +2,13 @@
 {-# LANGUAGE StandaloneDeriving  #-}
 {-# LANGUAGE TypeApplications    #-}
 
-module Client.Opts where
+module Cardano.Server.Client.Opts where
 
-import           Client.Class          (HasClient(..))
-import           Control.Applicative   ((<|>))
-import           Options.Applicative   (Parser, (<**>), auto, fullDesc, help, info, long, option, short, value, execParser,
-                                        helper, flag', metavar, argument)
-import           Server.Class          (HasServer(..))
+import           Cardano.Server.Class          (HasServer(..))
+import           Cardano.Server.Client.Class   (HasClient(..))
+import           Control.Applicative           ((<|>))
+import           Options.Applicative           (Parser, (<**>), auto, fullDesc, help, info, long, option, short, value,
+                                                execParser, helper, flag', metavar, argument)
 
 runWithOpts :: HasClient s => IO (Options s)
 runWithOpts = execParser $ info (optionsParser <**> helper) fullDesc

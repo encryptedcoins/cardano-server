@@ -1,6 +1,6 @@
 {-# LANGUAGE NumericUnderscores #-}
 
-module Utils.Wait where
+module Cardano.Server.Utils.Wait where
 
 import Control.Concurrent     (threadDelay)
 import Control.Monad.IO.Class (MonadIO(..))

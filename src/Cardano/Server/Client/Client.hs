@@ -6,23 +6,23 @@
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE TypeApplications           #-}
 
-module Client.Client where
+module Cardano.Server.Client.Client where
 
-import           Client.Class              (HasClient(..))
-import           Client.Opts               (Options(..), runWithOpts, Mode (..))
-import           Control.Monad.Reader      (MonadIO(..), forever, when)
-import           Data.Aeson                (encode, ToJSON)
-import           Data.ByteString.Lazy      (ByteString)
-import qualified Data.Text                 as T
-import           Network.HTTP.Client       (httpLbs, defaultManagerSettings, newManager, parseRequest,
-                                            Manager, Request(..), RequestBody(..), responseStatus, responseTimeoutMicro, Response)
-import           Network.HTTP.Types.Header (hContentType)
-import           Network.HTTP.Types.Status (status204)
-import           Server.Internal           (AppM, runAppM, HasServer(..))
-import           Server.Config             (Config(..), loadConfig)       
-import           System.Random             (randomRIO)
-import           Utils.Logger              (HasLogger(..), (.<))
-import           Utils.Wait                (waitTime)
+import           Cardano.Server.Client.Class (HasClient(..))
+import           Cardano.Server.Client.Opts  (Options(..), runWithOpts, Mode (..))
+import           Cardano.Server.Config       (Config(..), loadConfig)       
+import           Cardano.Server.Internal     (AppM, runAppM, HasServer(..))
+import           Cardano.Server.Utils.Logger (HasLogger(..), (.<))
+import           Cardano.Server.Utils.Wait   (waitTime)
+import           Control.Monad.Reader        (MonadIO(..), forever, when)
+import           Data.Aeson                  (encode, ToJSON)
+import           Data.ByteString.Lazy        (ByteString)
+import qualified Data.Text                   as T
+import           Network.HTTP.Client         (httpLbs, defaultManagerSettings, newManager, parseRequest, Manager,
+                                              Request(..), RequestBody(..), responseStatus, responseTimeoutMicro, Response)
+import           Network.HTTP.Types.Header   (hContentType)
+import           Network.HTTP.Types.Status   (status204)
+import           System.Random               (randomRIO)
 
 startClient :: forall s. HasClient s => IO ()
 startClient = do

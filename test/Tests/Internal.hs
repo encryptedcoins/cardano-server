@@ -5,18 +5,18 @@
 
 module Tests.Internal where
 
-import           Control.Monad            (unless, forM_)
-import           Control.Monad.IO.Class   (MonadIO(..))
-import           Control.Monad.Reader     (MonadReader, ReaderT(..), asks)
-import           Data.Maybe               (fromJust)
-import qualified Data.Text.IO             as T
-import           IO.Wallet                (HasWallet(..), getWalletAddr, ownAddresses)
-import           Ledger                   (Address)
-import           Server.Endpoints.Funds   (getFunds, Funds(..))
-import           Server.Internal          (HasServer(..), Env(..), loadEnv, AppM, runAppM)
-import           TestingServer.OffChain   (testCurrencySymbol)
-import           Utils.Address            (bech32ToAddress)
-import           Utils.Logger             (HasLogger(..))
+import           Cardano.Server.Endpoints.Funds        (getFunds, Funds(..))
+import           Cardano.Server.Internal               (HasServer(..), Env(..), loadEnv, AppM, runAppM)
+import           Cardano.Server.TestingServer.OffChain (testCurrencySymbol)
+import           Cardano.Server.Utils.Logger           (HasLogger(..))
+import           Control.Monad                         (unless, forM_)
+import           Control.Monad.IO.Class                (MonadIO(..))
+import           Control.Monad.Reader                  (MonadReader, ReaderT(..), asks)
+import           Data.Maybe                            (fromJust)
+import qualified Data.Text.IO                          as T
+import           IO.Wallet                             (HasWallet(..), getWalletAddr, ownAddresses)
+import           Ledger                                (Address)
+import           Utils.Address                         (bech32ToAddress)
 
 testFunds :: forall s. HasServer s => IO ()
 testFunds = runAppM @s $ do
