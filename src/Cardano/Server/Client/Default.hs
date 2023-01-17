@@ -37,6 +37,6 @@ defaultClient fp = void $ do
     Config{..}  <- loadConfig 
     manager     <- newManager defaultManagerSettings
     let fullAddress = concat 
-            ["http://", T.unpack cServerAddress, "/relayRequestSubmitTx"]
+            ["http://", T.unpack cServerAddress, "/submitTx"]
     runAppM @s $ mkRequest fullAddress manager (serverInput, mempty :: MapUTXO)
     

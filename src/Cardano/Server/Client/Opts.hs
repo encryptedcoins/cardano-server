@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving  #-}
 {-# LANGUAGE TypeApplications    #-}
@@ -25,7 +26,13 @@ data ServerEndpoint
     = Ping
     | NewTx
     | SubmitTx
-    deriving (Show, Read)
+    deriving (Read)
+
+instance Show ServerEndpoint where
+    show = \case
+        Ping     -> "ping"
+        NewTx    -> "newTx"
+        SubmitTx -> "submitTx"
 
 serverEndpointParser :: Parser ServerEndpoint
 serverEndpointParser = argument auto 
