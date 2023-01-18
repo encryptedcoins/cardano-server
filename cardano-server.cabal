@@ -40,9 +40,7 @@ library
       Cardano.Server.Endpoints.AddSignature
       Cardano.Server.Endpoints.Funds 
       Cardano.Server.Endpoints.Ping
-      Cardano.Server.Endpoints.Servant
       Cardano.Server.Endpoints.Tx.Class
-      Cardano.Server.Endpoints.Tx.Internal
       Cardano.Server.Endpoints.Tx.New
       Cardano.Server.Endpoints.Tx.Submit      
       Cardano.Server.Error
@@ -86,6 +84,7 @@ library
       prettyprinter                          -any,
       random                                 -any,
       servant                                -any,
+      servant-checked-exceptions             -any,
       servant-server                         -any,
       text                                   -any,
       time                                   -any,

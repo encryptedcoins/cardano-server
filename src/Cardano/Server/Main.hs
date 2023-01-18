@@ -16,6 +16,7 @@ import           Cardano.Server.Endpoints.Tx.Class     (HasTxEndpoints)
 import           Cardano.Server.Endpoints.Tx.Submit    (SubmitTxApi, submitTxHandler, processQueue)
 import           Cardano.Server.Endpoints.Tx.New       (NewTxApi, newTxHandler)
 import           Cardano.Server.Endpoints.Ping         (PingApi, pingHandler)
+import           Cardano.Server.Error                  (errorMW)
 import           Cardano.Server.Internal               (NetworkM(..), Env, loadEnv)
 import           Cardano.Server.Tx                     (checkForCleanUtxos)
 import           Control.Concurrent                    (forkIO)
@@ -61,7 +62,7 @@ runServer = do
         hSetBuffering stdout LineBuffering
         forkIO $ processQueue env
         prepareServer env 
-        Warp.run port $ mkApp @s env
+        Warp.run port $ errorMW $ mkApp @s env
     where
         prepareServer env = runExceptT . runHandler' . flip runReaderT env . unNetworkM $ do 
             logMsg "Starting server..."

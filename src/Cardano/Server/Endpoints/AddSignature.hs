@@ -1,46 +1,45 @@
 {-# LANGUAGE DataKinds                  #-}
+{-# LANGUAGE DerivingVia                #-}
+{-# LANGUAGE LambdaCase                 #-}
 {-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE RankNTypes                 #-}
-{-# LANGUAGE ScopedTypeVariables        #-}
-{-# LANGUAGE TypeApplications           #-}
 {-# LANGUAGE TypeOperators              #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE DeriveAnyClass #-}
 
 module Cardano.Server.Endpoints.AddSignature where
 
-import           Cardano.Server.Endpoints.Servant (respondWithStatus)
+import           Cardano.Server.Error             (ExceptionDeriving(..), Envelope, IsCardanoServerError(..), Throws,
+                                                   toEnvelope)
 import           Cardano.Server.Internal          (NetworkM)
 import           Cardano.Server.Utils.Logger      (HasLogger(..), (.<))
-import           Control.Monad.Catch              (Exception, MonadThrow (..), handle)
+import           Control.Monad.Catch              (Exception, MonadThrow (..))
 import           Data.Text                        (Text)
-import           Servant                          (JSON, (:>), ReqBody, StdMethod(POST), UVerb, Union, WithStatus)
+import           Servant                          (JSON, (:>), ReqBody, Post)
 import           Utils.Tx                         (textToCardanoTx)
+
+type AddSignatureApi s = "addSignature"
+              :> Throws AddSignatureError
+              :> ReqBody '[JSON] AddSignatureReqBody
+              :> Post '[JSON] Text
 
 type AddSignatureReqBody = (Text, Text)
 
-type AddSignatureApi s = "addSignature"
-              :> ReqBody '[JSON] AddSignatureReqBody
-              :> UVerb 'POST '[JSON] AddSignatureApiResult
+data AddSignatureError 
+    = UnparsableTx Text 
+    | UnparsableSignature Text
+    deriving Show
+    deriving Exception via ExceptionDeriving AddSignatureError
 
-type AddSignatureApiResult = '[WithStatus 200 Text, WithStatus 400 Text]
+instance IsCardanoServerError AddSignatureError where
+    errStatus _ = toEnum 400
+    errMsg = \case 
+        UnparsableTx tx -> "Cannot deserialise to CardanoTx:" .< tx
+        UnparsableSignature sig -> "Cannot deserialise to CardanoTx:" .< sig
 
-data AddSignatureError = UnparsableTx Text | UnparsableSignature Text
-    deriving (Show, Exception)
-
-addSignatureHandler :: AddSignatureReqBody -> NetworkM s (Union AddSignatureApiResult)
-addSignatureHandler req@(tx, sig) = handle addSignatureErrorHandler $ do
+addSignatureHandler :: AddSignatureReqBody -> NetworkM s (Envelope '[AddSignatureError] Text)
+addSignatureHandler req@(tx, sig) = toEnvelope $ do
     logMsg $ "New AddSignature request received:\n" .< req
     case textToCardanoTx tx of
-      Just _ -> do
-        logMsg tx
-        logMsg sig
-        respondWithStatus @200 $ "Adding signature here..."
-      Nothing  -> throwM $ UnparsableTx tx
-
-addSignatureErrorHandler :: AddSignatureError -> NetworkM s (Union AddSignatureApiResult)
-addSignatureErrorHandler = \case
-    UnparsableTx tx         -> respondWithStatus @400 $
-        "Cannot deserialise to CardanoTx:" .< tx
-    UnparsableSignature sig -> respondWithStatus @400 $
-        "Cannot deserialise to CardanoTx:" .< sig
+        Just _ -> do
+            logMsg tx
+            logMsg sig
+            pure "Adding signature here..."
+        Nothing  -> throwM $ UnparsableTx tx

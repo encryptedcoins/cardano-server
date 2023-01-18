@@ -13,32 +13,34 @@
 module Cardano.Server.Endpoints.Tx.Submit where
 
 import           Cardano.Server.Endpoints.Tx.Class (HasTxEndpoints(..))     
-import           Cardano.Server.Error              (handleUnavailableEndpoints)
+import           Cardano.Server.Error              (ConnectionError, Envelope, Throws, toEnvelope)
 import           Cardano.Server.Internal           (getQueueRef, NetworkM, Env(..), HasServer(..), QueueRef, QueueElem, Queue)
 import           Cardano.Server.Tx                 (mkTx, checkForCleanUtxos)
 import           Cardano.Server.Utils.Logger       (HasLogger(..), (.<), logSmth)
 import           Cardano.Server.Utils.Wait         (waitTime)
 import           Control.Monad                     (join, void, when, liftM3)
 import           Control.Monad.IO.Class            (MonadIO(..))
-import           Control.Monad.Catch               (SomeException, catch, handle, MonadThrow, MonadCatch)
+import           Control.Monad.Catch               (SomeException, catch, MonadThrow, MonadCatch)
 import           Control.Monad.Reader              (ReaderT(..), MonadReader, asks)
 import           Data.IORef                        (atomicWriteIORef, atomicModifyIORef, readIORef)
 import           Data.Sequence                     (Seq(..), (|>))
 import           IO.Wallet                         (HasWallet(..))
-import           Servant                           (NoContent(..), JSON, (:>), ReqBody, respond, StdMethod(POST),
-                                                    UVerb, Union)
+import           Servant                           (NoContent(..), JSON, (:>), ReqBody, Post)
 
 type SubmitTxApi s = "submitTx"
-              :> ReqBody '[JSON] (TxApiRequestOf s)
-              :> UVerb 'POST '[JSON] (TxApiResultOf s)
+    :> Throws ConnectionError
+    :> ReqBody '[JSON] (TxApiRequestOf s)
+    :> Post '[JSON] NoContent
 
-submitTxHandler :: forall s. HasTxEndpoints s => TxApiRequestOf s -> NetworkM s (Union (TxApiResultOf s))
-submitTxHandler req = handleUnavailableEndpoints @s $ handle txEndpointsErrorHandler $ do
+submitTxHandler :: forall s. HasTxEndpoints s 
+    => TxApiRequestOf s 
+    -> NetworkM s (Envelope '[ConnectionError] NoContent)
+submitTxHandler req = toEnvelope $ do
     logMsg $ "New submitTx request received:\n" .< req
     arg <- txEndpointsProcessRequest req
     ref <- getQueueRef
     liftIO $ atomicModifyIORef ref ((,()) . (|> arg))
-    respond NoContent
+    pure NoContent
 
 newtype QueueM s a = QueueM { unQueueM :: ReaderT (Env s) IO a }
     deriving newtype

@@ -4,12 +4,13 @@
 {-# LANGUAGE TypeApplications           #-}
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE UndecidableInstances       #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module Cardano.Server.TestingServer.Main (TestingServer) where
 
 import Cardano.Server.Endpoints.Tx.Class     (HasTxEndpoints(..))
-import Cardano.Server.Endpoints.Tx.Internal  (DefaultTxApiResult)
-import Cardano.Server.Endpoints.Servant      (respondWithStatus) 
 import Cardano.Server.Class                  (HasServer(..))
 import Cardano.Server.Client.Class           (HasClient(..))
 import Cardano.Server.TestingServer.OffChain (testMintTx)
@@ -21,6 +22,7 @@ import Plutus.V2.Ledger.Api                  (BuiltinByteString)
 import PlutusTx.Builtins.Class               (stringToBuiltinByteString)
 import System.Random                         (randomRIO, randomIO)
 import Utils.ChainIndex                      (MapUTXO)
+import Cardano.Server.Error (ExceptionDeriving(..), IsCardanoServerError(..))
 
 data TestingServer
 
@@ -36,10 +38,11 @@ instance HasTxEndpoints TestingServer where
 
     type TxApiRequestOf TestingServer = (InputOf TestingServer, MapUTXO)
 
-    type TxApiResultOf TestingServer = DefaultTxApiResult
+    -- type TxApiResultOf TestingServer = DefaultTxApiResult
 
     data (TxEndpointsErrorOf TestingServer) = HasDuplicates
-        deriving (Show, Exception)
+        deriving Show
+        deriving Exception via (ExceptionDeriving (TxEndpointsErrorOf TestingServer))
 
     txEndpointsProcessRequest req@(bbs, _) = do
         let hasDuplicates = length bbs /= length (nub bbs)
@@ -47,9 +50,10 @@ instance HasTxEndpoints TestingServer where
         return req
 
     txEndpointsTxBuilders bbs = pure [testMintTx bbs]
-    
-    txEndpointsErrorHandler _ = respondWithStatus @422
-        "The request contains duplicate tokens and will not be processed."
+
+instance IsCardanoServerError (TxEndpointsErrorOf TestingServer) where
+    errStatus _ = toEnum 422
+    errMsg _ = "The request contains duplicate tokens and will not be processed."
 
 instance HasClient TestingServer where
 

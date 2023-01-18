@@ -4,30 +4,43 @@
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE TypeApplications           #-}
 {-# LANGUAGE TypeOperators              #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE DerivingVia #-}
 
 module Cardano.Server.Endpoints.Tx.New where
 
-import           Cardano.Server.Endpoints.Servant     (respondWithStatus)
 import           Cardano.Server.Endpoints.Tx.Class    (HasTxEndpoints(..))
-import           Cardano.Server.Endpoints.Tx.Internal (NewTxEndpointResult(..))
-import           Cardano.Server.Error                 (handleUnavailableEndpoints)
 import           Cardano.Server.Internal              (NetworkM, HasServer(..))
 import           Cardano.Server.Tx                    (mkBalanceTx)
 import           Cardano.Server.Utils.Logger          (HasLogger(..), (.<))
 import           Control.Monad                        (join, liftM3)
-import           Control.Monad.Catch                  (handle)
-import           Servant                              (JSON, (:>), ReqBody, respond, StdMethod(POST), UVerb, Union)
+import           Control.Monad.Catch                  (Exception, MonadThrow (throwM))
+import           Servant                              (JSON, (:>), ReqBody, Post)
 import           Utils.Tx                             (cardanoTxToText)
+import Cardano.Server.Error
+import Ledger (CardanoTx)
+import Data.Text (Text)
 
 type NewTxApi s = "newTx"
+              :> Throws NewTxApiError
+              :> Throws ConnectionError
               :> ReqBody '[JSON] (TxApiRequestOf s)
-              :> UVerb 'POST '[JSON] (TxApiResultOf s)
+              :> Post '[JSON] Text
 
-newTxHandler :: forall s. HasTxEndpoints s => TxApiRequestOf s-> NetworkM s (Union (TxApiResultOf s))
-newTxHandler req = handleUnavailableEndpoints $ handle txEndpointsErrorHandler $ do
+newtype NewTxApiError = UnserialisableBalancedTx CardanoTx
+    deriving Show
+    deriving Exception via (ExceptionDeriving NewTxApiError)
+
+instance IsCardanoServerError NewTxApiError where
+    errStatus _ = toEnum 422
+    errMsg (UnserialisableBalancedTx tx) = "Can't serialise balanced tx:" .< tx
+
+newTxHandler :: forall s. HasTxEndpoints s => TxApiRequestOf s
+    -> NetworkM s (Envelope '[NewTxApiError, ConnectionError] Text)
+newTxHandler req = toEnvelope $ do
     logMsg $ "New newTx request received:\n" .< req
     (input, utxosExternal) <- txEndpointsProcessRequest req
     balancedTx <- join $ liftM3 mkBalanceTx (serverTrackedAddresses @s) (pure utxosExternal) (txEndpointsTxBuilders @s input)
     case cardanoTxToText balancedTx of
-        Just res -> respond $ NewTxEndpointResult res
-        Nothing -> respondWithStatus @422 $ "Can't serialise balanced tx:" .< balancedTx
+        Just res -> pure res
+        Nothing -> throwM $ UnserialisableBalancedTx balancedTx
