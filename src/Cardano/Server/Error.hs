@@ -42,6 +42,7 @@ import           IO.ChainIndex                    (pattern ChainIndexConnectionE
 import           IO.Wallet                        (pattern WalletApiConnectionError)
 import           Network.Wai                      (Middleware, responseLBS)
 import           Network.HTTP.Types               (Status)
+import           Servant                          (NoContent)
 import           Servant.Checked.Exceptions       (ErrStatus(..), toErrEnvelope, Envelope, IsMember, Contains,
                                                    toSuccEnvelope, Throws)
 import           Utils.Servant                    (ConnectionError(..))
@@ -129,3 +130,8 @@ withErrorHandler = handle (pure . toErrEnvelope @e)
 type family All (constr :: Type -> Constraint) (xs :: [Type]) :: Constraint where
     All _ '[]       = ()
     All c (x ': xs) = (c x, All c xs)
+
+------------------------------------------------ Servant orphan instances ------------------------------------------------
+
+instance ToJSON NoContent where
+    toJSON _ = J.Null 

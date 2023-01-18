@@ -1,4 +1,6 @@
 {-# LANGUAGE DataKinds                  #-}
+{-# LANGUAGE DeriveAnyClass             #-}
+{-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE DerivingVia                #-}
 {-# LANGUAGE LambdaCase                 #-}
 {-# LANGUAGE OverloadedStrings          #-}
@@ -11,7 +13,9 @@ import           Cardano.Server.Error             (ExceptionDeriving(..), Envelo
 import           Cardano.Server.Internal          (NetworkM)
 import           Cardano.Server.Utils.Logger      (HasLogger(..), (.<))
 import           Control.Monad.Catch              (Exception, MonadThrow (..))
+import           Data.Aeson                       (ToJSON)
 import           Data.Text                        (Text)
+import           GHC.Generics                     (Generic)
 import           Servant                          (JSON, (:>), ReqBody, Post)
 import           Utils.Tx                         (textToCardanoTx)
 
@@ -25,7 +29,7 @@ type AddSignatureReqBody = (Text, Text)
 data AddSignatureError 
     = UnparsableTx Text 
     | UnparsableSignature Text
-    deriving Show
+    deriving (Show, Generic, ToJSON)
     deriving Exception via ExceptionDeriving AddSignatureError
 
 instance IsCardanoServerError AddSignatureError where

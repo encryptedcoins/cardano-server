@@ -1,25 +1,29 @@
 {-# LANGUAGE DataKinds                  #-}
+{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE DerivingVia                #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE RankNTypes                 #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE TypeApplications           #-}
 {-# LANGUAGE TypeOperators              #-}
-{-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE DerivingVia #-}
 
 module Cardano.Server.Endpoints.Tx.New where
 
 import           Cardano.Server.Endpoints.Tx.Class    (HasTxEndpoints(..))
+import           Cardano.Server.Error                 (ConnectionError, Envelope, Throws, IsCardanoServerError(..),
+                                                       ExceptionDeriving(..), toEnvelope)
 import           Cardano.Server.Internal              (NetworkM, HasServer(..))
 import           Cardano.Server.Tx                    (mkBalanceTx)
 import           Cardano.Server.Utils.Logger          (HasLogger(..), (.<))
 import           Control.Monad                        (join, liftM3)
 import           Control.Monad.Catch                  (Exception, MonadThrow (throwM))
+import           Data.Aeson                           (ToJSON)
+import           Data.Text                            (Text)
+import           GHC.Generics                         (Generic)
+import           Ledger                               (CardanoTx)
 import           Servant                              (JSON, (:>), ReqBody, Post)
 import           Utils.Tx                             (cardanoTxToText)
-import Cardano.Server.Error
-import Ledger (CardanoTx)
-import Data.Text (Text)
 
 type NewTxApi s = "newTx"
               :> Throws NewTxApiError
@@ -28,7 +32,7 @@ type NewTxApi s = "newTx"
               :> Post '[JSON] Text
 
 newtype NewTxApiError = UnserialisableBalancedTx CardanoTx
-    deriving Show
+    deriving (Show, Generic, ToJSON)
     deriving Exception via (ExceptionDeriving NewTxApiError)
 
 instance IsCardanoServerError NewTxApiError where

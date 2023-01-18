@@ -1,18 +1,18 @@
-{-# LANGUAGE DataKinds                  #-}
-{-# LANGUAGE DeriveAnyClass             #-}
+{-# LANGUAGE DerivingVia                #-}
+{-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE TypeApplications           #-}
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE UndecidableInstances       #-}
-{-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE DerivingVia #-}
-{-# LANGUAGE FlexibleInstances #-}
 
-module Cardano.Server.TestingServer.Main (TestingServer) where
+module Cardano.Server.TestingServer.Main (TestingServer, runTestingServer, runTestingClient) where
 
+import Cardano.Server.Client.Client          (startClient)
 import Cardano.Server.Endpoints.Tx.Class     (HasTxEndpoints(..))
+import Cardano.Server.Error                  (ExceptionDeriving(..), IsCardanoServerError(..))
 import Cardano.Server.Class                  (HasServer(..))
 import Cardano.Server.Client.Class           (HasClient(..))
+import Cardano.Server.Main                   (runServer)
 import Cardano.Server.TestingServer.OffChain (testMintTx)
 import Control.Monad                         (when, replicateM)
 import Control.Monad.Catch                   (Exception, throwM)
@@ -22,7 +22,12 @@ import Plutus.V2.Ledger.Api                  (BuiltinByteString)
 import PlutusTx.Builtins.Class               (stringToBuiltinByteString)
 import System.Random                         (randomRIO, randomIO)
 import Utils.ChainIndex                      (MapUTXO)
-import Cardano.Server.Error (ExceptionDeriving(..), IsCardanoServerError(..))
+ 
+runTestingServer :: IO ()
+runTestingServer = runServer @TestingServer
+
+runTestingClient :: IO ()
+runTestingClient = startClient @TestingServer
 
 data TestingServer
 
@@ -37,8 +42,6 @@ instance HasServer TestingServer where
 instance HasTxEndpoints TestingServer where
 
     type TxApiRequestOf TestingServer = (InputOf TestingServer, MapUTXO)
-
-    -- type TxApiResultOf TestingServer = DefaultTxApiResult
 
     data (TxEndpointsErrorOf TestingServer) = HasDuplicates
         deriving Show

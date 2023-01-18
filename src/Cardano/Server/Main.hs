@@ -12,7 +12,7 @@ module Cardano.Server.Main where
 
 import           Cardano.Server.Endpoints.AddSignature (AddSignatureApi, addSignatureHandler)
 import           Cardano.Server.Endpoints.Funds        (FundsApi, fundsHandler)
-import           Cardano.Server.Endpoints.Tx.Class     (HasTxEndpoints)
+import           Cardano.Server.Endpoints.Tx.Class     (HasTxEndpoints(..))
 import           Cardano.Server.Endpoints.Tx.Submit    (SubmitTxApi, submitTxHandler, processQueue)
 import           Cardano.Server.Endpoints.Tx.New       (NewTxApi, newTxHandler)
 import           Cardano.Server.Endpoints.Ping         (PingApi, pingHandler)
@@ -27,8 +27,8 @@ import qualified Network.Wai                           as Wai
 import qualified Network.Wai.Handler.Warp              as Warp
 import           Network.Wai.Middleware.Cors           (CorsResourcePolicy(..), simpleCorsResourcePolicy, cors)
 import qualified Servant
-import           Servant                               (Proxy(..), type (:<|>)(..), ServerT, Context(EmptyContext),
-                                                        hoistServer, serveWithContext, Application, runHandler')
+import           Servant                               (Proxy(..), type (:<|>)(..), ServerT,
+                                                        hoistServer, Application, runHandler', serve)
 import           System.IO                             (stdout, BufferMode(LineBuffering), hSetBuffering)
 
 type ServerAPI s
@@ -73,5 +73,5 @@ corsWithContentType = cors (const $ Just policy)
     where policy = simpleCorsResourcePolicy { corsRequestHeaders = ["Content-Type"] }
 
 mkApp :: forall s. ServerConstraints s => Env s -> Application
-mkApp env = corsWithContentType $ serveWithContext (serverAPI @s) EmptyContext $
+mkApp env = corsWithContentType $ serve (serverAPI @s) $
     hoistServer (serverAPI @s) ((`runReaderT` env) . unNetworkM) server
