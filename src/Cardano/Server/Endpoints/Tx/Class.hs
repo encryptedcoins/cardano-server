@@ -1,10 +1,10 @@
+{-# LANGUAGE DerivingVia                #-}
 {-# LANGUAGE DataKinds                  #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE UndecidableInstances       #-}
 {-# LANGUAGE UndecidableSuperClasses    #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE StandaloneDeriving         #-}
 
 module Cardano.Server.Endpoints.Tx.Class where
 
