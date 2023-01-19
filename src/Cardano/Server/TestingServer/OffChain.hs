@@ -7,8 +7,9 @@
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE TypeFamilies               #-}
 
-module TestingServer.OffChain where
+module Cardano.Server.TestingServer.OffChain where
 
+import           Cardano.Server.TestingServer.OnChain (testPolicy, testTokenName, testTypedValidator)
 import           Control.Monad.State                  (State)
 import           Ledger.Tokens                        (token)
 import           Ledger.Typed.Scripts                 (Any)
@@ -19,7 +20,6 @@ import           Plutus.V2.Ledger.Api                 (Value, Validator, Currenc
 import           PlutusTx.Prelude 
 import           Constraints.OffChain                 (tokensMintedTx)
 import           Types.Tx                             (TxConstructor (..))
-import           TestingServer.OnChain                (testPolicy, testTokenName, testTypedValidator)
 
 type TestTransaction = TxConstructor Any (RedeemerType Any) (DatumType Any)
 type TestTransactionBuilder = State TestTransaction ()

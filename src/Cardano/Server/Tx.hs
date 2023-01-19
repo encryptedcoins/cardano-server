@@ -1,3 +1,6 @@
+{-# LANGUAGE DeriveAnyClass      #-}
+{-# LANGUAGE DeriveGeneric       #-}
+{-# LANGUAGE DerivingVia         #-}
 {-# LANGUAGE ConstraintKinds     #-}
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE ImplicitParams      #-}
@@ -6,31 +9,35 @@
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Server.Tx where
+module Cardano.Server.Tx where
 
-import           Cardano.Api.Shelley       (NetworkMagic(..), NetworkId(..))
-import           Control.Monad             (when)
-import           Control.Monad.Extra       (mconcatMapM)
-import           Control.Monad.State       (State, get, put, execState, MonadIO(..))
-import           Data.Default              (Default(..))
-import qualified Data.Map                  as Map
-import           Data.Maybe                (fromJust, isNothing)
-import           Data.Void                 (Void)
-import           Ledger                    (Address, CardanoTx(..), Params(..), POSIXTime, PubKeyHash, TxOutRef,
-                                            PaymentPubKeyHash(..), StakingCredential, stakingCredential, pParamsFromProtocolParams)
-import           Ledger.Ada                (lovelaceValueOf) 
-import           Ledger.Constraints        (ScriptLookups, mustPayToPubKey, mustPayToPubKeyAddress)
-import           Ledger.Tx.CardanoAPI      (unspentOutputsTx)
-import           PlutusTx                  (FromData(..), ToData(..))
-import           Plutus.Script.Utils.Typed (RedeemerType, DatumType)
-import           IO.ChainIndex             (getUtxosAt)
-import           IO.Time                   (currentTime)
-import           IO.Wallet                 (HasWallet(..), signTx, balanceTx, submitTxConfirmed, getWalletAddr,
-                                            getWalletAddrBech32, getWalletKeyHashes)
-import           Server.Config             (decodeOrErrorFromFile)
-import           Types.Tx                  (TxConstructor (..), selectTxConstructor, mkTxConstructor)
-import           Utils.ChainIndex          (MapUTXO)
-import           Utils.Logger              (HasLogger(..), logPretty, logSmth)
+import           Control.Exception           (Exception)
+import           Cardano.Server.Error        (ExceptionDeriving(..), IsCardanoServerError(..))
+import           Cardano.Server.Internal     (Env(..))
+import           Cardano.Server.Utils.Logger (HasLogger(..), logPretty, logSmth)
+import           Control.Monad.Catch         (MonadThrow(..))
+import           Control.Monad.Extra         (mconcatMapM, when, void)
+import           Control.Monad.IO.Class      (MonadIO(..))
+import           Control.Monad.Reader        (MonadReader, asks)
+import           Control.Monad.State         (State, get, put, execState)
+import           Data.Aeson                  (ToJSON)
+import qualified Data.Map                    as Map
+import           Data.Maybe                  (fromJust, isNothing)
+import           Data.Void                   (Void)
+import           GHC.Generics                (Generic)
+import           Ledger                      (Address, CardanoTx(..), Params(..), POSIXTime, PubKeyHash, TxOutRef,
+                                              PaymentPubKeyHash(..), StakingCredential, stakingCredential)
+import           Ledger.Ada                  (lovelaceValueOf) 
+import           Ledger.Constraints          (ScriptLookups, mustPayToPubKey, mustPayToPubKeyAddress)
+import           Ledger.Tx.CardanoAPI        (unspentOutputsTx)
+import           PlutusTx                    (FromData(..), ToData(..))
+import           Plutus.Script.Utils.Typed   (RedeemerType, DatumType)
+import           IO.ChainIndex               (getUtxosAt, getWalletUtxos)
+import           IO.Time                     (currentTime)
+import           IO.Wallet                   (HasWallet(..), signTx, balanceTx, submitTxConfirmed, getWalletAddr,
+                                              getWalletAddrBech32, getWalletKeyHashes)
+import           Types.Tx                    (TxConstructor (..), selectTxConstructor, mkTxConstructor)
+import           Utils.ChainIndex            (MapUTXO, filterCleanUtxos)
 
 type HasTxEnv =
     ( ?txWalletAddr :: Address
@@ -41,7 +48,7 @@ type HasTxEnv =
     , ?txParams     :: Params
     )
 
-type MkTxConstraints a m =
+type MkTxConstraints a m s =
     ( FromData (DatumType a)
     , ToData   (DatumType a)
     , ToData   (RedeemerType a)
@@ -49,9 +56,19 @@ type MkTxConstraints a m =
     , Show     (RedeemerType a)
     , HasWallet m
     , HasLogger m
+    , MonadReader (Env s) m
+    , MonadThrow m
     )
 
-mkBalanceTx :: forall a m. MkTxConstraints a m 
+data MkTxError = UnbuildableTx
+    deriving (Show, Generic, ToJSON)
+    deriving Exception via (ExceptionDeriving MkTxError) 
+
+instance IsCardanoServerError MkTxError where
+    errStatus _ = toEnum 422
+    errMsg _ = "The requested transaction could not be built."
+
+mkBalanceTx :: MkTxConstraints a m s
     => [Address]
     -> MapUTXO
     -> (HasTxEnv => [State (TxConstructor a (RedeemerType a) (DatumType a)) ()])
@@ -62,11 +79,8 @@ mkBalanceTx addressesTracked utxosExternal txs = do
     (walletPKH, walletSKH) <- getWalletKeyHashes
     utxosTracked           <- liftIO $ mconcatMapM getUtxosAt addressesTracked
     ct                     <- liftIO currentTime
-    params                 <- liftIO $ decodeOrErrorFromFile "testnet/protocol-parameters.json"
+    ledgerParams           <- asks envLedgerParams
     let utxos = utxosTracked `Map.union` utxosExternal
-
-    let networkId = Testnet $ NetworkMagic 2
-        ledgerParams = Params def (pParamsFromProtocolParams params) networkId
 
     let ?txWalletAddr = walletAddr
         ?txWalletPKH  = unPaymentPubKeyHash walletPKH
@@ -85,6 +99,7 @@ mkBalanceTx addressesTracked utxosExternal txs = do
     when (isNothing constr) $ do
         logMsg "\tNo transactions can be constructed. Last error:"
         logSmth $ head $ txConstructorErrors $ last $ map (`execState` constrInit) txs
+        throwM UnbuildableTx
     let (lookups, cons) = fromJust $ txConstructorResult $ fromJust constr
     logMsg "\tLookups:"
     logSmth lookups
@@ -94,7 +109,7 @@ mkBalanceTx addressesTracked utxosExternal txs = do
     logMsg "Balancing..."
     balanceTx ledgerParams lookups cons
 
-mkTx :: forall a m. MkTxConstraints a m 
+mkTx :: MkTxConstraints a m s
     => [Address]
     -> MapUTXO
     -> (HasTxEnv => [State (TxConstructor a (RedeemerType a) (DatumType a)) ()])
@@ -110,7 +125,16 @@ mkTx addressesTracked utxosExternal txs = do
     logMsg "Submited."
     return signedTx
 
-mkWalletTxOutRefs :: MkTxConstraints Void m => Address -> Int -> m [TxOutRef]
+checkForCleanUtxos :: MkTxConstraints Void m s => m ()
+checkForCleanUtxos = do
+    addr       <- getWalletAddr
+    cleanUtxos <- length . filterCleanUtxos <$> getWalletUtxos
+    minUtxos   <- asks envMinUtxosAmount
+    when (cleanUtxos < minUtxos) $ do
+        logMsg "Address doesn't has enough clean UTXO's."
+        void $ mkWalletTxOutRefs addr (cleanUtxos - minUtxos)
+
+mkWalletTxOutRefs :: MkTxConstraints Void m s => Address -> Int -> m [TxOutRef]
 mkWalletTxOutRefs addr n = do
         signedTx <- mkTx [addr] Map.empty [constructor]
         let refs = case signedTx of

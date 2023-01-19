@@ -4,4 +4,5 @@
 , "auxiliary_env_file"  : "testnet/txOutRef.json"
 , "wallet_file"         : "testnet/wallets/wallet.json"
 , "min_utxos_amount"    : 1
+, "network_id"          : {"tag" : "Testnet", "contents" : 2}
 }

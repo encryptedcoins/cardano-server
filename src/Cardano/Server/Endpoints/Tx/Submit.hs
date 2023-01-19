@@ -10,33 +10,37 @@
 {-# LANGUAGE TypeOperators              #-}
 {-# LANGUAGE TupleSections              #-}
 
-module Server.Endpoints.Tx.Submit where
+module Cardano.Server.Endpoints.Tx.Submit where
 
-import           Control.Monad                    (join, void, when, liftM3)
-import           Control.Monad.IO.Class           (MonadIO(..))
-import           Control.Monad.Catch              (SomeException, catch, handle, MonadThrow, MonadCatch)
-import           Control.Monad.Reader             (ReaderT(..), MonadReader, asks)
-import           Data.IORef                       (atomicWriteIORef, atomicModifyIORef, readIORef)
-import           Data.Sequence                    (Seq(..), (|>))
-import           IO.Wallet                        (HasWallet(..))
-import           Servant                          (NoContent(..), JSON, (:>), ReqBody, respond, StdMethod(POST), UVerb, Union)
-import           Server.Endpoints.Tx.Class        (HasTxEndpoints(..))     
-import           Server.Class                     (AppM, Env(..), HasServer(..), QueueRef, QueueElem, Queue, getQueueRef, checkForCleanUtxos)
-import           Server.Tx                        (mkTx)
-import           Utils.Logger                     (HasLogger(..), (.<), logSmth)
-import           Utils.Wait                       (waitTime)
+import           Cardano.Server.Endpoints.Tx.Class (HasTxEndpoints(..))     
+import           Cardano.Server.Error              (ConnectionError, Envelope, Throws, toEnvelope)
+import           Cardano.Server.Internal           (getQueueRef, NetworkM, Env(..), HasServer(..), QueueRef, QueueElem, Queue)
+import           Cardano.Server.Tx                 (mkTx, checkForCleanUtxos)
+import           Cardano.Server.Utils.Logger       (HasLogger(..), (.<), logSmth)
+import           Cardano.Server.Utils.Wait         (waitTime)
+import           Control.Monad                     (join, void, when, liftM3)
+import           Control.Monad.IO.Class            (MonadIO(..))
+import           Control.Monad.Catch               (SomeException, catch, MonadThrow, MonadCatch)
+import           Control.Monad.Reader              (ReaderT(..), MonadReader, asks)
+import           Data.IORef                        (atomicWriteIORef, atomicModifyIORef, readIORef)
+import           Data.Sequence                     (Seq(..), (|>))
+import           IO.Wallet                         (HasWallet(..))
+import           Servant                           (NoContent(..), JSON, (:>), ReqBody, Post)
 
 type SubmitTxApi s = "submitTx"
-              :> ReqBody '[JSON] (TxApiRequestOf s)
-              :> UVerb 'POST '[JSON] (TxApiResultOf s)
+    :> Throws ConnectionError
+    :> ReqBody '[JSON] (TxApiRequestOf s)
+    :> Post '[JSON] NoContent
 
-submitTxHandler :: forall s. HasTxEndpoints s => TxApiRequestOf s ->  AppM s (Union (TxApiResultOf s))
-submitTxHandler req = handle txEndpointsErrorHandler $ do
+submitTxHandler :: forall s. HasTxEndpoints s 
+    => TxApiRequestOf s 
+    -> NetworkM s (Envelope '[ConnectionError] NoContent)
+submitTxHandler req = toEnvelope $ do
     logMsg $ "New submitTx request received:\n" .< req
     arg <- txEndpointsProcessRequest req
     ref <- getQueueRef
     liftIO $ atomicModifyIORef ref ((,()) . (|> arg))
-    respond NoContent
+    pure NoContent
 
 newtype QueueM s a = QueueM { unQueueM :: ReaderT (Env s) IO a }
     deriving newtype
@@ -77,7 +81,13 @@ processQueueElem qRef qElem@(red, externalUtxos) elems = do
     logMsg $ "New input to process:" .< red <> "\nUtxos:" .< externalUtxos
     processTokens @s qElem
 
-processTokens :: forall s m. (HasTxEndpoints s, HasWallet m, HasLogger m, MonadReader (Env s) m) => QueueElem s -> m ()
+processTokens :: forall s m. 
+    (HasTxEndpoints s
+    , HasWallet m
+    , HasLogger m
+    , MonadReader (Env s) m
+    , MonadThrow m
+    ) => QueueElem s -> m ()
 processTokens (red, utxosExternal) = do
     checkForCleanUtxos
     void $ join $ liftM3 mkTx (serverTrackedAddresses @s) (pure utxosExternal) $ txEndpointsTxBuilders @s red

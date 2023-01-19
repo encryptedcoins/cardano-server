@@ -3,7 +3,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications    #-}
 
-module Utils.Logger where
+module Cardano.Server.Utils.Logger where
 
 import           Control.Exception      (handle, throw)
 import           Control.Monad.IO.Class (MonadIO(..))

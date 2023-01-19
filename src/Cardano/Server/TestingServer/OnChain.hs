@@ -16,18 +16,19 @@
 {-# LANGUAGE TypeOperators              #-}
 {-# LANGUAGE TupleSections              #-}
 
-module TestingServer.OnChain where
+module Cardano.Server.TestingServer.OnChain where
 
 import           Cardano.Ledger.Alonzo.Language       (Language(PlutusV2))
+import           Constraints.OnChain                  (tokensMinted)
 import           Ledger                               (Versioned(..), Validator)
-import           Plutus.Script.Utils.V2.Typed.Scripts (ValidatorTypes (..), TypedValidator,
-                                                        mkTypedValidator, mkUntypedValidator, mkUntypedMintingPolicy, validatorScript)
-import           Plutus.V2.Ledger.Api                 (ScriptContext(..), MintingPolicy, TokenName (..), mkMintingPolicyScript, ScriptHash, unMintingPolicyScript)
+import           Plutus.Script.Utils.V2.Typed.Scripts (ValidatorTypes (..), TypedValidator, mkTypedValidator, mkUntypedValidator,
+                                                       mkUntypedMintingPolicy, validatorScript)
+import           Plutus.V2.Ledger.Api                 (ScriptContext(..), MintingPolicy, TokenName (..), mkMintingPolicyScript,
+                                                       ScriptHash, unMintingPolicyScript)
 import           PlutusTx                             (compile)
 import           PlutusTx.AssocMap                    (fromList)
 import           PlutusTx.Prelude                     (BuiltinByteString, Bool (..), ($), map)
 import           Plutus.Script.Utils.V2.Scripts       (scriptHash)
-import           Constraints.OnChain                  (tokensMinted)
 
 ------------------------------------- Test Minting Policy --------------------------------------
 

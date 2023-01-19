@@ -18,7 +18,7 @@ Key features:
 
 To specialize cardano-server for your own application, make a new data type and define instances of the following classes: `HasServer`, `HasClient` (optional), and `HasTxEndpoints` (optional).
 
-1. [HasServer](https://github.com/encryptedcoins/cardano-server/blob/main/src/Server/Class.hs):
+1. [HasServer](https://github.com/encryptedcoins/cardano-server/blob/main/src/Cardano/Server/Class.hs):
 
 A class that defines a cardano-server:
 * `AuxiliaryEnvOf` represents auxiliary environment data that the server must be aware of. Normally, this data contains parameters specific to your application.
@@ -28,16 +28,18 @@ A class that defines a cardano-server:
 * `serverIdle` defines actions that must be performed on repeat whenever the server is idle.
 * `serverTrackedAddresses` defines actions that return the list of currently tracked Cardano network addresses. UTXOs from these addresses can be used for constructing transactions.
 
-2. [HasClient](https://github.com/encryptedcoins/cardano-server/blob/main/src/Client/Class.hs):
+2. [HasClient](https://github.com/encryptedcoins/cardano-server/blob/main/src/Cardano/Server/Client/Class.hs):
 
 A class that defines a console client corresponding to your cardano-server. The console client allows you to construct and send requests to the server using the command line.
 
-* `RequestTermOf` is a type for the internal representation of a command line term that the client may encounter.
-* `parseRequestTerm` is the parser used to get the next `RequestTermOf` from the command line.
-* `genRequestTerm` defines the actions that generate a `RequestTermOf` term.
-* `makeServerInput` defines the actions that create an `InputOf` type that the server expects.
+* `parseServerInput` is the parser used to get `InputOf` your server from the command line. Optional if `InputOf` your server has a read instance.
+* `genServerInput` is the generator used to generate `InputOf` your server. Optional if `InputOf` your server has a random instance. 
+* `extractActionsFromInput` is function, used to get actions from the `InputOf` your server that will be performed before the request is sent and after a successful response is received, respectively. It can be useful, for example, if you need to write some additional information about your inputs to external files. Optional if you don't need to execute any actions.
+* `addExternalUtxosToInput` is function that will add external UTXOs to your input before sending a request. Optional if you don't have them.
 
-3. [HasTxEndpoints](https://github.com/encryptedcoins/cardano-server/blob/main/src/Server/Endpoints/Tx/Class.hs):
+Alternatively, you can use the [defaultClient](https://github.com/encryptedcoins/cardano-server/blob/main/src/Cardano/Server/Client/Default.hs) which requires only `FromJSON` instance of `InputOf` your server instead of `HasClient` class. It will read `InputOf` your server from the file and send respective request to `sumbitTx` endpoint of your server.
+
+3. [HasTxEndpoints](https://github.com/encryptedcoins/cardano-server/blob/main/src/Cardano/Server/Endpoints/Tx/Class.hs):
 
 A class that defines two API endpoints on the server: `newTx` and `sumbitTx`. This class defines the following:
 
@@ -50,27 +52,27 @@ A class that defines two API endpoints on the server: `newTx` and `sumbitTx`. Th
 
 # Test server commands
 
-This library includes the [test-server](https://github.com/encryptedcoins/cardano-server/blob/main/src/TestingServer/Main.hs) which is the simplest backend application that can be built on top of cardano-server. You can use it as a starting point for your own app development. Here is how to use the test-server and test-client.
+This library includes the [test-server](https://github.com/encryptedcoins/cardano-server/blob/main/src/Cardano/Server/TestingServer/Main.hs) which is the simplest backend application that can be built on top of cardano-server. You can use it as a starting point for your own app development. Here is how to use the test-server and test-client.
 
 1. Run server which works with test tokens:</br>
 ```console
 $ cabal run testingServer
 ```
 
-2. Run client in automatic mode in which it will send up to *maximum* test tokens at an average *interval* seconds:</br>
+2. Run client in automatic mode in which it will send request to mint test tokens to selected endpoint (default is SubmitTx) at an average *interval* seconds :</br>
 ```console
-$ cabal run testingClient -- --auto -i interval -m maximum
+$ cabal run testingClient -- [Ping | SubmitTx | NewTx] --auto -i interval
 ```
 &emsp;&emsp;For example:
 ```console
-$ cabal run testingClient -- --auto -i 30 -m 5
+$ cabal run testingClient -- SubmitTx --auto -i 30
 ```
 
-3. Run client in manual mode in which it will mint specified test *tokens*:</br>
+3. Run client in manual mode in which it will send request to mint specified test *tokens* to selected endpoint (default is SubmitTx):</br>
 ```console
-$ cabal run testingClient -- --manual token token ...
+$ cabal run testingClient -- [Ping | SubmitTx | NewTx] --manual token token ...
 ```
 &emsp;&emsp;For example:
 ```console
-$ cabal run testingClient -- --manual a72kf wjr82ar4 ...
+$ cabal run testingClient -- NewTx --manual a72kf wjr82ar4 ...
 ```

@@ -1,26 +1,26 @@
+{-# LANGUAGE FlexibleContexts     #-}
 {-# LANGUAGE TypeApplications     #-}
 {-# LANGUAGE ImplicitParams       #-}
 {-# LANGUAGE OverloadedStrings    #-}
 
 module Tests.Reference where
 
-import           Control.Monad            (void)
-import qualified Data.Map                 as Map
-import           IO.Wallet                (getWalletAddr)
-import qualified Ledger.Ada               as Ada
-import           Ledger.Typed.Scripts     (Any)
-import           Constraints.OffChain     (postMintingPolicyTx, referenceMintingPolicyTx)
-import           Server.Endpoints.Servant (respondWithStatus)
-import           Server.Tx                (mkTx)
-import           TestingServer.Main       (TestingServer)
-import           TestingServer.OffChain   (testToken)
-import           TestingServer.OnChain    (testPolicyV, testPolicy)
-import           Tests.Internal           (runTestM)
-import qualified PlutusTx.Prelude         as Plutus
-import           Utils.Logger             (HasLogger(..))
+import           Cardano.Server.Internal                (runAppM)
+import           Cardano.Server.TestingServer.Main      (TestingServer)
+import           Cardano.Server.TestingServer.OffChain  (testToken)
+import           Cardano.Server.TestingServer.OnChain   (testPolicyV, testPolicy)
+import           Cardano.Server.Tx                      (mkTx)
+import           Cardano.Server.Utils.Logger            (HasLogger(..))
+import           Constraints.OffChain                   (postMintingPolicyTx, referenceMintingPolicyTx)
+import           Control.Monad                          (void)
+import qualified Data.Map                               as Map
+import           IO.Wallet                              (getWalletAddr)
+import qualified Ledger.Ada                             as Ada
+import           Ledger.Typed.Scripts                   (Any)
+import qualified PlutusTx.Prelude                       as Plutus
 
 postReferenceScript :: IO ()
-postReferenceScript = void $ runTestM @TestingServer $ do
+postReferenceScript = void $ runAppM @TestingServer $ do
     addr <- getWalletAddr
     mkTx @Any [addr] Map.empty
         [ postMintingPolicyTx 
@@ -31,7 +31,7 @@ postReferenceScript = void $ runTestM @TestingServer $ do
         ]
 
 runReferenceTest :: IO ()
-runReferenceTest = void $ runTestM @TestingServer $ do
+runReferenceTest = void $ runAppM @TestingServer $ do
     addr <- getWalletAddr
     logMsg "\n\n\n\t\t\tMINT1:"
     mkTest "token1" addr

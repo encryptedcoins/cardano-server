@@ -31,25 +31,27 @@ common lang
 library
     import: lang
     exposed-modules: 
-      Client.Class
-      Client.Main
-      Client.Opts
-      Server.Class
-      Server.Config
-      Server.Endpoints.AddSignature
-      Server.Endpoints.Funds 
-      Server.Endpoints.Ping
-      Server.Endpoints.Servant
-      Server.Endpoints.Tx.Class
-      Server.Endpoints.Tx.New
-      Server.Endpoints.Tx.Submit
-      Server.Main
-      Server.Tx
-      TestingServer.Main
-      TestingServer.OnChain
-      TestingServer.OffChain
-      Utils.Logger
-      Utils.Wait
+      Cardano.Server.Client.Class
+      Cardano.Server.Client.Client
+      Cardano.Server.Client.Default
+      Cardano.Server.Client.Opts
+      Cardano.Server.Class
+      Cardano.Server.Config
+      Cardano.Server.Endpoints.AddSignature
+      Cardano.Server.Endpoints.Funds 
+      Cardano.Server.Endpoints.Ping
+      Cardano.Server.Endpoints.Tx.Class
+      Cardano.Server.Endpoints.Tx.New
+      Cardano.Server.Endpoints.Tx.Submit      
+      Cardano.Server.Error
+      Cardano.Server.Internal
+      Cardano.Server.Main
+      Cardano.Server.TestingServer.Main
+      Cardano.Server.TestingServer.OnChain
+      Cardano.Server.TestingServer.OffChain
+      Cardano.Server.Tx
+      Cardano.Server.Utils.Logger
+      Cardano.Server.Utils.Wait
     other-modules:
     default-extensions:
       PartialTypeSignatures
@@ -82,6 +84,7 @@ library
       prettyprinter                          -any,
       random                                 -any,
       servant                                -any,
+      servant-checked-exceptions             -any,
       servant-server                         -any,
       text                                   -any,
       time                                   -any,
@@ -97,13 +100,17 @@ test-suite cardano-server-test
   Ghc-Options:          -rtsopts
                         -fplugin-opt PlutusTx.Plugin:defer-errors
   Main-Is:              Main.hs
-  Other-Modules:        Tests.Internal
+  Other-Modules:        Tests.DefaultClient
+                        Tests.Internal
                         Tests.Reference
                         Tests.TestingServer
   Build-Depends:
     base                          >= 4.9 && < 5,
+    aeson                                  -any,
+    bytestring                             -any,
     cardano-server                         -any,
     containers                             -any,
+    directory                              -any,
     mtl                                    -any,
     plutus-apps-extra                      -any,
     plutus-tx                              -any,

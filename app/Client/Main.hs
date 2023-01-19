@@ -1,9 +1,6 @@
-{-# LANGUAGE TypeApplications #-}
-
 module Main where
 
-import Client.Main        (startClient)
-import TestingServer.Main (TestingServer)
+import Cardano.Server.TestingServer.Main (runTestingClient)
 
 main :: IO ()
-main = startClient @TestingServer
+main = runTestingClient 

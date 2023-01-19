@@ -1,6 +1,6 @@
 module Main where
 
-import Tests.TestingServer
+import Tests.TestingServer (testFundsAllTS)
 
 main :: IO ()
 main = testFundsAllTS

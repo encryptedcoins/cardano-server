@@ -1,11 +1,16 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE OverloadedStrings  #-}
 
-module Server.Config where
-import           Data.Aeson           (FromJSON(parseJSON), eitherDecode, genericParseJSON)
+module Cardano.Server.Config where
+
+import           Cardano.Api          (NetworkId(..))
+import           Data.Aeson           (FromJSON(..), eitherDecode, genericParseJSON)
 import           Data.Aeson.Casing    (aesonPrefix, snakeCase)
 import qualified Data.ByteString      as BS
 import qualified Data.ByteString.Lazy as LBS
 import           Data.Text            (Text)
+import           Ledger.Params        ()
 import           GHC.Generics         (Generic)
 
 data Config = Config
@@ -15,6 +20,7 @@ data Config = Config
     , cMinUtxosAmount    :: Int
     , cAuxiliaryEnvFile  :: FilePath
     , cWalletFile        :: FilePath
+    , cNetworkId         :: NetworkId
     } deriving (Show, Generic)
 
 configFile :: FilePath
