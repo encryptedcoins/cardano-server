@@ -3,11 +3,14 @@
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE UndecidableInstances       #-}
 {-# LANGUAGE UndecidableSuperClasses    #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE DerivingVia #-}
 
 module Cardano.Server.Endpoints.Tx.Class where
 
-import           Cardano.Server.Error                 (IsCardanoServerError)
+import           Cardano.Server.Error                 (IsCardanoServerError, ExceptionDeriving(..))
 import           Cardano.Server.Internal              (NetworkM, HasServer(..), Env)
+import           Control.Exception                    (Exception)
 import           Control.Monad.Reader                 (MonadReader)
 import           Data.Kind                            (Type)
 import           IO.Wallet                            (HasWallet(..))
@@ -27,3 +30,5 @@ class ( HasServer s
     txEndpointsProcessRequest :: TxApiRequestOf s -> NetworkM s (InputOf s, MapUTXO)
 
     txEndpointsTxBuilders     :: (MonadReader (Env s) m, HasWallet m) => InputOf s -> m [TransactionBuilder ()]
+
+deriving via (ExceptionDeriving (TxEndpointsErrorOf s)) instance HasTxEndpoints s => Exception (TxEndpointsErrorOf s)

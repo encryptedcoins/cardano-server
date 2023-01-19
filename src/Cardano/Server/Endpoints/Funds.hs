@@ -54,10 +54,10 @@ data FundsError
     deriving Exception via (ExceptionDeriving FundsError)
 
 instance IsCardanoServerError FundsError where
+    errStatus _ = toEnum 400
     errMsg = \case
         UnparsableAddress        -> "Incorrect wallet address."
         UnparsableCurrencySymbol -> "Incorrect currency symbol."
-    errStatus _ = toEnum 400
 
 fundsHandler :: FundsReqBody -> NetworkM s (Envelope '[FundsError, ConnectionError] Funds)
 fundsHandler (FundsReqBody addrBech32 csHex) = toEnvelope $ do

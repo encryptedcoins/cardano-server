@@ -9,13 +9,13 @@ module Cardano.Server.TestingServer.Main (TestingServer, runTestingServer, runTe
 
 import Cardano.Server.Client.Client          (startClient)
 import Cardano.Server.Endpoints.Tx.Class     (HasTxEndpoints(..))
-import Cardano.Server.Error                  (ExceptionDeriving(..), IsCardanoServerError(..))
+import Cardano.Server.Error                  (IsCardanoServerError(..))
 import Cardano.Server.Class                  (HasServer(..))
 import Cardano.Server.Client.Class           (HasClient(..))
 import Cardano.Server.Main                   (runServer)
 import Cardano.Server.TestingServer.OffChain (testMintTx)
 import Control.Monad                         (when, replicateM)
-import Control.Monad.Catch                   (Exception, throwM)
+import Control.Monad.Catch                   (throwM)
 import Data.List                             (nub)
 import Options.Applicative                   (argument, metavar, str, some)
 import Plutus.V2.Ledger.Api                  (BuiltinByteString)
@@ -45,7 +45,6 @@ instance HasTxEndpoints TestingServer where
 
     data (TxEndpointsErrorOf TestingServer) = HasDuplicates
         deriving Show
-        deriving Exception via (ExceptionDeriving (TxEndpointsErrorOf TestingServer))
 
     txEndpointsProcessRequest req@(bbs, _) = do
         let hasDuplicates = length bbs /= length (nub bbs)
@@ -65,4 +64,4 @@ instance HasClient TestingServer where
     genServerInput = do
         inputLength <- randomRIO (1, 15)
         let genBbs = stringToBuiltinByteString <$> (randomRIO (2, 8) >>= (`replicateM` randomIO))
-        replicateM inputLength genBbs 
+        replicateM inputLength genBbs

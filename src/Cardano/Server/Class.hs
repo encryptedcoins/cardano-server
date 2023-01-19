@@ -18,11 +18,13 @@ import           Ledger                 (Params)
 import           Ledger.Address         (Address)
 import           Servant                (MimeUnrender, JSON)
 import           Utils.ChainIndex       (MapUTXO)
+import Data.Data (Typeable)
 
 class ( Show (AuxiliaryEnvOf s)
       , MimeUnrender JSON (InputOf s)
       , ToJSON (InputOf s)
       , Show (InputOf s)
+      , Typeable s
       ) => HasServer s where
 
     type AuxiliaryEnvOf s :: Type

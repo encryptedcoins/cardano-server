@@ -1,5 +1,4 @@
 {-# LANGUAGE AllowAmbiguousTypes        #-}
-{-# LANGUAGE ConstrainedClassMethods    #-}
 {-# LANGUAGE DataKinds                  #-}
 {-# LANGUAGE DeriveAnyClass             #-}
 {-# LANGUAGE DerivingVia                #-}
@@ -8,6 +7,7 @@
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase                 #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE PatternSynonyms            #-}
 {-# LANGUAGE PolyKinds                  #-}
@@ -42,10 +42,10 @@ import           IO.ChainIndex                    (pattern ChainIndexConnectionE
 import           IO.Wallet                        (pattern WalletApiConnectionError)
 import           Network.Wai                      (Middleware, responseLBS)
 import           Network.HTTP.Types               (Status)
-import           Servant                          (NoContent)
 import           Servant.Checked.Exceptions       (ErrStatus(..), toErrEnvelope, Envelope, IsMember, Contains,
                                                    toSuccEnvelope, Throws)
 import           Utils.Servant                    (ConnectionError(..))
+import           Servant.API.ContentTypes         (JSON, MimeRender(..), NoContent, PlainText)
 
 ---------------------------------------------------- Common errors ----------------------------------------------------
 
@@ -93,13 +93,14 @@ errorMW baseApp req respond = handle handleServerException $ baseApp req respond
         handleServerException e = throwM e
 
 class Exception e => IsCardanoServerError e where
-    errMsg    :: e -> Text
     errStatus :: e -> Status
+    errMsg    :: e -> Text
 
 instance IsCardanoServerError e => ErrStatus e where
     toErrStatus = errStatus
 
-data CardanoServerError = forall e. (Exception e, IsCardanoServerError e) => CardanoServerError e
+-- Root of server exceptions hierarchy
+data CardanoServerError = forall e. IsCardanoServerError e => CardanoServerError e
     deriving Exception
 
 instance IsCardanoServerError CardanoServerError where
@@ -133,5 +134,8 @@ type family All (constr :: Type -> Constraint) (xs :: [Type]) :: Constraint wher
 
 ------------------------------------------------ Servant orphan instances ------------------------------------------------
 
-instance ToJSON NoContent where
-    toJSON _ = J.Null 
+instance MimeRender PlainText (Envelope errs NoContent) where
+    mimeRender _ _ = ""
+
+instance MimeRender JSON (Envelope errs NoContent) where
+    mimeRender _ _ = ""
