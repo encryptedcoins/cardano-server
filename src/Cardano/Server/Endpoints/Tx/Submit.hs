@@ -81,7 +81,13 @@ processQueueElem qRef qElem@(red, externalUtxos) elems = do
     logMsg $ "New input to process:" .< red <> "\nUtxos:" .< externalUtxos
     processTokens @s qElem
 
-processTokens :: forall s m. (HasTxEndpoints s, HasWallet m, HasLogger m, MonadReader (Env s) m) => QueueElem s -> m ()
+processTokens :: forall s m. 
+    (HasTxEndpoints s
+    , HasWallet m
+    , HasLogger m
+    , MonadReader (Env s) m
+    , MonadThrow m
+    ) => QueueElem s -> m ()
 processTokens (red, utxosExternal) = do
     checkForCleanUtxos
     void $ join $ liftM3 mkTx (serverTrackedAddresses @s) (pure utxosExternal) $ txEndpointsTxBuilders @s red

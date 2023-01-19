@@ -58,7 +58,15 @@ loadEnv = do
     pure Env{..}
 
 newtype AppM s a = AppM { unAppM :: ReaderT (Env s) IO a }
-    deriving newtype (Functor, Applicative, Monad, MonadIO, MonadReader (Env s))
+    deriving newtype 
+        ( Functor
+        , Applicative
+        , Monad
+        , MonadIO
+        , MonadReader (Env s)
+        , MonadThrow
+        , MonadCatch
+        )
 
 runAppM :: HasServer s => AppM s a -> IO a
 runAppM app = loadEnv >>= runReaderT (unAppM app)

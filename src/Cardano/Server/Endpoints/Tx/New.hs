@@ -14,7 +14,7 @@ import           Cardano.Server.Endpoints.Tx.Class    (HasTxEndpoints(..))
 import           Cardano.Server.Error                 (ConnectionError, Envelope, Throws, IsCardanoServerError(..),
                                                        ExceptionDeriving(..), toEnvelope)
 import           Cardano.Server.Internal              (NetworkM, HasServer(..))
-import           Cardano.Server.Tx                    (mkBalanceTx)
+import           Cardano.Server.Tx                    (mkBalanceTx, MkTxError)
 import           Cardano.Server.Utils.Logger          (HasLogger(..), (.<))
 import           Control.Monad                        (join, liftM3)
 import           Control.Monad.Catch                  (Exception, MonadThrow (throwM))
@@ -28,6 +28,7 @@ import           Utils.Tx                             (cardanoTxToText)
 type NewTxApi s = "newTx"
               :> Throws NewTxApiError
               :> Throws ConnectionError
+              :> Throws MkTxError
               :> ReqBody '[JSON] (TxApiRequestOf s)
               :> Post '[JSON] Text
 
@@ -39,8 +40,9 @@ instance IsCardanoServerError NewTxApiError where
     errStatus _ = toEnum 422
     errMsg (UnserialisableBalancedTx tx) = "Can't serialise balanced tx:" .< tx
 
-newTxHandler :: forall s. HasTxEndpoints s => TxApiRequestOf s
-    -> NetworkM s (Envelope '[NewTxApiError, ConnectionError] Text)
+newTxHandler :: forall s. HasTxEndpoints s 
+    => TxApiRequestOf s
+    -> NetworkM s (Envelope '[NewTxApiError, ConnectionError, MkTxError] Text)
 newTxHandler req = toEnvelope $ do
     logMsg $ "New newTx request received:\n" .< req
     (input, utxosExternal) <- txEndpointsProcessRequest req

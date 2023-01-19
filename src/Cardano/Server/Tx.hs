@@ -1,3 +1,6 @@
+{-# LANGUAGE DeriveAnyClass      #-}
+{-# LANGUAGE DeriveGeneric       #-}
+{-# LANGUAGE DerivingVia         #-}
 {-# LANGUAGE ConstraintKinds     #-}
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE ImplicitParams      #-}
@@ -8,15 +11,20 @@
 
 module Cardano.Server.Tx where
 
+import           Control.Exception           (Exception)
+import           Cardano.Server.Error        (ExceptionDeriving(..), IsCardanoServerError(..))
 import           Cardano.Server.Internal     (Env(..))
 import           Cardano.Server.Utils.Logger (HasLogger(..), logPretty, logSmth)
+import           Control.Monad.Catch         (MonadThrow(..))
 import           Control.Monad.Extra         (mconcatMapM, when, void)
 import           Control.Monad.IO.Class      (MonadIO(..))
 import           Control.Monad.Reader        (MonadReader, asks)
 import           Control.Monad.State         (State, get, put, execState)
+import           Data.Aeson                  (ToJSON)
 import qualified Data.Map                    as Map
 import           Data.Maybe                  (fromJust, isNothing)
 import           Data.Void                   (Void)
+import           GHC.Generics                (Generic)
 import           Ledger                      (Address, CardanoTx(..), Params(..), POSIXTime, PubKeyHash, TxOutRef,
                                               PaymentPubKeyHash(..), StakingCredential, stakingCredential)
 import           Ledger.Ada                  (lovelaceValueOf) 
@@ -49,7 +57,16 @@ type MkTxConstraints a m s =
     , HasWallet m
     , HasLogger m
     , MonadReader (Env s) m
+    , MonadThrow m
     )
+
+data MkTxError = UnbuildableTx
+    deriving (Show, Generic, ToJSON)
+    deriving Exception via (ExceptionDeriving MkTxError) 
+
+instance IsCardanoServerError MkTxError where
+    errStatus _ = toEnum 422
+    errMsg _ = "The requested transaction could not be built."
 
 mkBalanceTx :: MkTxConstraints a m s
     => [Address]
@@ -82,6 +99,7 @@ mkBalanceTx addressesTracked utxosExternal txs = do
     when (isNothing constr) $ do
         logMsg "\tNo transactions can be constructed. Last error:"
         logSmth $ head $ txConstructorErrors $ last $ map (`execState` constrInit) txs
+        throwM UnbuildableTx
     let (lookups, cons) = fromJust $ txConstructorResult $ fromJust constr
     logMsg "\tLookups:"
     logSmth lookups
@@ -107,7 +125,7 @@ mkTx addressesTracked utxosExternal txs = do
     logMsg "Submited."
     return signedTx
 
-checkForCleanUtxos :: (HasWallet m, HasLogger m, MonadReader (Env s) m) => m ()
+checkForCleanUtxos :: MkTxConstraints Void m s => m ()
 checkForCleanUtxos = do
     addr       <- getWalletAddr
     cleanUtxos <- length . filterCleanUtxos <$> getWalletUtxos
