@@ -7,6 +7,7 @@
 module Cardano.Server.Class where
 
 import           Cardano.Server.Config  (decodeOrErrorFromFile)
+import           Cardano.Server.Input   (InputContext)
 import           Control.Monad.IO.Class (MonadIO)
 import           Control.Monad.Reader   (ReaderT, MonadReader, asks)
 import           Data.Aeson             (FromJSON(..), ToJSON)
@@ -18,7 +19,6 @@ import           IO.Wallet              (HasWallet(..), RestoredWallet, getWalle
 import           Ledger                 (Params)
 import           Ledger.Address         (Address)
 import           Servant                (MimeUnrender, JSON)
-import           Utils.ChainIndex       (MapUTXO)
 
 class ( Show (AuxiliaryEnvOf s)
       , MimeUnrender JSON (InputOf s)
@@ -44,9 +44,9 @@ class ( Show (AuxiliaryEnvOf s)
     serverTrackedAddresses :: (MonadReader (Env s) m, HasWallet m) => m [Address]
     serverTrackedAddresses = (:[]) <$> getWalletAddr
 
-type QueueElem s = (InputOf s, MapUTXO)
+type InputWithContext s = (InputOf s, InputContext)
 
-type Queue s = Seq (QueueElem s)
+type Queue s = Seq (InputWithContext s)
 
 type QueueRef s = IORef (Queue s)
 

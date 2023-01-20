@@ -32,21 +32,21 @@ type NewTxApi s = "newTx"
               :> ReqBody '[JSON] (TxApiRequestOf s)
               :> Post '[JSON] Text
 
-newtype NewTxApiError = UnserialisableBalancedTx CardanoTx
+newtype NewTxApiError = UnserialisableCardanoTx CardanoTx
     deriving (Show, Generic, ToJSON)
     deriving Exception via (ExceptionDeriving NewTxApiError)
 
 instance IsCardanoServerError NewTxApiError where
     errStatus _ = toEnum 422
-    errMsg (UnserialisableBalancedTx tx) = "Can't serialise balanced tx:" .< tx
+    errMsg (UnserialisableCardanoTx tx) = "Cannot serialise balanced tx:" .< tx
 
 newTxHandler :: forall s. HasTxEndpoints s 
     => TxApiRequestOf s
     -> NetworkM s (Envelope '[NewTxApiError, ConnectionError, MkTxError] Text)
 newTxHandler req = toEnvelope $ do
     logMsg $ "New newTx request received:\n" .< req
-    (input, utxosExternal) <- txEndpointsProcessRequest req
-    balancedTx <- join $ liftM3 mkBalanceTx (serverTrackedAddresses @s) (pure utxosExternal) (txEndpointsTxBuilders @s input)
+    (input, context) <- txEndpointsProcessRequest req
+    balancedTx <- join $ liftM3 mkBalanceTx (serverTrackedAddresses @s) (pure context) (txEndpointsTxBuilders @s input)
     case cardanoTxToText balancedTx of
         Just res -> pure res
-        Nothing -> throwM $ UnserialisableBalancedTx balancedTx
+        Nothing -> throwM $ UnserialisableCardanoTx balancedTx

@@ -18,6 +18,7 @@
 {-# LANGUAGE TypeOperators              #-}
 {-# LANGUAGE ViewPatterns               #-}
 {-# LANGUAGE UndecidableInstances       #-}
+
 {-# OPTIONS_GHC -Wno-orphans            #-}
 
 module Cardano.Server.Error 
@@ -42,10 +43,10 @@ import           IO.ChainIndex                    (pattern ChainIndexConnectionE
 import           IO.Wallet                        (pattern WalletApiConnectionError)
 import           Network.Wai                      (Middleware, responseLBS)
 import           Network.HTTP.Types               (Status)
+import           Servant.API.ContentTypes         (JSON, MimeRender(..), NoContent, PlainText)
 import           Servant.Checked.Exceptions       (ErrStatus(..), toErrEnvelope, Envelope, IsMember, Contains,
                                                    toSuccEnvelope, Throws)
 import           Utils.Servant                    (ConnectionError(..))
-import           Servant.API.ContentTypes         (JSON, MimeRender(..), NoContent, PlainText)
 
 ---------------------------------------------------- Common errors ----------------------------------------------------
 

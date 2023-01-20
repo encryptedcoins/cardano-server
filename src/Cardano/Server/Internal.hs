@@ -15,7 +15,7 @@ module Cardano.Server.Internal
     , loadEnv
     ) where
 
-import           Cardano.Server.Class        (Env(..), Queue, QueueRef, QueueElem, HasServer(..))
+import           Cardano.Server.Class        (HasServer(..), Env(..), Queue, QueueRef)
 import           Cardano.Server.Config       (Config(..), configFile, decodeOrErrorFromFile)
 import           Cardano.Server.Utils.Logger (HasLogger(..))
 import           Control.Monad.Catch         (MonadThrow, MonadCatch)

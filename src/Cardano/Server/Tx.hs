@@ -3,58 +3,42 @@
 {-# LANGUAGE DerivingVia         #-}
 {-# LANGUAGE ConstraintKinds     #-}
 {-# LANGUAGE FlexibleContexts    #-}
-{-# LANGUAGE ImplicitParams      #-}
 {-# LANGUAGE NumericUnderscores  #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Cardano.Server.Tx where
 
 import           Control.Exception           (Exception)
 import           Cardano.Server.Error        (ExceptionDeriving(..), IsCardanoServerError(..))
+import           Cardano.Server.Input        (InputContext (..))
 import           Cardano.Server.Internal     (Env(..))
 import           Cardano.Server.Utils.Logger (HasLogger(..), logPretty, logSmth)
+import           Constraints.OffChain        (utxoProducedPublicKeyTx)
 import           Control.Monad.Catch         (MonadThrow(..))
 import           Control.Monad.Extra         (mconcatMapM, when, void)
 import           Control.Monad.IO.Class      (MonadIO(..))
 import           Control.Monad.Reader        (MonadReader, asks)
-import           Control.Monad.State         (State, get, put, execState)
+import           Control.Monad.State         (execState)
 import           Data.Aeson                  (ToJSON)
+import           Data.Default                (def)
 import qualified Data.Map                    as Map
 import           Data.Maybe                  (fromJust, isNothing)
-import           Data.Void                   (Void)
 import           GHC.Generics                (Generic)
-import           Ledger                      (Address, CardanoTx(..), Params(..), POSIXTime, PubKeyHash, TxOutRef,
-                                              PaymentPubKeyHash(..), StakingCredential, stakingCredential)
-import           Ledger.Ada                  (lovelaceValueOf) 
-import           Ledger.Constraints          (ScriptLookups, mustPayToPubKey, mustPayToPubKeyAddress)
-import           Ledger.Tx.CardanoAPI        (unspentOutputsTx)
-import           PlutusTx                    (FromData(..), ToData(..))
-import           Plutus.Script.Utils.Typed   (RedeemerType, DatumType)
-import           IO.ChainIndex               (getUtxosAt, getWalletUtxos)
+import           Ledger                      (Address, CardanoTx(..), TxOutRef, unspentOutputsTx)
+import           Ledger.Ada                  (lovelaceValueOf)
+import           Ledger.Tx.CardanoAPI        as CardanoAPI
+import           IO.ChainIndex               (getUtxosAt)
 import           IO.Time                     (currentTime)
-import           IO.Wallet                   (HasWallet(..), signTx, balanceTx, submitTxConfirmed, getWalletAddr,
-                                              getWalletAddrBech32, getWalletKeyHashes)
-import           Types.Tx                    (TxConstructor (..), selectTxConstructor, mkTxConstructor)
-import           Utils.ChainIndex            (MapUTXO, filterCleanUtxos)
+import           IO.Wallet                   (HasWallet(..), signTx, balanceTx, submitTxConfirmed, getWalletAddr, getWalletKeyHashes, getWalletUtxos)
+import           Types.Tx                    (TxConstructor (..), TransactionBuilder, selectTxConstructor, mkTxConstructor)
+import           Utils.Address               (addressToKeyHashes)
+import           Utils.ChainIndex            (filterCleanUtxos)
 
-type HasTxEnv =
-    ( ?txWalletAddr :: Address
-    , ?txWalletPKH  :: PubKeyHash
-    , ?txWalletSKC  :: Maybe StakingCredential
-    , ?txCt         :: POSIXTime
-    , ?txUtxos      :: MapUTXO
-    , ?txParams     :: Params
-    )
-
-type MkTxConstraints a m s =
-    ( FromData (DatumType a)
-    , ToData   (DatumType a)
-    , ToData   (RedeemerType a)
-    , Show     (DatumType a)
-    , Show     (RedeemerType a)
-    , HasWallet m
+type MkTxConstraints m s =
+    ( HasWallet m
     , HasLogger m
     , MonadReader (Env s) m
     , MonadThrow m
@@ -62,37 +46,27 @@ type MkTxConstraints a m s =
 
 data MkTxError = UnbuildableTx
     deriving (Show, Generic, ToJSON)
-    deriving Exception via (ExceptionDeriving MkTxError) 
+    deriving Exception via (ExceptionDeriving MkTxError)
 
 instance IsCardanoServerError MkTxError where
     errStatus _ = toEnum 422
     errMsg _ = "The requested transaction could not be built."
 
-mkBalanceTx :: MkTxConstraints a m s
+-- TODO: implement two types of balancing
+mkBalanceTx :: MkTxConstraints m s
     => [Address]
-    -> MapUTXO
-    -> (HasTxEnv => [State (TxConstructor a (RedeemerType a) (DatumType a)) ()])
+    -> InputContext
+    -> [TransactionBuilder ()]
     -> m CardanoTx
-mkBalanceTx addressesTracked utxosExternal txs = do
-    walletAddrBech32       <- getWalletAddrBech32
-    walletAddr             <- getWalletAddr
-    (walletPKH, walletSKH) <- getWalletKeyHashes
+mkBalanceTx addressesTracked InputContext{..} txs = do
+    (walletPKH, walletSKC) <- getWalletKeyHashes
     utxosTracked           <- liftIO $ mconcatMapM getUtxosAt addressesTracked
     ct                     <- liftIO currentTime
     ledgerParams           <- asks envLedgerParams
-    let utxos = utxosTracked `Map.union` utxosExternal
-
-    let ?txWalletAddr = walletAddr
-        ?txWalletPKH  = unPaymentPubKeyHash walletPKH
-        ?txWalletSKC  = stakingCredential walletAddr
-        ?txCt         = ct
-        ?txUtxos      = utxos
-        ?txParams     = ledgerParams
-
-    logMsg $ "Wallet address:\n" <> walletAddrBech32
+    let utxos = utxosTracked `Map.union` inputUTXO
 
     let constrInit = mkTxConstructor
-            (walletPKH, walletSKH)
+            (walletPKH, walletSKC)
             ct
             utxos
         constr = selectTxConstructor $ map (`execState` constrInit) txs
@@ -109,13 +83,13 @@ mkBalanceTx addressesTracked utxosExternal txs = do
     logMsg "Balancing..."
     balanceTx ledgerParams lookups cons
 
-mkTx :: MkTxConstraints a m s
+mkTx :: MkTxConstraints m s
     => [Address]
-    -> MapUTXO
-    -> (HasTxEnv => [State (TxConstructor a (RedeemerType a) (DatumType a)) ()])
+    -> InputContext
+    -> [TransactionBuilder ()]
     -> m CardanoTx
-mkTx addressesTracked utxosExternal txs = do
-    balancedTx <- mkBalanceTx addressesTracked utxosExternal txs
+mkTx addressesTracked ctx txs = do
+    balancedTx <- mkBalanceTx addressesTracked ctx txs
     logPretty balancedTx
     logMsg "Signing..."
     signedTx <- signTx balancedTx
@@ -125,7 +99,7 @@ mkTx addressesTracked utxosExternal txs = do
     logMsg "Submited."
     return signedTx
 
-checkForCleanUtxos :: MkTxConstraints Void m s => m ()
+checkForCleanUtxos :: MkTxConstraints m s => m ()
 checkForCleanUtxos = do
     addr       <- getWalletAddr
     cleanUtxos <- length . filterCleanUtxos <$> getWalletUtxos
@@ -134,19 +108,12 @@ checkForCleanUtxos = do
         logMsg "Address doesn't has enough clean UTXO's."
         void $ mkWalletTxOutRefs addr (cleanUtxos - minUtxos)
 
-mkWalletTxOutRefs :: MkTxConstraints Void m s => Address -> Int -> m [TxOutRef]
+mkWalletTxOutRefs :: MkTxConstraints m s => Address -> Int -> m [TxOutRef]
 mkWalletTxOutRefs addr n = do
-        signedTx <- mkTx [addr] Map.empty [constructor]
-        let refs = case signedTx of
-                EmulatorTx _    -> error "Can not get TxOutRef's from EmulatorTx."
-                CardanoApiTx tx -> Map.keys $ unspentOutputsTx tx
-        pure refs
-    where
-        constructor :: HasTxEnv => State (TxConstructor Void i o) ()
-        constructor = do
-            let pkh = PaymentPubKeyHash ?txWalletPKH
-                cons = case ?txWalletSKC of
-                    Just skc -> mconcat $ replicate n $ mustPayToPubKeyAddress pkh skc $ lovelaceValueOf 10_000_000
-                    Nothing  -> mustPayToPubKey pkh $ lovelaceValueOf 10_000_000
-            constr <- get
-            put constr { txConstructorResult = Just (mempty :: ScriptLookups Void, cons) }
+    (pkh, scr) <- maybe (throwM UnbuildableTx) pure $ addressToKeyHashes addr
+    let txBuilder = mapM_ (const $ utxoProducedPublicKeyTx pkh scr (lovelaceValueOf 10_000_000) (Nothing :: Maybe ())) [1..n]
+    signedTx <- mkTx [addr] def [txBuilder]
+    let refs = case signedTx of
+            EmulatorTx tx   -> Map.keys $ Ledger.unspentOutputsTx tx
+            CardanoApiTx tx -> Map.keys $ CardanoAPI.unspentOutputsTx tx
+    pure refs

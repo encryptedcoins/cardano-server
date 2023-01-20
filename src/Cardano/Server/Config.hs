@@ -10,8 +10,8 @@ import           Data.Aeson.Casing    (aesonPrefix, snakeCase)
 import qualified Data.ByteString      as BS
 import qualified Data.ByteString.Lazy as LBS
 import           Data.Text            (Text)
-import           Ledger.Params        ()
 import           GHC.Generics         (Generic)
+import           Ledger.Params        ()
 
 data Config = Config
     { cServerAddress     :: Text

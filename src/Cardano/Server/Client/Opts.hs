@@ -26,6 +26,7 @@ data ServerEndpoint
     = Ping
     | NewTx
     | SubmitTx
+    | ServerTx
     deriving (Read)
 
 instance Show ServerEndpoint where
@@ -33,11 +34,12 @@ instance Show ServerEndpoint where
         Ping     -> "ping"
         NewTx    -> "newTx"
         SubmitTx -> "submitTx"
+        ServerTx -> "serverTx"
 
 serverEndpointParser :: Parser ServerEndpoint
 serverEndpointParser = argument auto 
     (  value SubmitTx
-    <> metavar "Ping | SubmitTx | NewTx" 
+    <> metavar "Ping | NewTx | SubmitTx | ServerTx" 
     )
 
 data Mode s

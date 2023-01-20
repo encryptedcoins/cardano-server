@@ -8,15 +8,16 @@
 module Cardano.Server.Client.Default where
 
 import           Cardano.Server.Client.Client (mkRequest)
-import           Cardano.Server.Config        (Config(..), loadConfig, decodeOrErrorFromFile)       
+import           Cardano.Server.Config        (Config(..), loadConfig, decodeOrErrorFromFile)
+import           Cardano.Server.Input         (InputContext(..))
 import           Cardano.Server.Internal      (runAppM, HasServer(..))
 import           Control.Monad                (void)
 import           Data.Aeson                   (FromJSON)
+import           Data.Default                 (def)
 import qualified Data.Text                    as T
 import           Network.HTTP.Client          (defaultManagerSettings, newManager)
 import           Options.Applicative          ((<**>), auto, fullDesc, help, info, long, option, short, value,
                                                execParser, helper)
-import           Utils.ChainIndex             (MapUTXO)
 
 -- Running a client that only needs fromJSON instance of server input
 -- instead of defining a full HasClient class.
@@ -37,6 +38,5 @@ defaultClient fp = void $ do
     Config{..}  <- loadConfig 
     manager     <- newManager defaultManagerSettings
     let fullAddress = concat 
-            ["http://", T.unpack cServerAddress, "/submitTx"]
-    runAppM @s $ mkRequest fullAddress manager (serverInput, mempty :: MapUTXO)
-    
+            ["http://", T.unpack cServerAddress, "/serverTx"]
+    runAppM @s $ mkRequest fullAddress manager (serverInput, def :: InputContext)
