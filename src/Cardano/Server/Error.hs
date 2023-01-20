@@ -46,7 +46,7 @@ import           Network.HTTP.Types               (Status)
 import           Servant.API.ContentTypes         (JSON, MimeRender(..), NoContent, PlainText)
 import           Servant.Checked.Exceptions       (ErrStatus(..), toErrEnvelope, Envelope, IsMember, Contains,
                                                    toSuccEnvelope, Throws)
-import           Utils.Servant                    (ConnectionError(..))
+import           Types.Error                      (ConnectionError)
 
 ---------------------------------------------------- Common errors ----------------------------------------------------
 

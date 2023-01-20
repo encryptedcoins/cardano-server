@@ -6,6 +6,7 @@
 
 module Cardano.Server.Class where
 
+import           Cardano.Node.Emulator  (Params)
 import           Cardano.Server.Config  (decodeOrErrorFromFile)
 import           Cardano.Server.Input   (InputContext)
 import           Control.Monad.IO.Class (MonadIO)
@@ -16,7 +17,6 @@ import           Data.IORef             (IORef)
 import           Data.Kind              (Type)
 import           Data.Sequence          (Seq)
 import           IO.Wallet              (HasWallet(..), RestoredWallet, getWalletAddr)
-import           Ledger                 (Params)
 import           Ledger.Address         (Address)
 import           Servant                (MimeUnrender, JSON)
 

@@ -21,8 +21,8 @@ module Cardano.Server.TestingServer.OnChain where
 import           Cardano.Ledger.Alonzo.Language       (Language(PlutusV2))
 import           Constraints.OnChain                  (tokensMinted)
 import           Ledger                               (Versioned(..), Validator)
-import           Plutus.Script.Utils.V2.Typed.Scripts (ValidatorTypes (..), TypedValidator, mkTypedValidator, mkUntypedValidator,
-                                                       mkUntypedMintingPolicy, validatorScript)
+import           Ledger.Typed.Scripts                 (IsScriptContext(..))
+import           Plutus.Script.Utils.V2.Typed.Scripts (ValidatorTypes (..), TypedValidator, mkTypedValidator, validatorScript)
 import           Plutus.V2.Ledger.Api                 (ScriptContext(..), MintingPolicy, TokenName (..), mkMintingPolicyScript,
                                                        ScriptHash, unMintingPolicyScript)
 import           PlutusTx                             (compile)
@@ -65,7 +65,7 @@ testTypedValidator = mkTypedValidator @Testing
     $$(PlutusTx.compile [|| testValidatorCheck ||])
     $$(PlutusTx.compile [|| wrap ||])
   where
-    wrap = mkUntypedValidator @() @()
+    wrap = mkUntypedValidator @ScriptContext @() @()
 
 testScriptHash :: ScriptHash
 testScriptHash = scriptHash $ unMintingPolicyScript testPolicy

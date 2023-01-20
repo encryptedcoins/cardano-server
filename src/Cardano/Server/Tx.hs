@@ -11,12 +11,13 @@
 
 module Cardano.Server.Tx where
 
-import           Control.Exception           (Exception)
 import           Cardano.Server.Error        (ExceptionDeriving(..), IsCardanoServerError(..))
 import           Cardano.Server.Input        (InputContext (..))
 import           Cardano.Server.Internal     (Env(..))
 import           Cardano.Server.Utils.Logger (HasLogger(..), logPretty, logSmth)
+import           Constraints.Balance         (balanceExternalTx)
 import           Constraints.OffChain        (utxoProducedPublicKeyTx)
+import           Control.Exception           (Exception)
 import           Control.Monad.Catch         (MonadThrow(..))
 import           Control.Monad.Extra         (mconcatMapM, when, void)
 import           Control.Monad.IO.Class      (MonadIO(..))
@@ -32,7 +33,7 @@ import           Ledger.Ada                  (lovelaceValueOf)
 import           Ledger.Tx.CardanoAPI        as CardanoAPI
 import           IO.ChainIndex               (getUtxosAt)
 import           IO.Time                     (currentTime)
-import           IO.Wallet                   (HasWallet(..), signTx, balanceTx, submitTxConfirmed, getWalletAddr, getWalletKeyHashes, getWalletUtxos)
+import           IO.Wallet                   (HasWallet(..), signTx, balanceTx, submitTxConfirmed, getWalletAddr, getWalletUtxos)
 import           Types.Tx                    (TxConstructor (..), TransactionBuilder, selectTxConstructor, mkTxConstructor)
 import           Utils.Address               (addressToKeyHashes)
 import           Utils.ChainIndex            (filterCleanUtxos)
@@ -58,17 +59,13 @@ mkBalanceTx :: MkTxConstraints m s
     -> InputContext
     -> [TransactionBuilder ()]
     -> m CardanoTx
-mkBalanceTx addressesTracked InputContext{..} txs = do
-    (walletPKH, walletSKC) <- getWalletKeyHashes
-    utxosTracked           <- liftIO $ mconcatMapM getUtxosAt addressesTracked
-    ct                     <- liftIO currentTime
-    ledgerParams           <- asks envLedgerParams
-    let utxos = utxosTracked `Map.union` inputUTXO
+mkBalanceTx addressesTracked context txs = do
+    utxosTracked <- liftIO $ mconcatMapM getUtxosAt addressesTracked
+    ct           <- liftIO currentTime
+    ledgerParams <- asks envLedgerParams
+    let utxos = utxosTracked `Map.union` inputUTXO context
 
-    let constrInit = mkTxConstructor
-            (walletPKH, walletSKC)
-            ct
-            utxos
+    let constrInit = mkTxConstructor ct utxos
         constr = selectTxConstructor $ map (`execState` constrInit) txs
     when (isNothing constr) $ do
         logMsg "\tNo transactions can be constructed. Last error:"
@@ -81,7 +78,9 @@ mkBalanceTx addressesTracked InputContext{..} txs = do
     logSmth cons
 
     logMsg "Balancing..."
-    balanceTx ledgerParams lookups cons
+    case context of
+      InputContextServer {}   -> balanceTx ledgerParams lookups cons
+      InputContextClient {..} -> balanceExternalTx ledgerParams inputWalletUTXO inputChangeAddress lookups cons
 
 mkTx :: MkTxConstraints m s
     => [Address]
