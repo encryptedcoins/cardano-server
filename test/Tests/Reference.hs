@@ -4,7 +4,7 @@
 
 module Tests.Reference where
 
-import           Cardano.Server.Input                   (inputUTXO)
+import           Cardano.Server.Input                   (inputUTXO, InputContext (InputContextClient))
 import           Cardano.Server.Internal                (runAppM)
 import           Cardano.Server.TestingServer.Main      (TestingServer)
 import           Cardano.Server.TestingServer.OffChain  (testToken)
@@ -41,15 +41,22 @@ runReferenceTest = void $ runAppM @TestingServer $ do
     let ref = head $ case ctx of
             EmulatorTx tx   -> Map.keys $ Ledger.unspentOutputsTx tx
             CardanoApiTx tx -> Map.keys $ CardanoAPI.unspentOutputsTx tx
+    
+    addr  <- getWalletAddr
     utxos <- getWalletUtxos
+    let context = InputContextClient utxos utxos (head $ Map.keys utxos) addr
     logMsg "\n\n\n\t\t\tMINT1:"
-    mkTest "token1" ref utxos
+    mkTest "token1" ref context
+    
+    addr'  <- getWalletAddr
+    utxos' <- getWalletUtxos
+    let context' = InputContextClient utxos' utxos' (head $ Map.keys utxos') addr'
     logMsg "\n\n\n\t\t\tMINT2:"
-    mkTest "token2" ref utxos
+    mkTest "token2" ref context'
   where
-    mkTest token ref utxos = mkTx
+    mkTest token ref context = mkTx
         []
-        def { inputUTXO = utxos }
+        context
         [
             tokensMintedTx
             testPolicyV
