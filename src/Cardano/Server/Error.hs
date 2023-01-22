@@ -43,7 +43,7 @@ import           Network.HTTP.Types               (Status)
 import           Servant.API.ContentTypes         (JSON, MimeRender(..), NoContent, PlainText)
 import           Servant.Checked.Exceptions       (ErrStatus(..), toErrEnvelope, Envelope, IsMember, Contains,
                                                    toSuccEnvelope, Throws)
-import           Types.Error                      (ConnectionError, MkTxError)
+import           Types.Error                      (ConnectionError, MkTxError, BalanceExternalTxError(..))
 
 ---------------------------------------------------- Common errors ----------------------------------------------------
 
@@ -61,6 +61,20 @@ instance IsCardanoServerError ConnectionError where
 instance IsCardanoServerError MkTxError where
     errStatus _ = toEnum 422
     errMsg _ = "The requested transaction could not be built."
+
+instance IsCardanoServerError BalanceExternalTxError where
+    errStatus _ = toEnum 422
+    errMsg e = "The requested transaction could not be built. Reason: " <> case e of
+        MakeUnbalancedTxError          
+            -> "Unable to build an UnbalancedTx."
+        MakeBuildTxFromEmulatorTxError 
+            -> "Unable to extract CardanoBuildTx from EmulatorTx."
+        NonBabbageEraChangeAddress     
+            -> "Change address is not from Babbage era."
+        MakeUtxoProviderError          
+            -> "Unable to extract an utxoProvider from wallet outputs."
+        MakeAutoBalancedTxError        
+            -> "Unable to build an auto balanced tx."
 
 ----------------------------------------- Helper newtype to exception deriving  -----------------------------------------
 
@@ -88,6 +102,9 @@ errorMW baseApp req respond = handle handleServerException $ baseApp req respond
 
         handleServerException (UnwrappedError e) 
             = rethrowWithWrap @MkTxError e
+
+        handleServerException (UnwrappedError e) 
+            = rethrowWithWrap @BalanceExternalTxError e
 
         handleServerException (fromException -> Just (CardanoServerError cse))
             = let status  = errStatus cse
