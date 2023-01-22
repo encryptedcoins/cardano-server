@@ -4,13 +4,14 @@
 
 module Tests.Reference where
 
+import           Cardano.Server.Input                   (inputUTXO)
 import           Cardano.Server.Internal                (runAppM)
 import           Cardano.Server.TestingServer.Main      (TestingServer)
 import           Cardano.Server.TestingServer.OffChain  (testToken)
 import           Cardano.Server.TestingServer.OnChain   (testPolicyV, testPolicy)
 import           Cardano.Server.Tx                      (mkTx)
 import           Cardano.Server.Utils.Logger            (HasLogger(..))
-import           Constraints.OffChain                   (postMintingPolicyTx, referenceMintingPolicyTx)
+import           Constraints.OffChain                   (postMintingPolicyTx, tokensMintedTx)
 import           Control.Monad                          (void)
 import           Control.Monad.Cont                     (MonadIO(..))
 import           Data.Default                           (def)
@@ -31,7 +32,7 @@ postReferenceScript = runAppM @TestingServer $ do
             addr
             testPolicyV
             (Nothing :: Maybe ())
-            (Ada.adaValueOf 20)
+            (Ada.adaValueOf 0)
         ]
 
 runReferenceTest :: IO ()
@@ -40,15 +41,18 @@ runReferenceTest = void $ runAppM @TestingServer $ do
     let ref = head $ case ctx of
             EmulatorTx tx   -> Map.keys $ Ledger.unspentOutputsTx tx
             CardanoApiTx tx -> Map.keys $ CardanoAPI.unspentOutputsTx tx
+    utxos <- getWalletUtxos
     logMsg "\n\n\n\t\t\tMINT1:"
-    mkTest "token1" ref
+    mkTest "token1" ref utxos
     logMsg "\n\n\n\t\t\tMINT2:"
-    mkTest "token2" ref
+    mkTest "token2" ref utxos
   where
-    mkTest token ref = mkTx [] def
-        [ referenceMintingPolicyTx
-            testPolicy
-            ref
+    mkTest token ref utxos = mkTx
+        []
+        def { inputUTXO = utxos }
+        [
+            tokensMintedTx
+            testPolicyV
             ([token] :: [Plutus.BuiltinByteString])
             (Plutus.sum $ map testToken [token])
         ]

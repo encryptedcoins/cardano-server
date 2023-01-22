@@ -9,7 +9,7 @@
 
 module Cardano.Server.TestingServer.OffChain where
 
-import           Cardano.Server.TestingServer.OnChain (testPolicy, testTokenName, testTypedValidator)
+import           Cardano.Server.TestingServer.OnChain (testPolicy, testTokenName, testTypedValidator, testPolicyV)
 import           Control.Monad.State                  (State)
 import           Ledger.Tokens                        (token)
 import           Ledger.Typed.Scripts                 (Any)
@@ -36,7 +36,7 @@ testToken :: BuiltinByteString -> Value
 testToken = token . testAssetClass
 
 testMintTx :: [BuiltinByteString] -> TestTransactionBuilder
-testMintTx bss = tokensMintedTx testPolicy bss (sum $ map testToken bss)
+testMintTx bss = tokensMintedTx testPolicyV bss (sum $ map testToken bss)
 
 ------------------------------------- Testing Validator --------------------------------------
 

@@ -134,6 +134,7 @@ test-suite cardano-server-test
     plutus-apps-extra                      -any,
     plutus-tx                              -any,
     plutus-ledger                          -any,
+    plutus-ledger-constraints              -any,
     text                                   -any,
     time                                   -any
 
