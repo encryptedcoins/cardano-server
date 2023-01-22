@@ -37,13 +37,14 @@ library
       Cardano.Server.Client.Opts
       Cardano.Server.Class
       Cardano.Server.Config
-      Cardano.Server.Endpoints.AddSignature
       Cardano.Server.Endpoints.Funds 
       Cardano.Server.Endpoints.Ping
       Cardano.Server.Endpoints.Tx.Class
       Cardano.Server.Endpoints.Tx.New
-      Cardano.Server.Endpoints.Tx.Submit      
+      Cardano.Server.Endpoints.Tx.Server
+      Cardano.Server.Endpoints.Tx.Submit
       Cardano.Server.Error
+      Cardano.Server.Input
       Cardano.Server.Internal
       Cardano.Server.Main
       Cardano.Server.TestingServer.Main
@@ -60,8 +61,17 @@ library
       aeson                                  -any,
       aeson-casing                           -any,
       bytestring                             -any,
+      cardano-addresses                      -any,
       cardano-api                            -any,
+      cardano-crypto-class                   -any,
       cardano-ledger-alonzo                  -any,
+      cardano-ledger-babbage                 -any,
+      cardano-ledger-byron                   -any,
+      cardano-ledger-core                    -any,
+      cardano-ledger-shelley                 -any,
+      cardano-node-emulator                  -any,
+      cardano-streaming                      -any,
+      cardano-wallet-core                    -any,
       containers                             -any,
       data-default                           -any,
       directory                              -any,
@@ -74,13 +84,21 @@ library
       mtl                                    -any,
       optparse-applicative                   -any,
       plutus-apps-extra                      -any,
+      plutus-chain-index                     -any,
       plutus-chain-index-core                -any,
-      plutus-tx-plugin                       -any,
-      plutus-tx                              -any,
+      plutus-contract                        -any,
+      plutus-contract-certification          -any,
+      plutus-example                         -any,
       plutus-ledger                          -any,
       plutus-ledger-api                      -any,
       plutus-ledger-constraints              -any,
+      plutus-pab                             -any,
       plutus-script-utils                    -any,
+      plutus-tx                              -any,
+      plutus-tx-constraints                  -any,
+      plutus-tx-extra                        -any,
+      plutus-tx-plugin                       -any,
+      plutus-use-cases                       -any,
       prettyprinter                          -any,
       random                                 -any,
       servant                                -any,
@@ -110,11 +128,13 @@ test-suite cardano-server-test
     bytestring                             -any,
     cardano-server                         -any,
     containers                             -any,
+    data-default                           -any,
     directory                              -any,
     mtl                                    -any,
     plutus-apps-extra                      -any,
     plutus-tx                              -any,
     plutus-ledger                          -any,
+    plutus-ledger-constraints              -any,
     text                                   -any,
     time                                   -any
 

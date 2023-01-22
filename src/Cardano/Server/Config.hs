@@ -4,14 +4,14 @@
 
 module Cardano.Server.Config where
 
-import           Cardano.Api          (NetworkId(..))
-import           Data.Aeson           (FromJSON(..), eitherDecode, genericParseJSON)
-import           Data.Aeson.Casing    (aesonPrefix, snakeCase)
-import qualified Data.ByteString      as BS
-import qualified Data.ByteString.Lazy as LBS
-import           Data.Text            (Text)
-import           Ledger.Params        ()
-import           GHC.Generics         (Generic)
+import           Cardano.Api           (NetworkId(..))
+import           Data.Aeson            (FromJSON(..), eitherDecode, genericParseJSON)
+import           Data.Aeson.Casing     (aesonPrefix, snakeCase)
+import qualified Data.ByteString       as BS
+import qualified Data.ByteString.Lazy  as LBS
+import           Data.Text             (Text)
+import           GHC.Generics          (Generic)
+import           Cardano.Node.Emulator ()
 
 data Config = Config
     { cServerAddress     :: Text

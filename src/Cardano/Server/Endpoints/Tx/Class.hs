@@ -8,14 +8,14 @@
 
 module Cardano.Server.Endpoints.Tx.Class where
 
+import           Cardano.Server.Class                 (HasServer(..), Env, InputWithContext)
 import           Cardano.Server.Error                 (IsCardanoServerError, ExceptionDeriving(..))
-import           Cardano.Server.Internal              (NetworkM, HasServer(..), Env)
+import           Cardano.Server.Internal              (NetworkM, )
 import           Control.Exception                    (Exception)
 import           Control.Monad.Reader                 (MonadReader)
 import           Data.Kind                            (Type)
 import           IO.Wallet                            (HasWallet(..))
 import           Types.Tx                             (TransactionBuilder)
-import           Utils.ChainIndex                     (MapUTXO)
 
 class ( HasServer s
       , Show (TxApiRequestOf s)
@@ -27,7 +27,7 @@ class ( HasServer s
 
     data TxEndpointsErrorOf s
 
-    txEndpointsProcessRequest :: TxApiRequestOf s -> NetworkM s (InputOf s, MapUTXO)
+    txEndpointsProcessRequest :: TxApiRequestOf s -> NetworkM s (InputWithContext s)
 
     txEndpointsTxBuilders     :: (MonadReader (Env s) m, HasWallet m) => InputOf s -> m [TransactionBuilder ()]
 

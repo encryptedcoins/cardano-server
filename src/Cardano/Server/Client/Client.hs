@@ -45,7 +45,7 @@ client :: forall s. HasClient s => String -> Manager -> InputOf s -> AppM s ()
 client fullAddress manager serverInput = do
         (beforeRequestSend, onSuccessfulResponse) <- extractActionsFromInput serverInput
         beforeRequestSend
-        resp <- addExternalUtxosToInput serverInput >>= mkRequest fullAddress manager 
+        resp <- addInputContext serverInput >>= mkRequest fullAddress manager 
         when (successful resp) onSuccessfulResponse
     where
         successful = (== status204) . responseStatus

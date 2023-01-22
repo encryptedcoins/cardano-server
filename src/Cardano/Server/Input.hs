@@ -1,0 +1,31 @@
+{-# LANGUAGE AllowAmbiguousTypes        #-}
+{-# LANGUAGE DeriveAnyClass             #-}
+{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE TypeFamilies               #-}
+
+module Cardano.Server.Input where
+
+import           Data.Aeson             (ToJSON, FromJSON)
+import           Data.Default           (Default (..))
+import           GHC.Generics           (Generic)
+import           Ledger                 (TxOutRef)
+import           Ledger.Address         (Address)
+import           Utils.ChainIndex       (MapUTXO)
+
+data InputContext = InputContextServer
+    {
+        inputUTXO          :: MapUTXO           -- Unspent outputs for satisfying transaction constraints
+    }
+    | InputContextClient
+    {
+        inputUTXO          :: MapUTXO,    -- Unspent outputs for satisfying transaction constraints
+        inputWalletUTXO    :: MapUTXO,    -- Unspent outputs for balancing an unbalanced transaction
+        inputCollateral    :: TxOutRef,   -- Reference of a collateral input
+        inputChangeAddress :: Address     -- Address for the change
+    }
+    deriving (Eq, Show, Generic, ToJSON, FromJSON)
+
+instance Default InputContext where
+    def = InputContextServer mempty

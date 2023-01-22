@@ -15,7 +15,8 @@ module Cardano.Server.Internal
     , loadEnv
     ) where
 
-import           Cardano.Server.Class        (Env(..), Queue, QueueRef, QueueElem, HasServer(..))
+import           Cardano.Node.Emulator       (Params(..), pParamsFromProtocolParams)
+import           Cardano.Server.Class        (HasServer(..), Env(..), Queue, QueueRef)
 import           Cardano.Server.Config       (Config(..), configFile, decodeOrErrorFromFile)
 import           Cardano.Server.Utils.Logger (HasLogger(..))
 import           Control.Monad.Catch         (MonadThrow, MonadCatch)
@@ -25,7 +26,6 @@ import           Data.Default                (def)
 import           Data.IORef                  (newIORef)
 import           Data.Sequence               (empty)
 import           IO.Wallet                   (HasWallet(..))
-import           Ledger                      (Params(..), pParamsFromProtocolParams)
 import           Servant                     (Handler)
 
 newtype NetworkM s a = NetworkM { unNetworkM :: ReaderT (Env s) Handler a }

@@ -10,12 +10,12 @@
 
 module Cardano.Server.Main where
 
-import           Cardano.Server.Endpoints.AddSignature (AddSignatureApi, addSignatureHandler)
 import           Cardano.Server.Endpoints.Funds        (FundsApi, fundsHandler)
-import           Cardano.Server.Endpoints.Tx.Class     (HasTxEndpoints(..))
-import           Cardano.Server.Endpoints.Tx.Submit    (SubmitTxApi, submitTxHandler, processQueue)
-import           Cardano.Server.Endpoints.Tx.New       (NewTxApi, newTxHandler)
 import           Cardano.Server.Endpoints.Ping         (PingApi, pingHandler)
+import           Cardano.Server.Endpoints.Tx.Class     (HasTxEndpoints(..))
+import           Cardano.Server.Endpoints.Tx.New       (NewTxApi, newTxHandler)
+import           Cardano.Server.Endpoints.Tx.Server    (ServerTxApi, serverTxHandler, processQueue)
+import           Cardano.Server.Endpoints.Tx.Submit    (SubmitTxApi, submitTxHandler)
 import           Cardano.Server.Error                  (errorMW)
 import           Cardano.Server.Internal               (NetworkM(..), Env, loadEnv)
 import           Cardano.Server.Tx                     (checkForCleanUtxos)
@@ -33,10 +33,10 @@ import           System.IO                             (stdout, BufferMode(LineB
 
 type ServerAPI s
     =    PingApi
-    :<|> SubmitTxApi s
-    :<|> AddSignatureApi s
-    :<|> NewTxApi s
     :<|> FundsApi
+    :<|> NewTxApi s
+    :<|> SubmitTxApi s
+    :<|> ServerTxApi s    
 
 type ServerConstraints s =
     ( HasTxEndpoints s
@@ -45,10 +45,10 @@ type ServerConstraints s =
 
 server :: HasTxEndpoints s => ServerT (ServerAPI s) (NetworkM s)
 server = pingHandler
-    :<|> submitTxHandler
-    :<|> addSignatureHandler
-    :<|> newTxHandler
     :<|> fundsHandler
+    :<|> newTxHandler
+    :<|> submitTxHandler
+    :<|> serverTxHandler
 
 serverAPI :: forall s. Proxy (ServerAPI s)
 serverAPI = Proxy @(ServerAPI s)

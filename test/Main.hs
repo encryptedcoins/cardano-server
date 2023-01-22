@@ -1,6 +1,7 @@
 module Main where
 
 import Tests.TestingServer (testFundsAllTS)
+import Tests.Reference     (runReferenceTest)
 
 main :: IO ()
-main = testFundsAllTS
+main = runReferenceTest

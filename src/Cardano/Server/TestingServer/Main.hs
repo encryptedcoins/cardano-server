@@ -10,7 +10,7 @@ module Cardano.Server.TestingServer.Main (TestingServer, runTestingServer, runTe
 import Cardano.Server.Client.Client          (startClient)
 import Cardano.Server.Endpoints.Tx.Class     (HasTxEndpoints(..))
 import Cardano.Server.Error                  (IsCardanoServerError(..))
-import Cardano.Server.Class                  (HasServer(..))
+import Cardano.Server.Class                  (HasServer(..), InputWithContext)
 import Cardano.Server.Client.Class           (HasClient(..))
 import Cardano.Server.Main                   (runServer)
 import Cardano.Server.TestingServer.OffChain (testMintTx)
@@ -21,7 +21,6 @@ import Options.Applicative                   (argument, metavar, str, some)
 import Plutus.V2.Ledger.Api                  (BuiltinByteString)
 import PlutusTx.Builtins.Class               (stringToBuiltinByteString)
 import System.Random                         (randomRIO, randomIO)
-import Utils.ChainIndex                      (MapUTXO)
  
 runTestingServer :: IO ()
 runTestingServer = runServer @TestingServer
@@ -41,7 +40,7 @@ instance HasServer TestingServer where
 
 instance HasTxEndpoints TestingServer where
 
-    type TxApiRequestOf TestingServer = (InputOf TestingServer, MapUTXO)
+    type TxApiRequestOf TestingServer = InputWithContext TestingServer
 
     data (TxEndpointsErrorOf TestingServer) = HasDuplicates
         deriving Show

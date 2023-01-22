@@ -1,18 +1,18 @@
 # Cardano-server
 
-A lightweight backend server for hosting Cardano dApps. It is a robust alternative to Plutus Application Backend (PAB).
+A lightweight backend server for hosting Cardano dApps. It is an alternative to Plutus Application Backend (PAB).
 
 Key features:
 
-1. Low resource consumption compared to PAB. Fast synchronization with other backend services (Cardano Node, Cardano Wallet Backend, Plutus Chain Index, Kupo).
+1. Low resource consumption compared to PAB. Fast synchronization with other backend services (Cardano Node, Cardano Wallet Backend, Plutus Chain Index, Kupo (in the future)).
 
-2. Fetching actual blockchain data is handled automatically: smart contract developers can focus on the business logic of their apps.
+2. Fetching the actual blockchain data is handled automatically: smart contract developers can focus on the business logic of their apps.
 
-3. Support of our transaction construction DSL (check [this repo](https://github.com/encryptedcoins/plutus-apps-extra)).
+3. Supports our transaction builder (check [this repo](https://github.com/encryptedcoins/plutus-apps-extra)).
 
-4. A console client capable of sending correct requests to your server is created automatically.
+4. A console client capable of sending correct requests to the server is created automatically (or with a few extra lines of code).
 
-5. The console client can emulate user behavior by sending randomized requests periodically, which might be helpful for stress-testing your app.
+5. The client can emulate user behavior by sending randomized requests periodically, which might be helpful for stress-testing your app.
 
 # How to use
 
@@ -34,21 +34,19 @@ A class that defines a console client corresponding to your cardano-server. The 
 
 * `parseServerInput` is the parser used to get `InputOf` your server from the command line. Optional if `InputOf` your server has a read instance.
 * `genServerInput` is the generator used to generate `InputOf` your server. Optional if `InputOf` your server has a random instance. 
-* `extractActionsFromInput` is function, used to get actions from the `InputOf` your server that will be performed before the request is sent and after a successful response is received, respectively. It can be useful, for example, if you need to write some additional information about your inputs to external files. Optional if you don't need to execute any actions.
-* `addExternalUtxosToInput` is function that will add external UTXOs to your input before sending a request. Optional if you don't have them.
+* `extractActionsFromInput` is a function that is used to obtain a pair of actions from the `InputOf` your server. These actions are performed before the request is sent and after a successful response is received, respectively. It can be useful, for example, if you need to write some additional information about your inputs to external files. Optional if you don't need to execute any actions.
+* `addInputContext` is a function that will add `InputContext` to the `InputOf` your server before sending requests that require it. The default is an empty `ServerInputContext`.
 
-Alternatively, you can use the [defaultClient](https://github.com/encryptedcoins/cardano-server/blob/main/src/Cardano/Server/Client/Default.hs) which requires only `FromJSON` instance of `InputOf` your server instead of `HasClient` class. It will read `InputOf` your server from the file and send respective request to `sumbitTx` endpoint of your server.
+Alternatively, you can use the [defaultClient](https://github.com/encryptedcoins/cardano-server/blob/main/src/Cardano/Server/Client/Default.hs) which requires only `FromJSON` instance of `InputOf` your server instead of the `HasClient` class. It reads an `InputOf` your server from the file and sends the respective request to the `sumbitTx` endpoint of your server.
 
 3. [HasTxEndpoints](https://github.com/encryptedcoins/cardano-server/blob/main/src/Cardano/Server/Endpoints/Tx/Class.hs):
 
-A class that defines two API endpoints on the server: `newTx` and `sumbitTx`. This class defines the following:
+A class that defines three API endpoints on the server: `serverTx`, `newTx` and `sumbitTx`. This class defines the following:
 
 * `TxApiRequestOf` is a type of request body that we expect to receive.
-* `TxApiResultOf` is a sum type containing all possible results returned by these two endpoints. You can use `DefaultTxApiResult` if it suits your case.
 * `TxEndpointsErrorOf` is a type of errors that might be thrown while processing user requests to these endpoints.
-* `txEndpointsProcessRequest` defines actions that convert `TxApiRequestOf s` into `(InputOf s, MapUTXO)` or throw a `TxEndpointsErrorOf s` error.
+* `txEndpointsProcessRequest` defines actions that convert `TxApiRequestOf s` into `(InputOf s, InputContext)` or throw a `TxEndpointsErrorOf s` error.
 * `txEndpointsTxBuilders` defines actions that process the server input and return a list of transaction builders.
-* `txEndpointsErrorHandler` defines error-handling actions for `TxEndpointsErrorOf` errors.
 
 # Test server commands
 
@@ -59,18 +57,18 @@ This library includes the [test-server](https://github.com/encryptedcoins/cardan
 $ cabal run testingServer
 ```
 
-2. Run client in automatic mode in which it will send request to mint test tokens to selected endpoint (default is SubmitTx) at an average *interval* seconds :</br>
+2. Run client in automatic mode in which it will send request to mint test tokens to selected endpoint (the default is SubmitTx) at an average *interval* seconds :</br>
 ```console
-$ cabal run testingClient -- [Ping | SubmitTx | NewTx] --auto -i interval
+$ cabal run testingClient -- [Ping | ServerTx | NewTx | SubmitTx ] --auto -i interval
 ```
 &emsp;&emsp;For example:
 ```console
 $ cabal run testingClient -- SubmitTx --auto -i 30
 ```
 
-3. Run client in manual mode in which it will send request to mint specified test *tokens* to selected endpoint (default is SubmitTx):</br>
+3. Run client in manual mode in which it will send request to mint specified test *tokens* to selected endpoint (the default is SubmitTx):</br>
 ```console
-$ cabal run testingClient -- [Ping | SubmitTx | NewTx] --manual token token ...
+$ cabal run testingClient -- [Ping | ServerTx | NewTx | SubmitTx ] --manual token token ...
 ```
 &emsp;&emsp;For example:
 ```console

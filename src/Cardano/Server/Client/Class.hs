@@ -2,15 +2,16 @@
 {-# LANGUAGE DefaultSignatures          #-}
 {-# LANGUAGE DerivingStrategies         #-}
 {-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE TupleSections              #-}
 {-# LANGUAGE TypeFamilies               #-}
-{-# LANGUAGE TupleSections #-}
 
 module Cardano.Server.Client.Class where
 
+import           Cardano.Server.Class    (InputWithContext)
 import           Cardano.Server.Internal (HasServer(..), AppM)
+import           Data.Default            (def)
 import           Options.Applicative     (Parser, argument, auto, metavar)
 import           System.Random           (Random, randomIO)
-import           Utils.ChainIndex        (MapUTXO)
 
 class HasServer c => HasClient c where
 
@@ -31,6 +32,6 @@ class HasServer c => HasClient c where
     extractActionsFromInput :: InputOf c -> AppM c (AppM c (), AppM c ())
     extractActionsFromInput _ = pure (pure (), pure ())
 
-    -- Function that adds external utxos to your input before sending a request
-    addExternalUtxosToInput :: InputOf c -> AppM c (InputOf c, MapUTXO)
-    addExternalUtxosToInput = pure . (, mempty)
+    -- Function that adds InputContext to the request
+    addInputContext :: InputOf c -> AppM c (InputWithContext c)
+    addInputContext = pure . (, def)
