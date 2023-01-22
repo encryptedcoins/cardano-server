@@ -14,7 +14,7 @@ import           Cardano.Server.Endpoints.Tx.Class    (HasTxEndpoints(..))
 import           Cardano.Server.Error                 (ConnectionError, Envelope, Throws, IsCardanoServerError(..),
                                                        ExceptionDeriving(..), toEnvelope)
 import           Cardano.Server.Internal              (NetworkM, HasServer(..))
-import           Cardano.Server.Tx                    (mkBalanceTx, MkTxError)
+import           Cardano.Server.Tx                    (mkBalanceTx)
 import           Cardano.Server.Utils.Logger          (HasLogger(..), (.<))
 import           Control.Monad                        (join, liftM3)
 import           Control.Monad.Catch                  (Exception, MonadThrow (throwM))
@@ -23,6 +23,7 @@ import           Data.Text                            (Text)
 import           GHC.Generics                         (Generic)
 import           Ledger                               (CardanoTx)
 import           Servant                              (JSON, (:>), ReqBody, Post)
+import           Types.Error                          (MkTxError)
 import           Utils.Tx                             (cardanoTxToText)
 
 type NewTxApi s = "newTx"

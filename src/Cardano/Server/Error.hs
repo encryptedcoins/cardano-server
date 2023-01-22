@@ -10,7 +10,6 @@
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE PatternSynonyms            #-}
-{-# LANGUAGE PolyKinds                  #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE StandaloneDeriving         #-}
 {-# LANGUAGE TypeApplications           #-}
@@ -31,9 +30,7 @@ module Cardano.Server.Error
     , Envelope
     ) where
 
-import           Control.Monad.Catch              (Exception(..), MonadThrow(..), handle, MonadCatch)
-import           Data.Aeson                       (ToJSON(..))
-import qualified Data.Aeson                       as J
+import           Control.Monad.Catch              (Exception(..), MonadThrow(..), handle, MonadCatch, SomeException)
 import qualified Data.ByteString.Lazy             as LBS
 import           Data.Data                        (cast)
 import           Data.Kind                        (Type, Constraint)
@@ -41,16 +38,16 @@ import           Data.Text                        (Text)
 import qualified Data.Text.Encoding               as T
 import           IO.ChainIndex                    (pattern ChainIndexConnectionError)
 import           IO.Wallet                        (pattern WalletApiConnectionError)
-import           Network.Wai                      (Middleware, responseLBS)
+import           Network.Wai                      (Middleware, responseLBS, ResponseReceived)
 import           Network.HTTP.Types               (Status)
 import           Servant.API.ContentTypes         (JSON, MimeRender(..), NoContent, PlainText)
 import           Servant.Checked.Exceptions       (ErrStatus(..), toErrEnvelope, Envelope, IsMember, Contains,
                                                    toSuccEnvelope, Throws)
-import           Types.Error                      (ConnectionError)
+import           Types.Error                      (ConnectionError, MkTxError)
 
 ---------------------------------------------------- Common errors ----------------------------------------------------
 
--- Unlike other server errors, ConnectionError is defined in another package 
+-- Unlike other server errors, these errors are defined in another packages
 -- and can't be derived via ExceptionDeriving.
 -- So it needs to be manually added to the middleware.
 instance IsCardanoServerError ConnectionError where
@@ -61,8 +58,9 @@ instance IsCardanoServerError ConnectionError where
         _                           -> toMsg "Some external endpoint"
         where toMsg = (<> " is currently unavailable. Try again later.")
 
-instance ToJSON ConnectionError where
-    toJSON _ = J.String "Connection error."
+instance IsCardanoServerError MkTxError where
+    errStatus _ = toEnum 422
+    errMsg _ = "The requested transaction could not be built."
 
 ----------------------------------------- Helper newtype to exception deriving  -----------------------------------------
 
@@ -79,11 +77,17 @@ instance (Exception e, IsCardanoServerError e) => Exception (ExceptionDeriving e
 
 ------------------------------------------- Server error class and middleware  ------------------------------------------
 
+pattern UnwrappedError :: IsCardanoServerError e => e -> SomeException
+pattern UnwrappedError e <- (fromException -> Just e)
+
 errorMW :: Middleware
 errorMW baseApp req respond = handle handleServerException $ baseApp req respond
     where
-        handleServerException (fromException @ConnectionError -> Just ce) 
-            = handleServerException (toException $ CardanoServerError ce)
+        handleServerException (UnwrappedError e) 
+            = rethrowWithWrap @ConnectionError e
+
+        handleServerException (UnwrappedError e) 
+            = rethrowWithWrap @MkTxError e
 
         handleServerException (fromException -> Just (CardanoServerError cse))
             = let status  = errStatus cse
@@ -92,6 +96,9 @@ errorMW baseApp req respond = handle handleServerException $ baseApp req respond
               in baseApp req $ const $ respond $ responseLBS status headers content
 
         handleServerException e = throwM e
+
+        rethrowWithWrap :: forall e. IsCardanoServerError e => e -> IO ResponseReceived
+        rethrowWithWrap e = handleServerException (toException $ CardanoServerError e)
 
 class Exception e => IsCardanoServerError e where
     errStatus :: e -> Status

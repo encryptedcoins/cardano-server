@@ -1,39 +1,31 @@
-{-# LANGUAGE DeriveAnyClass      #-}
-{-# LANGUAGE DeriveGeneric       #-}
-{-# LANGUAGE DerivingVia         #-}
 {-# LANGUAGE ConstraintKinds     #-}
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE NumericUnderscores  #-}
 {-# LANGUAGE OverloadedStrings   #-}
-{-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE RecordWildCards     #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 
 module Cardano.Server.Tx where
 
-import           Cardano.Server.Error        (ExceptionDeriving(..), IsCardanoServerError(..))
 import           Cardano.Server.Input        (InputContext (..))
 import           Cardano.Server.Internal     (Env(..))
 import           Cardano.Server.Utils.Logger (HasLogger(..), logPretty, logSmth)
 import           Constraints.Balance         (balanceExternalTx)
 import           Constraints.OffChain        (utxoProducedPublicKeyTx)
-import           Control.Exception           (Exception)
 import           Control.Monad.Catch         (MonadThrow(..))
 import           Control.Monad.Extra         (mconcatMapM, when, void)
 import           Control.Monad.IO.Class      (MonadIO(..))
 import           Control.Monad.Reader        (MonadReader, asks)
 import           Control.Monad.State         (execState)
-import           Data.Aeson                  (ToJSON)
 import           Data.Default                (def)
 import qualified Data.Map                    as Map
 import           Data.Maybe                  (fromJust, isNothing)
-import           GHC.Generics                (Generic)
 import           Ledger                      (Address, CardanoTx(..), TxOutRef, unspentOutputsTx)
 import           Ledger.Ada                  (lovelaceValueOf)
 import           Ledger.Tx.CardanoAPI        as CardanoAPI
 import           IO.ChainIndex               (getUtxosAt)
 import           IO.Time                     (currentTime)
 import           IO.Wallet                   (HasWallet(..), signTx, balanceTx, submitTxConfirmed, getWalletAddr, getWalletUtxos)
+import           Types.Error                 (MkTxError(..))
 import           Types.Tx                    (TxConstructor (..), TransactionBuilder, selectTxConstructor, mkTxConstructor)
 import           Utils.Address               (addressToKeyHashes)
 import           Utils.ChainIndex            (filterCleanUtxos)
@@ -44,14 +36,6 @@ type MkTxConstraints m s =
     , MonadReader (Env s) m
     , MonadThrow m
     )
-
-data MkTxError = UnbuildableTx
-    deriving (Show, Generic, ToJSON)
-    deriving Exception via (ExceptionDeriving MkTxError)
-
-instance IsCardanoServerError MkTxError where
-    errStatus _ = toEnum 422
-    errMsg _ = "The requested transaction could not be built."
 
 -- TODO: implement two types of balancing
 mkBalanceTx :: MkTxConstraints m s
