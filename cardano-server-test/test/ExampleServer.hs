@@ -2,11 +2,11 @@
 {-# LANGUAGE TypeApplications  #-}
 {-# LANGUAGE TupleSections     #-}
 
-module TestingServer where
+module ExampleServer where
 
 import           Cardano.Server.Endpoints.Tx.Server   (processInputs)
 import           Cardano.Server.Internal              (HasServer(..), runAppM)
-import           Cardano.Server.Example.Main          (TestingServer)
+import           Cardano.Server.Example.Main          (ExampleServer)
 import           Cardano.Server.Tx                    (mkWalletTxOutRefs)
 import           Cardano.Server.Utils.Logger          (HasLogger(..), logSmth, (.<))
 import           Cardano.Server.Client.Example.Main   ()
@@ -20,20 +20,20 @@ import           DefaultClient                        (testDefaultClient)
 import           Internal                             (testFunds, testFundsAll)
 import           Utils.ChainIndex                     (filterCleanUtxos)
 
-testFundsTS :: IO ()
-testFundsTS = testFunds @TestingServer
+testFundsExample :: IO ()
+testFundsExample = testFunds @ExampleServer
 
-testFundsAllTS :: IO ()
-testFundsAllTS = testFundsAll @TestingServer
+testFundsAllExample :: IO ()
+testFundsAllExample = testFundsAll @ExampleServer
 
-testSubmitTxTS :: [String] -> IO ()
-testSubmitTxTS = runAppM @TestingServer . processInputs . (,def) . map stringToBuiltinByteString
+testSubmitTxExample :: [String] -> IO ()
+testSubmitTxExample = runAppM @ExampleServer . processInputs . (,def) . map stringToBuiltinByteString
 
-testDefaultClientTS :: IO ()
-testDefaultClientTS = testDefaultClient @TestingServer
+testDefaultClientExample :: IO ()
+testDefaultClientExample = testDefaultClient @ExampleServer
 
 mkRefs :: Int -> IO ()
-mkRefs n = runAppM @TestingServer $ do
+mkRefs n = runAppM @ExampleServer $ do
     addr   <- getWalletAddr
     utxos  <- getWalletUtxos
     refs   <- mkWalletTxOutRefs addr n

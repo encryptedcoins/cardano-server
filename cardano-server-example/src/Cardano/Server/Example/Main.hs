@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE UndecidableInstances       #-}
 
-module Cardano.Server.Example.Main (TestingServer, runTestingServer) where
+module Cardano.Server.Example.Main (ExampleServer, runExampleServer) where
 
 -- import Cardano.Server.Client.Client          (startClient)
 import Cardano.Server.Endpoints.Tx.Class     (HasTxEndpoints(..))
@@ -20,24 +20,24 @@ import Data.List                             (nub)
 import Plutus.V2.Ledger.Api                  (BuiltinByteString)
 -- import System.Random                         (randomRIO, randomIO)
  
-runTestingServer :: IO ()
-runTestingServer = runServer @TestingServer
+runExampleServer :: IO ()
+runExampleServer = runServer @ExampleServer
 
-data TestingServer
+data ExampleServer
 
-instance HasServer TestingServer where
+instance HasServer ExampleServer where
 
-    type AuxiliaryEnvOf TestingServer = ()
+    type AuxiliaryEnvOf ExampleServer = ()
 
     loadAuxiliaryEnv _ = pure ()
 
-    type InputOf TestingServer = [BuiltinByteString]
+    type InputOf ExampleServer = [BuiltinByteString]
 
-instance HasTxEndpoints TestingServer where
+instance HasTxEndpoints ExampleServer where
 
-    type TxApiRequestOf TestingServer = InputWithContext TestingServer
+    type TxApiRequestOf ExampleServer = InputWithContext ExampleServer
 
-    data (TxEndpointsErrorOf TestingServer) = HasDuplicates
+    data (TxEndpointsErrorOf ExampleServer) = HasDuplicates
         deriving Show
 
     txEndpointsProcessRequest req@(bbs, _) = do
@@ -47,15 +47,6 @@ instance HasTxEndpoints TestingServer where
 
     txEndpointsTxBuilders bbs = pure [testMintTx bbs]
 
-instance IsCardanoServerError (TxEndpointsErrorOf TestingServer) where
+instance IsCardanoServerError (TxEndpointsErrorOf ExampleServer) where
     errStatus _ = toEnum 422
     errMsg _ = "The request contains duplicate tokens and will not be processed."
-
--- instance HasClient TestingServer where
-
---     parseServerInput = some $ stringToBuiltinByteString <$> argument str (metavar "token name")
-
---     genServerInput = do
---         inputLength <- randomRIO (1, 15)
---         let genBbs = stringToBuiltinByteString <$> (randomRIO (2, 8) >>= (`replicateM` randomIO))
---         replicateM inputLength genBbs

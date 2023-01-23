@@ -1,6 +1,6 @@
 module Main where
 
-import Cardano.Server.Example.Main (runTestingServer)
+import Cardano.Server.Example.Main (runExampleServer)
 
 main :: IO ()
-main = runTestingServer
+main = runExampleServer

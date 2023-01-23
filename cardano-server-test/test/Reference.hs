@@ -6,7 +6,7 @@ module Reference where
 
 import           Cardano.Server.Input                   (inputUTXO, InputContext (InputContextClient))
 import           Cardano.Server.Internal                (runAppM)
-import           Cardano.Server.Example.Main            (TestingServer)
+import           Cardano.Server.Example.Main            (ExampleServer)
 import           Cardano.Server.Example.OffChain        (testToken)
 import           Cardano.Server.Example.OnChain         (testPolicyV, testPolicy)
 import           Cardano.Server.Tx                      (mkTx)
@@ -25,7 +25,7 @@ import           Ledger.Typed.Scripts                   (Any)
 import qualified PlutusTx.Prelude                       as Plutus
 
 postReferenceScript :: IO CardanoTx
-postReferenceScript = runAppM @TestingServer $ do
+postReferenceScript = runAppM @ExampleServer $ do
     addr <- getWalletAddr
     mkTx [] def
         [ postMintingPolicyTx
@@ -36,7 +36,7 @@ postReferenceScript = runAppM @TestingServer $ do
         ]
 
 runReferenceTest :: IO ()
-runReferenceTest = void $ runAppM @TestingServer $ do
+runReferenceTest = void $ runAppM @ExampleServer $ do
     ctx <- liftIO postReferenceScript
     let ref = head $ case ctx of
             EmulatorTx tx   -> Map.keys $ Ledger.unspentOutputsTx tx

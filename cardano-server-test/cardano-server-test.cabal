@@ -38,7 +38,7 @@ test-suite cardano-server-test
   Other-Modules:        DefaultClient
                         Internal
                         Reference
-                        TestingServer
+                        ExampleServer
   Build-Depends:
     base                          >= 4.9 && < 5,
     cardano-server                         -any,
