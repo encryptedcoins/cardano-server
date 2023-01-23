@@ -5,4 +5,12 @@
 , "wallet_file"         : "testnet/wallets/wallet.json"
 , "min_utxos_amount"    : 1
 , "network_id"          : {"tag" : "Testnet", "contents" : 2}
+, "inactive_endpoints"  :
+    { "ping"          : false
+    , "funds"         : false
+    , "add_signature" : false
+    , "submit_tx"     : false
+    , "new_tx"        : false
+    , "server_tx"     : false
+    }
 }
