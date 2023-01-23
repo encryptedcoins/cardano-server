@@ -6,20 +6,21 @@
 
 module Cardano.Server.Class where
 
-import           Cardano.Node.Emulator  (Params)
-import           Cardano.Server.Config  (decodeOrErrorFromFile, InactiveEndpoints)
-import           Cardano.Server.Input   (InputContext)
-import           Control.Monad.Catch    (MonadThrow)
-import           Control.Monad.IO.Class (MonadIO)
-import           Control.Monad.Reader   (ReaderT, MonadReader, asks)
-import           Data.Aeson             (FromJSON(..), ToJSON)
-import           Data.Data              (Typeable)
-import           Data.IORef             (IORef)
-import           Data.Kind              (Type)
-import           Data.Sequence          (Seq)
-import           IO.Wallet              (HasWallet(..), RestoredWallet, getWalletAddr)
-import           Ledger.Address         (Address)
-import           Servant                (MimeUnrender, JSON)
+import           Cardano.Node.Emulator       (Params)
+import           Cardano.Server.Config       (decodeOrErrorFromFile, InactiveEndpoints)
+import           Cardano.Server.Input        (InputContext)
+import           Cardano.Server.Utils.Logger (HasLogger)
+import           Control.Monad.Catch         (MonadThrow)
+import           Control.Monad.IO.Class      (MonadIO)
+import           Control.Monad.Reader        (ReaderT, MonadReader, asks)
+import           Data.Aeson                  (FromJSON(..), ToJSON)
+import           Data.Data                   (Typeable)
+import           Data.IORef                  (IORef)
+import           Data.Kind                   (Type)
+import           Data.Sequence               (Seq)
+import           IO.Wallet                   (HasWallet(..), RestoredWallet, getWalletAddr)
+import           Ledger.Address              (Address)
+import           Servant                     (MimeUnrender, JSON)
 
 class ( Show (AuxiliaryEnvOf s)
       , MimeUnrender JSON (InputOf s)
@@ -36,10 +37,10 @@ class ( Show (AuxiliaryEnvOf s)
 
     type InputOf s :: Type
 
-    serverSetup :: (MonadIO m, MonadReader (Env s) m) => m ()
+    serverSetup :: (MonadIO m, MonadReader (Env s) m, HasLogger m) => m ()
     serverSetup = pure ()
 
-    serverIdle :: (MonadIO m, MonadReader (Env s) m) => m ()
+    serverIdle :: (MonadIO m, MonadReader (Env s) m, HasLogger m) => m ()
     serverIdle = pure ()
 
     serverTrackedAddresses :: (MonadReader (Env s) m, HasWallet m) => m [Address]
