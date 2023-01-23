@@ -1,10 +1,26 @@
 cradle:
   cabal:
-    - path: "src"
+
+    #Server
+    - path: "cardano-server/src"
       component: "cardano-server:lib:cardano-server"
-    - path: "test"
-      component: "cardano-server:test:cardano-server-test"
-    - path: "app"
-      component: "cardano-server:exe:testingServer"
-    - path: "app"
-      component: "cardano-server:exe:testingClient"
+
+    #Server example
+    - path: "cardano-server-example/src"
+      component: "cardano-server-example:lib:cardano-server-example"
+    - path: "cardano-server-example/app"
+      component: "cardano-server-example:app:cardano-server-example"
+
+    #Client
+    - path: "cardano-server-client/src"
+      component: "cardano-server-client:lib:cardano-server-client"
+
+    #Client example
+    - path: "cardano-server-client-example/src"
+      component: "cardano-server-client-example:lib:cardano-server-client-example"
+    - path: "cardano-server-client-example/app"
+      component: "cardano-server-client-example:app:cardano-server-client-example"
+
+    #Tests
+    - path: "cardano-server-test/test"
+      component: "cardano-server-test:test:cardano-server-test"
