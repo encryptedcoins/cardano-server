@@ -89,7 +89,6 @@ processInputs :: forall s m.
     , HasWallet m
     , HasLogger m
     , MonadReader (Env s) m
-    , MonadThrow m
     ) => InputWithContext s -> m ()
 processInputs (input, context) = do
     checkForCleanUtxos
