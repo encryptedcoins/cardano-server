@@ -97,14 +97,11 @@ pattern UnwrappedError e <- (fromException -> Just e)
 errorMW :: Middleware
 errorMW baseApp req respond = handle handleServerException $ baseApp req respond
     where
-        handleServerException (UnwrappedError e) 
-            = rethrowWithWrap @ConnectionError e
+        handleServerException (UnwrappedError e) = rethrowWithWrap @ConnectionError e
 
-        handleServerException (UnwrappedError e) 
-            = rethrowWithWrap @MkTxError e
+        handleServerException (UnwrappedError e) = rethrowWithWrap @MkTxError e
 
-        handleServerException (UnwrappedError e) 
-            = rethrowWithWrap @BalanceExternalTxError e
+        handleServerException (UnwrappedError e) = rethrowWithWrap @BalanceExternalTxError e
 
         handleServerException (fromException -> Just (CardanoServerError cse))
             = let status  = errStatus cse

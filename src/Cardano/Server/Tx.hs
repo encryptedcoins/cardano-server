@@ -19,13 +19,13 @@ import           Control.Monad.State         (execState)
 import           Data.Default                (def)
 import qualified Data.Map                    as Map
 import           Data.Maybe                  (fromJust, isNothing)
-import           Ledger                      (Address, CardanoTx(..), TxOutRef, unspentOutputsTx)
+import           Ledger                      (Address, CardanoTx(..), TxOutRef, unspentOutputsTx, onCardanoTx)
 import           Ledger.Ada                  (lovelaceValueOf)
 import           Ledger.Tx.CardanoAPI        as CardanoAPI
 import           IO.ChainIndex               (getUtxosAt)
 import           IO.Time                     (currentTime)
 import           IO.Wallet                   (HasWallet(..), signTx, balanceTx, submitTxConfirmed, getWalletAddr, getWalletUtxos)
-import           Types.Error                 (MkTxError(..))
+import           Types.Error                 (MkTxError(..), throwMaybe)
 import           Types.Tx                    (TxConstructor (..), TransactionBuilder, selectTxConstructor, mkTxConstructor)
 import           Utils.Address               (addressToKeyHashes)
 import           Utils.ChainIndex            (filterCleanUtxos)
@@ -54,7 +54,7 @@ mkBalanceTx addressesTracked context txs = do
     when (isNothing constr) $ do
         logMsg "\tNo transactions can be constructed. Last error:"
         logSmth $ head $ txConstructorErrors $ last $ map (`execState` constrInit) txs
-        throwM UnbuildableTx
+        throwM AllConstructorsFailed
     let (lookups, cons) = fromJust $ txConstructorResult $ fromJust constr
     logMsg "\tLookups:"
     logSmth lookups
@@ -93,10 +93,8 @@ checkForCleanUtxos = do
 
 mkWalletTxOutRefs :: MkTxConstraints m s => Address -> Int -> m [TxOutRef]
 mkWalletTxOutRefs addr n = do
-    (pkh, scr) <- maybe (throwM UnbuildableTx) pure $ addressToKeyHashes addr
+    (pkh, scr) <- throwMaybe (CantExtractKeyHashesFromAddress addr) $ addressToKeyHashes addr
     let txBuilder = mapM_ (const $ utxoProducedPublicKeyTx pkh scr (lovelaceValueOf 10_000_000) (Nothing :: Maybe ())) [1..n]
     signedTx <- mkTx [addr] def [txBuilder]
-    let refs = case signedTx of
-            EmulatorTx tx   -> Map.keys $ Ledger.unspentOutputsTx tx
-            CardanoApiTx tx -> Map.keys $ CardanoAPI.unspentOutputsTx tx
+    let refs =  onCardanoTx (Map.keys . Ledger.unspentOutputsTx) (Map.keys . CardanoAPI.unspentOutputsTx) signedTx
     pure refs

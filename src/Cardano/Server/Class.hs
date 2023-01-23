@@ -9,6 +9,7 @@ module Cardano.Server.Class where
 import           Cardano.Node.Emulator  (Params)
 import           Cardano.Server.Config  (decodeOrErrorFromFile)
 import           Cardano.Server.Input   (InputContext)
+import           Control.Monad.Catch    (MonadThrow)
 import           Control.Monad.IO.Class (MonadIO)
 import           Control.Monad.Reader   (ReaderT, MonadReader, asks)
 import           Data.Aeson             (FromJSON(..), ToJSON)
@@ -58,5 +59,5 @@ data Env s = Env
     , envLedgerParams       :: Params
     }
 
-instance MonadIO m => HasWallet (ReaderT (Env s) m) where 
+instance (MonadIO m, MonadThrow m) => HasWallet (ReaderT (Env s) m) where 
     getRestoredWallet = asks envWallet
