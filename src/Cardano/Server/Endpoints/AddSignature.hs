@@ -8,9 +8,10 @@
 
 module Cardano.Server.Endpoints.AddSignature where
 
+import           Cardano.Server.Config            (isInactiveAddSignature)
 import           Cardano.Server.Error             (ExceptionDeriving(..), Envelope, IsCardanoServerError(..), Throws,
                                                    toEnvelope)
-import           Cardano.Server.Internal          (NetworkM)
+import           Cardano.Server.Internal          (NetworkM, checkEndpointAvailability)
 import           Cardano.Server.Utils.Logger      (HasLogger(..), (.<))
 import           Control.Monad.Catch              (Exception, MonadThrow (..))
 import           Data.Aeson                       (ToJSON)
@@ -41,6 +42,7 @@ instance IsCardanoServerError AddSignatureError where
 addSignatureHandler :: AddSignatureReqBody -> NetworkM s (Envelope '[AddSignatureError] Text)
 addSignatureHandler req@(tx, sig) = toEnvelope $ do
     logMsg $ "New AddSignature request received:\n" .< req
+    checkEndpointAvailability isInactiveAddSignature
     case textToCardanoTx tx of
         Just _ -> do
             logMsg tx

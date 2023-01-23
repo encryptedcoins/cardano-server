@@ -62,7 +62,9 @@ runServer = do
         hSetBuffering stdout LineBuffering
         forkIO $ processQueue env
         prepareServer env 
-        Warp.run port $ errorMW $ mkApp @s env
+        Warp.run port 
+            $ errorMW 
+            $ mkApp @s env
     where
         prepareServer env = runExceptT . runHandler' . flip runReaderT env . unNetworkM $ do 
             logMsg "Starting server..."

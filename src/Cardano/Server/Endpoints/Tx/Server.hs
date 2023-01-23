@@ -13,9 +13,10 @@
 module Cardano.Server.Endpoints.Tx.Server where
 
 import           Cardano.Server.Class              (InputWithContext)
+import           Cardano.Server.Config             (isInactiveServerTx)
 import           Cardano.Server.Endpoints.Tx.Class (HasTxEndpoints(..))
 import           Cardano.Server.Error              (ConnectionError, Envelope, Throws, toEnvelope)
-import           Cardano.Server.Internal           (HasServer(..),  Env(..), NetworkM, Queue, QueueRef, getQueueRef)
+import           Cardano.Server.Internal           (HasServer(..),  Env(..), NetworkM, Queue, QueueRef, getQueueRef, checkEndpointAvailability)
 import           Cardano.Server.Tx                 (mkTx, checkForCleanUtxos)
 import           Cardano.Server.Utils.Logger       (HasLogger(..), (.<), logSmth)
 import           Cardano.Server.Utils.Wait         (waitTime)
@@ -38,6 +39,7 @@ serverTxHandler :: forall s. HasTxEndpoints s
     -> NetworkM s (Envelope '[ConnectionError] NoContent)
 serverTxHandler req = toEnvelope $ do
     logMsg $ "New serverTx request received:\n" .< req
+    checkEndpointAvailability isInactiveServerTx
     arg <- txEndpointsProcessRequest req
     ref <- getQueueRef
     liftIO $ atomicModifyIORef ref ((,()) . (|> arg))

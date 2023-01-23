@@ -7,7 +7,7 @@
 module Cardano.Server.Class where
 
 import           Cardano.Node.Emulator  (Params)
-import           Cardano.Server.Config  (decodeOrErrorFromFile)
+import           Cardano.Server.Config  (decodeOrErrorFromFile, InactiveEndpoints)
 import           Cardano.Server.Input   (InputContext)
 import           Control.Monad.Catch    (MonadThrow)
 import           Control.Monad.IO.Class (MonadIO)
@@ -57,6 +57,7 @@ data Env s = Env
     , envAuxiliary          :: AuxiliaryEnvOf s
     , envMinUtxosAmount     :: Int
     , envLedgerParams       :: Params
+    , envInactiveEndpoints  :: InactiveEndpoints
     }
 
 instance (MonadIO m, MonadThrow m) => HasWallet (ReaderT (Env s) m) where 

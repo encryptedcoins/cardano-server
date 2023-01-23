@@ -10,7 +10,8 @@
 
 module Cardano.Server.Endpoints.Funds where
 
-import           Cardano.Server.Internal          (NetworkM)
+import           Cardano.Server.Config            (isInactiveFunds)
+import           Cardano.Server.Internal          (NetworkM, checkEndpointAvailability)
 import           Cardano.Server.Utils.Logger      (logMsg)
 import           Cardano.Server.Error             (ConnectionError, IsCardanoServerError(..), ExceptionDeriving(..), toEnvelope,
                                                    Throws, Envelope)
@@ -62,6 +63,7 @@ instance IsCardanoServerError FundsError where
 fundsHandler :: FundsReqBody -> NetworkM s (Envelope '[FundsError, ConnectionError] Funds)
 fundsHandler (FundsReqBody addrBech32 csHex) = toEnvelope $ do
     logMsg $ "New funds request received:\n" <> addrBech32
+    checkEndpointAvailability isInactiveFunds
     let cs   =  maybe (throw UnparsableCurrencySymbol) (CurrencySymbol . toBuiltin) $ decodeHex csHex
         addr =  fromMaybe (throw UnparsableAddress) $ bech32ToAddress addrBech32
     getFunds cs addr

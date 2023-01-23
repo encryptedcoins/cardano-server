@@ -9,9 +9,10 @@
 
 module Cardano.Server.Endpoints.Tx.Submit where
 
+import           Cardano.Server.Config                (isInactiveSubmitTx)
 import           Cardano.Server.Error                 (ConnectionError, Envelope, Throws, IsCardanoServerError(..),
                                                        ExceptionDeriving(..), toEnvelope)
-import           Cardano.Server.Internal              (NetworkM)
+import           Cardano.Server.Internal              (NetworkM, checkEndpointAvailability)
 import           Cardano.Server.Utils.Logger          (HasLogger(..), (.<))
 import           Control.Monad.Catch                  (Exception, MonadThrow (throwM))
 import           Data.Aeson                           (ToJSON, FromJSON)
@@ -49,6 +50,7 @@ submitTxHandler :: SubmitTxReqBody
     -> NetworkM s (Envelope '[SubmitTxApiError, ConnectionError] NoContent)
 submitTxHandler req@(SubmitTxReqBody tx wtnsText) = toEnvelope $ do
     logMsg $ "New submitTx request received:\n" .< req
+    checkEndpointAvailability isInactiveSubmitTx
     case textToCardanoTx tx of
         Nothing  -> throwM $ UnparsableTx tx
         Just ctx -> case mapM parseWitness wtnsText of
