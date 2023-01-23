@@ -37,10 +37,10 @@ class ( Show (AuxiliaryEnvOf s)
 
     type InputOf s :: Type
 
-    serverSetup :: (MonadIO m, MonadReader (Env s) m, HasLogger m) => m ()
+    serverSetup :: (HasWallet m, MonadReader (Env s) m, HasLogger m) => m ()
     serverSetup = pure ()
 
-    serverIdle :: (MonadIO m, MonadReader (Env s) m, HasLogger m) => m ()
+    serverIdle :: (HasWallet m, MonadReader (Env s) m, HasLogger m) => m ()
     serverIdle = pure ()
 
     serverTrackedAddresses :: (MonadReader (Env s) m, HasWallet m) => m [Address]
