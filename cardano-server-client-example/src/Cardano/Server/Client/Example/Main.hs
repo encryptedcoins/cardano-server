@@ -1,8 +1,12 @@
-{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeApplications     #-}
+{-# LANGUAGE TypeFamilies         #-}
+{-# LANGUAGE UndecidableInstances #-}
+
 {-# OPTIONS_GHC -Wno-orphans  #-}
 
 module Cardano.Server.Client.Example.Main (runTestingClient) where
 
+import Cardano.Server.Class                  (HasServer(..))
 import Cardano.Server.Client.Class           (HasClient(..))
 import Cardano.Server.Client.Client          (startClient)
 import Cardano.Server.Example.Main           (ExampleServer)
@@ -15,10 +19,13 @@ runTestingClient :: IO ()
 runTestingClient = startClient @ExampleServer
 
 instance HasClient ExampleServer where
+    type ClientInput ExampleServer = InputOf ExampleServer
 
-    parseServerInput = some $ stringToBuiltinByteString <$> argument str (metavar "token name")
+    parseClientInput = some $ stringToBuiltinByteString <$> argument str (metavar "token name")
 
-    genServerInput = do
+    genClientInput = do
         inputLength <- randomRIO (1, 15)
         let genBbs = stringToBuiltinByteString <$> (randomRIO (2, 8) >>= (`replicateM` randomIO))
         replicateM inputLength genBbs
+    
+    toServerInput = pure
