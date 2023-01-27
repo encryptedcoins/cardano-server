@@ -89,8 +89,8 @@ checkForCleanUtxos = do
     cleanUtxos <- length . filterCleanUtxos <$> getWalletUtxos
     minUtxos   <- asks envMinUtxosAmount
     when (cleanUtxos < minUtxos) $ do
-        logMsg $ "Address doesn't has enough clean UTXO's: " <> (pack . show $ cleanUtxos - minUtxos)
-        void $ mkWalletTxOutRefs addr (cleanUtxos - minUtxos)
+        logMsg $ "Address doesn't has enough clean UTXO's: " <> (pack . show $ minUtxos - cleanUtxos)
+        void $ mkWalletTxOutRefs addr (minUtxos - cleanUtxos)
 
 mkWalletTxOutRefs :: MkTxConstraints m s => Address -> Int -> m [TxOutRef]
 mkWalletTxOutRefs addr n = do
