@@ -19,6 +19,7 @@ import           Control.Monad.State         (execState)
 import           Data.Default                (def)
 import qualified Data.Map                    as Map
 import           Data.Maybe                  (fromJust, isNothing)
+import           Data.Text                   (pack)
 import           Ledger                      (Address, CardanoTx(..), TxOutRef, unspentOutputsTx, onCardanoTx)
 import           Ledger.Ada                  (lovelaceValueOf)
 import           Ledger.Tx.CardanoAPI        as CardanoAPI
@@ -88,13 +89,13 @@ checkForCleanUtxos = do
     cleanUtxos <- length . filterCleanUtxos <$> getWalletUtxos
     minUtxos   <- asks envMinUtxosAmount
     when (cleanUtxos < minUtxos) $ do
-        logMsg "Address doesn't has enough clean UTXO's."
+        logMsg $ "Address doesn't has enough clean UTXO's: " <> (pack . show $ cleanUtxos - minUtxos)
         void $ mkWalletTxOutRefs addr (cleanUtxos - minUtxos)
 
 mkWalletTxOutRefs :: MkTxConstraints m s => Address -> Int -> m [TxOutRef]
 mkWalletTxOutRefs addr n = do
     (pkh, scr) <- throwMaybe (CantExtractKeyHashesFromAddress addr) $ addressToKeyHashes addr
     let txBuilder = mapM_ (const $ utxoProducedPublicKeyTx pkh scr (lovelaceValueOf 10_000_000) (Nothing :: Maybe ())) [1..n]
-    signedTx <- mkTx [addr] def [txBuilder]
+    signedTx <- mkTx [] def [txBuilder]
     let refs =  onCardanoTx (Map.keys . Ledger.unspentOutputsTx) (Map.keys . CardanoAPI.unspentOutputsTx) signedTx
     pure refs
