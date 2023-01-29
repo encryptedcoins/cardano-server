@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -Wno-orphans  #-}
 
-module Cardano.Server.Client.Example.Main (runTestingClient) where
+module Cardano.Server.Client.Example.Main (runExampleClient) where
 
 import Cardano.Server.Client.Class           (HasClient(..))
 import Cardano.Server.Client.Client          (startClient)
@@ -11,8 +11,8 @@ import Options.Applicative                   (argument, metavar, str, some)
 import PlutusTx.Builtins.Class               (stringToBuiltinByteString)
 import System.Random                         (randomRIO, randomIO)
 
-runTestingClient :: IO ()
-runTestingClient = startClient @ExampleServer
+runExampleClient :: IO ()
+runExampleClient = startClient @ExampleServer
 
 instance HasClient ExampleServer where
 
