@@ -19,7 +19,7 @@ import           Cardano.Server.Tx                    (mkBalanceTx)
 import           Cardano.Server.Utils.Logger          (HasLogger(..), (.<))
 import           Control.Monad                        (join, liftM3)
 import           Control.Monad.Catch                  (Exception, MonadThrow (throwM))
-import           Data.Aeson                           (ToJSON, FromJSON)
+import           Data.Aeson                           (ToJSON)
 import           Data.Text                            (Text)
 import           GHC.Generics                         (Generic)
 import           Ledger                               (CardanoTx)
@@ -27,15 +27,12 @@ import           Servant                              (JSON, (:>), ReqBody, Post
 import           Types.Error                          (MkTxError)
 import           Utils.Tx                             (cardanoTxToText)
 
-newtype NewTxResponse = NewTxResponse { getNewTxResponse :: Text }
-    deriving (Show, Eq, Generic, ToJSON, FromJSON)
-
 type NewTxApi s = "newTx"
               :> Throws NewTxApiError
               :> Throws ConnectionError
               :> Throws MkTxError
               :> ReqBody '[JSON] (TxApiRequestOf s)
-              :> Post '[JSON] NewTxResponse
+              :> Post '[JSON] Text
 
 newtype NewTxApiError = UnserialisableCardanoTx CardanoTx
     deriving (Show, Generic, ToJSON)
@@ -47,12 +44,12 @@ instance IsCardanoServerError NewTxApiError where
 
 newTxHandler :: forall s. HasTxEndpoints s 
     => TxApiRequestOf s
-    -> NetworkM s (Envelope '[NewTxApiError, ConnectionError, MkTxError] NewTxResponse)
+    -> NetworkM s (Envelope '[NewTxApiError, ConnectionError, MkTxError] Text)
 newTxHandler req = toEnvelope $ do
     logMsg $ "New newTx request received:\n" .< req
     checkEndpointAvailability isInactiveNewTx
     (input, context) <- txEndpointsProcessRequest req
     balancedTx <- join $ liftM3 mkBalanceTx (serverTrackedAddresses @s) (pure context) (txEndpointsTxBuilders @s input)
     case cardanoTxToText balancedTx of
-        Just res -> pure $ NewTxResponse res
+        Just res -> pure res
         Nothing  -> throwM $ UnserialisableCardanoTx balancedTx
