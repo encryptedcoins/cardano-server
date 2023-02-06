@@ -8,15 +8,15 @@ module Cardano.Server.Client.Class where
 import           Cardano.Server.Class    (InputWithContext)
 import           Cardano.Server.Internal (HasServer(..), AppM)
 import           Data.Default            (def)
-import           Options.Applicative     (Parser, argument, auto, metavar)
+import           Options.Applicative     (auto, ReadM)
 import           System.Random           (Random, randomIO)
 
 class HasServer c => HasClient c where
 
     -- Input parser for manual client mode.
-    parseServerInput :: Parser (InputOf c)
-    default parseServerInput :: Read (InputOf c) => Parser (InputOf c)
-    parseServerInput = argument auto (metavar "Server input")
+    parseServerInput :: ReadM (InputOf c)
+    default parseServerInput :: Read (InputOf c) => ReadM (InputOf c)
+    parseServerInput = auto
 
     -- Input generator for automatic client mode.
     genServerInput :: AppM c (InputOf c)

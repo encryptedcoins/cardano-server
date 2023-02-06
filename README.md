@@ -54,23 +54,23 @@ This library includes the [test-server](https://github.com/encryptedcoins/cardan
 
 1. Run server which works with test tokens:</br>
 ```console
-$ cabal run testingServer
+$ cabal run cardano-server-example
 ```
 
 2. Run client in automatic mode in which it will send request to mint test tokens to selected endpoint (the default is SubmitTx) at an average *interval* seconds :</br>
 ```console
-$ cabal run testingClient -- [Ping | ServerTx | NewTx | SubmitTx ] --auto -i interval
+$ cabal run cardano-server-client-example  -- [Ping | ServerTx | NewTx | SubmitTx ] --auto -i interval
 ```
 &emsp;&emsp;For example:
 ```console
-$ cabal run testingClient -- SubmitTx --auto -i 30
+$ cabal run cardano-server-client-example -- SubmitTx --auto -i 30
 ```
 
 3. Run client in manual mode in which it will send request to mint specified test *tokens* to selected endpoint (the default is SubmitTx):</br>
 ```console
-$ cabal run testingClient -- [Ping | ServerTx | NewTx | SubmitTx ] --manual token token ...
+$ cabal run cardano-server-client-example  -- [Ping | ServerTx | NewTx | SubmitTx ] --manual token,token ...
 ```
 &emsp;&emsp;For example:
 ```console
-$ cabal run testingClient -- NewTx --manual a72kf wjr82ar4 ...
+$ cabal run cardano-server-client-example -- NewTx --manual a72kf,jr82ar4 ...
 ```

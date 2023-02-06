@@ -1,3 +1,4 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving  #-}
@@ -66,4 +67,4 @@ intervalParser = option auto
 -------------------------------------------- Manual --------------------------------------------
 
 manualModeParser :: forall s. HasClient s => Parser (Mode s)
-manualModeParser = flag' Manual (long "manual") <*> parseServerInput @s
+manualModeParser = Manual <$> option (parseServerInput @s) (long "manual" <> help "Input of manual mode.")

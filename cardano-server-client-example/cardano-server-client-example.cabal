@@ -37,6 +37,7 @@ library
       base                          >= 4.9 && < 5,
       cardano-server-client                  -any,
       cardano-server-example                 -any,
+      split                                  -any,
       optparse-applicative                   -any,
       plutus-tx                              -any,
       random                                 -any,
