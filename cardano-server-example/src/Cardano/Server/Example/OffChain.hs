@@ -1,25 +1,25 @@
-{-# LANGUAGE DataKinds                  #-}
-{-# LANGUAGE DerivingStrategies         #-}
-{-# LANGUAGE FlexibleContexts           #-}
-{-# LANGUAGE FlexibleInstances          #-}
-{-# LANGUAGE MultiParamTypeClasses      #-}
-{-# LANGUAGE NoImplicitPrelude          #-}
-{-# LANGUAGE ScopedTypeVariables        #-}
-{-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE DerivingStrategies    #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NoImplicitPrelude     #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TypeFamilies          #-}
 
 module Cardano.Server.Example.OffChain where
 
-import           Cardano.Server.Example.OnChain (testPolicy, testTokenName, testTypedValidator, testPolicyV)
+import           Cardano.Server.Example.OnChain       (testPolicy, testPolicyV, testTokenName, testTypedValidator)
 import           Control.Monad.State                  (State)
 import           Ledger.Tokens                        (token)
 import           Ledger.Typed.Scripts                 (Any)
 import           Ledger.Value                         (AssetClass (..))
-import           Plutus.Script.Utils.V2.Scripts       (ValidatorHash, validatorHash, scriptCurrencySymbol)
+import           Plutus.Script.Utils.V2.Scripts       (ValidatorHash, scriptCurrencySymbol, validatorHash)
 import           Plutus.Script.Utils.V2.Typed.Scripts (ValidatorTypes (..), validatorScript)
-import           Plutus.V2.Ledger.Api                 (Value, Validator, CurrencySymbol)
-import           PlutusTx.Prelude 
-import           Constraints.OffChain                 (tokensMintedTx)
-import           Types.Tx                             (TxConstructor (..))
+import           Plutus.V2.Ledger.Api                 (CurrencySymbol, Validator, Value)
+import           PlutusAppsExtra.Constraints.OffChain (tokensMintedTx)
+import           PlutusAppsExtra.Types.Tx             (TxConstructor (..))
+import           PlutusTx.Prelude
 
 type TestTransaction = TxConstructor Any (RedeemerType Any) (DatumType Any)
 type TestTransactionBuilder = State TestTransaction ()

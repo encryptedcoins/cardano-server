@@ -1,26 +1,26 @@
-{-# LANGUAGE AllowAmbiguousTypes        #-}
-{-# LANGUAGE DefaultSignatures          #-}
-{-# LANGUAGE FlexibleContexts           #-}
-{-# LANGUAGE FlexibleInstances          #-}
-{-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE DefaultSignatures   #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE FlexibleInstances   #-}
+{-# LANGUAGE TypeFamilies        #-}
 
 module Cardano.Server.Class where
 
 import           Cardano.Node.Emulator       (Params)
-import           Cardano.Server.Config       (decodeOrErrorFromFile, InactiveEndpoints)
+import           Cardano.Server.Config       (InactiveEndpoints, decodeOrErrorFromFile)
 import           Cardano.Server.Input        (InputContext)
 import           Cardano.Server.Utils.Logger (HasLogger)
 import           Control.Monad.Catch         (MonadThrow)
 import           Control.Monad.IO.Class      (MonadIO)
-import           Control.Monad.Reader        (ReaderT, MonadReader, asks)
-import           Data.Aeson                  (FromJSON(..), ToJSON)
+import           Control.Monad.Reader        (MonadReader, ReaderT, asks)
+import           Data.Aeson                  (FromJSON (..), ToJSON)
 import           Data.Data                   (Typeable)
 import           Data.IORef                  (IORef)
 import           Data.Kind                   (Type)
 import           Data.Sequence               (Seq)
-import           IO.Wallet                   (HasWallet(..), RestoredWallet, getWalletAddr)
 import           Ledger.Address              (Address)
-import           Servant                     (MimeUnrender, JSON)
+import           PlutusAppsExtra.IO.Wallet   (HasWallet (..), RestoredWallet, getWalletAddr)
+import           Servant                     (JSON, MimeUnrender)
 
 class ( Show (AuxiliaryEnvOf s)
       , MimeUnrender JSON (InputOf s)

@@ -6,28 +6,29 @@
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE RankNTypes                 #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
+{-# LANGUAGE TupleSections              #-}
 {-# LANGUAGE TypeApplications           #-}
 {-# LANGUAGE TypeOperators              #-}
-{-# LANGUAGE TupleSections              #-}
 
 module Cardano.Server.Endpoints.Tx.Server where
 
 import           Cardano.Server.Class              (InputWithContext)
 import           Cardano.Server.Config             (isInactiveServerTx)
-import           Cardano.Server.Endpoints.Tx.Class (HasTxEndpoints(..))
+import           Cardano.Server.Endpoints.Tx.Class (HasTxEndpoints (..))
 import           Cardano.Server.Error              (ConnectionError, Envelope, Throws, toEnvelope)
-import           Cardano.Server.Internal           (HasServer(..),  Env(..), NetworkM, Queue, QueueRef, getQueueRef, checkEndpointAvailability)
-import           Cardano.Server.Tx                 (mkTx, checkForCleanUtxos, MkTxConstraints)
-import           Cardano.Server.Utils.Logger       (HasLogger(..), (.<), logSmth)
+import           Cardano.Server.Internal           (Env (..), HasServer (..), NetworkM, Queue, QueueRef,
+                                                    checkEndpointAvailability, getQueueRef)
+import           Cardano.Server.Tx                 (MkTxConstraints, checkForCleanUtxos, mkTx)
+import           Cardano.Server.Utils.Logger       (HasLogger (..), logSmth, (.<))
 import           Cardano.Server.Utils.Wait         (waitTime)
-import           Control.Monad                     (join, void, when, liftM3)
-import           Control.Monad.IO.Class            (MonadIO(..))
-import           Control.Monad.Catch               (SomeException, catch, MonadThrow, MonadCatch)
-import           Control.Monad.Reader              (ReaderT(..), MonadReader, asks)
-import           Data.IORef                        (atomicWriteIORef, atomicModifyIORef, readIORef)
-import           Data.Sequence                     (Seq(..), (|>))
-import           IO.Wallet                         (HasWallet(..))
-import           Servant                           (NoContent(..), JSON, (:>), ReqBody, Post)
+import           Control.Monad                     (join, liftM3, void, when)
+import           Control.Monad.Catch               (MonadCatch, MonadThrow, SomeException, catch)
+import           Control.Monad.IO.Class            (MonadIO (..))
+import           Control.Monad.Reader              (MonadReader, ReaderT (..), asks)
+import           Data.IORef                        (atomicModifyIORef, atomicWriteIORef, readIORef)
+import           Data.Sequence                     (Seq (..), (|>))
+import           PlutusAppsExtra.IO.Wallet         (HasWallet (..))
+import           Servant                           (JSON, NoContent (..), Post, ReqBody, (:>))
 
 type ServerTxApi s = "serverTx"
     :> Throws ConnectionError

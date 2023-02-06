@@ -15,36 +15,36 @@
 {-# LANGUAGE TypeApplications           #-}
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE TypeOperators              #-}
-{-# LANGUAGE ViewPatterns               #-}
 {-# LANGUAGE UndecidableInstances       #-}
+{-# LANGUAGE ViewPatterns               #-}
 
 {-# OPTIONS_GHC -Wno-orphans            #-}
 
-module Cardano.Server.Error 
+module Cardano.Server.Error
     ( ConnectionError
-    , IsCardanoServerError(..)
-    , ExceptionDeriving(..)
+    , IsCardanoServerError (..)
+    , ExceptionDeriving (..)
     , toEnvelope
     , errorMW
     , Throws
     , Envelope
     ) where
 
-import           Control.Monad.Catch              (Exception(..), MonadThrow(..), handle, MonadCatch, SomeException)
-import qualified Data.ByteString.Lazy             as LBS
-import           Data.Data                        (cast)
-import           Data.Kind                        (Type, Constraint)
-import           Data.Text                        (Text)
-import qualified Data.Text.Encoding               as T
-import           IO.ChainIndex                    (pattern ChainIndexConnectionError)
-import           IO.Wallet                        (pattern WalletApiConnectionError)
-import           Network.Wai                      (Middleware, responseLBS, ResponseReceived)
-import           Network.HTTP.Types               (Status)
-import           Servant.API.ContentTypes         (JSON, MimeRender(..), NoContent, PlainText)
-import           Servant.Checked.Exceptions       (ErrStatus(..), toErrEnvelope, Envelope, IsMember, Contains,
-                                                   toSuccEnvelope, Throws)
-import           Types.Error                      (ConnectionError, MkTxError, BalanceExternalTxError(..))
-import Cardano.Server.Utils.Logger ((.<))
+import           Cardano.Server.Utils.Logger   ((.<))
+import           Control.Monad.Catch           (Exception (..), MonadCatch, MonadThrow (..), SomeException, handle)
+import qualified Data.ByteString.Lazy          as LBS
+import           Data.Data                     (cast)
+import           Data.Kind                     (Constraint, Type)
+import           Data.Text                     (Text)
+import qualified Data.Text.Encoding            as T
+import           Network.HTTP.Types            (Status)
+import           Network.Wai                   (Middleware, ResponseReceived, responseLBS)
+import           PlutusAppsExtra.IO.ChainIndex (pattern ChainIndexConnectionError)
+import           PlutusAppsExtra.IO.Wallet     (pattern WalletApiConnectionError)
+import           PlutusAppsExtra.Types.Error   (BalanceExternalTxError (..), ConnectionError, MkTxError)
+import           Servant.API.ContentTypes      (JSON, MimeRender (..), NoContent, PlainText)
+import           Servant.Checked.Exceptions    (Contains, Envelope, ErrStatus (..), IsMember, Throws, toErrEnvelope,
+                                                toSuccEnvelope)
 
 ---------------------------------------------------- Common errors ----------------------------------------------------
 

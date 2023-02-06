@@ -1,22 +1,22 @@
-{-# LANGUAGE AllowAmbiguousTypes        #-}
-{-# LANGUAGE DerivingStrategies         #-}
-{-# LANGUAGE ScopedTypeVariables        #-}
-{-# LANGUAGE TypeApplications           #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE DerivingStrategies  #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications    #-}
 
 module Internal where
 
-import           Cardano.Server.Endpoints.Funds        (getFunds, Funds(..))
-import           Cardano.Server.Internal               (HasServer(..), Env(..), loadEnv, AppM, runAppM)
-import           Cardano.Server.Example.OffChain       (testCurrencySymbol)
-import           Cardano.Server.Utils.Logger           (HasLogger(..))
-import           Control.Monad                         (unless, forM_)
-import           Control.Monad.IO.Class                (MonadIO(..))
-import           Control.Monad.Reader                  (MonadReader, ReaderT(..), asks)
-import           Data.Maybe                            (fromJust)
-import qualified Data.Text.IO                          as T
-import           IO.Wallet                             (HasWallet(..), getWalletAddr, ownAddresses)
-import           Ledger                                (Address)
-import           Utils.Address                         (bech32ToAddress)
+import           Cardano.Server.Endpoints.Funds  (Funds (..), getFunds)
+import           Cardano.Server.Example.OffChain (testCurrencySymbol)
+import           Cardano.Server.Internal         (AppM, Env (..), HasServer (..), loadEnv, runAppM)
+import           Cardano.Server.Utils.Logger     (HasLogger (..))
+import           Control.Monad                   (forM_, unless)
+import           Control.Monad.IO.Class          (MonadIO (..))
+import           Control.Monad.Reader            (MonadReader, ReaderT (..), asks)
+import           Data.Maybe                      (fromJust)
+import qualified Data.Text.IO                    as T
+import           Ledger                          (Address)
+import           PlutusAppsExtra.IO.Wallet       (HasWallet (..), getWalletAddr, ownAddresses)
+import           PlutusAppsExtra.Utils.Address   (bech32ToAddress)
 
 testFunds :: forall s. HasServer s => IO ()
 testFunds = runAppM @s $ do
