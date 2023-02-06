@@ -17,7 +17,7 @@ import           Cardano.Server.Config             (isInactiveServerTx)
 import           Cardano.Server.Endpoints.Tx.Class (HasTxEndpoints(..))
 import           Cardano.Server.Error              (ConnectionError, Envelope, Throws, toEnvelope)
 import           Cardano.Server.Internal           (HasServer(..),  Env(..), NetworkM, Queue, QueueRef, getQueueRef, checkEndpointAvailability)
-import           Cardano.Server.Tx                 (mkTx, checkForCleanUtxos)
+import           Cardano.Server.Tx                 (mkTx, checkForCleanUtxos, MkTxConstraints)
 import           Cardano.Server.Utils.Logger       (HasLogger(..), (.<), logSmth)
 import           Cardano.Server.Utils.Wait         (waitTime)
 import           Control.Monad                     (join, void, when, liftM3)
@@ -85,11 +85,8 @@ processQueueElem qRef qElem@(input, context) elems = do
     processInputs @s qElem
 
 processInputs :: forall s m.
-    (HasTxEndpoints s
-    , HasWallet m
-    , HasLogger m
-    , MonadReader (Env s) m
-    , MonadThrow m
+    ( HasTxEndpoints s
+    , MkTxConstraints m s
     ) => InputWithContext s -> m ()
 processInputs (input, context) = do
     checkForCleanUtxos

@@ -1,40 +1,51 @@
-{-# LANGUAGE ConstraintKinds     #-}
-{-# LANGUAGE FlexibleContexts    #-}
-{-# LANGUAGE NumericUnderscores  #-}
-{-# LANGUAGE OverloadedStrings   #-}
-{-# LANGUAGE RecordWildCards     #-}
+{-# LANGUAGE ConstraintKinds    #-}
+{-# LANGUAGE FlexibleContexts   #-}
+{-# LANGUAGE LambdaCase         #-}
+{-# LANGUAGE NumericUnderscores #-}
+{-# LANGUAGE OverloadedStrings  #-}
+{-# LANGUAGE RecordWildCards    #-}
+{-# LANGUAGE TypeApplications   #-}
+{-# LANGUAGE ViewPatterns       #-}
 
 module Cardano.Server.Tx where
 
 import           Cardano.Server.Input        (InputContext (..))
-import           Cardano.Server.Internal     (Env(..))
-import           Cardano.Server.Utils.Logger (HasLogger(..), logPretty, logSmth)
+import           Cardano.Server.Internal     (Env (..))
+import           Cardano.Server.Utils.Logger (HasLogger (..), logPretty, logSmth)
 import           Constraints.Balance         (balanceExternalTx)
 import           Constraints.OffChain        (utxoProducedPublicKeyTx)
-import           Control.Monad.Catch         (MonadThrow(..))
-import           Control.Monad.Extra         (mconcatMapM, when, void)
-import           Control.Monad.IO.Class      (MonadIO(..))
+import           Control.Monad.Catch         (Handler (..), MonadCatch, MonadThrow (..), catches)
+import           Control.Monad.Extra         (mconcatMapM, void, when, guard)
+import           Control.Monad.IO.Class      (MonadIO (..))
 import           Control.Monad.Reader        (MonadReader, asks)
 import           Control.Monad.State         (execState)
 import           Data.Default                (def)
 import qualified Data.Map                    as Map
 import           Data.Maybe                  (fromJust, isNothing)
-import           Ledger                      (Address, CardanoTx(..), TxOutRef, unspentOutputsTx, onCardanoTx)
-import           Ledger.Ada                  (lovelaceValueOf)
-import           Ledger.Tx.CardanoAPI        as CardanoAPI
 import           IO.ChainIndex               (getUtxosAt)
 import           IO.Time                     (currentTime)
-import           IO.Wallet                   (HasWallet(..), signTx, balanceTx, submitTxConfirmed, getWalletAddr, getWalletUtxos)
-import           Types.Error                 (MkTxError(..), throwMaybe)
-import           Types.Tx                    (TxConstructor (..), TransactionBuilder, selectTxConstructor, mkTxConstructor)
+import           IO.Wallet                   (HasWallet (..), balanceTx, getWalletAddr, getWalletUtxos, signTx, submitTxConfirmed)
+import           Ledger                      (Address, CardanoTx (..), TxOutRef, onCardanoTx, unspentOutputsTx)
+import           Ledger.Ada                  (adaOf, lovelaceValueOf)
+import           Ledger.Tx.CardanoAPI        as CardanoAPI
+import           Servant.Client              (ClientError (..), ResponseF (..))
+import           Types.Error                 (MkTxError (..), throwMaybe)
+import           Types.Tx                    (TransactionBuilder, TxConstructor (..), mkTxConstructor, selectTxConstructor)
 import           Utils.Address               (addressToKeyHashes)
 import           Utils.ChainIndex            (filterCleanUtxos)
+import           Control.Lens                ((^?))
+import           Data.Aeson                  (Value, decode)
+import           Data.Aeson.Lens             (AsValue (_String), key)
+import           Data.Char                   (isDigit, isSpace)
+import           Data.Functor                ((<&>))
+import qualified Data.Text                   as T
+import           Text.Read                   (readMaybe)
 
 type MkTxConstraints m s =
     ( HasWallet m
     , HasLogger m
     , MonadReader (Env s) m
-    , MonadThrow m
+    , MonadCatch m
     )
 
 -- TODO: implement two types of balancing
@@ -71,7 +82,7 @@ mkTx :: MkTxConstraints m s
     -> InputContext
     -> [TransactionBuilder ()]
     -> m CardanoTx
-mkTx addressesTracked ctx txs = do
+mkTx addressesTracked ctx txs = mkTxErrorH $ do
     balancedTx <- mkBalanceTx addressesTracked ctx txs
     logPretty balancedTx
     logMsg "Signing..."
@@ -83,7 +94,7 @@ mkTx addressesTracked ctx txs = do
     return signedTx
 
 checkForCleanUtxos :: MkTxConstraints m s => m ()
-checkForCleanUtxos = do
+checkForCleanUtxos = mkTxErrorH $ do
     addr       <- getWalletAddr
     cleanUtxos <- length . filterCleanUtxos <$> getWalletUtxos
     minUtxos   <- asks envMinUtxosAmount
@@ -98,3 +109,15 @@ mkWalletTxOutRefs addr n = do
     signedTx <- mkTx [addr] def [txBuilder]
     let refs =  onCardanoTx (Map.keys . Ledger.unspentOutputsTx) (Map.keys . CardanoAPI.unspentOutputsTx) signedTx
     pure refs
+
+mkTxErrorH :: MonadCatch m => m a -> m a
+mkTxErrorH = (`catches` [failedReponseH])
+    where
+        failedReponseH = Handler $ \case
+            FailureResponse _ (getLackingFundsFromFailedResponse -> Just ada) -> throwM $ NotEnoughFunds ada
+            e -> throwM e
+        getLackingFundsFromFailedResponse r = do
+            body <- decode @Value $ responseBody r
+            guard $ body  ^? key "code" == Just "not_enough_money" 
+            ada  <- body  ^? key "message" . _String <&> T.unpack . T.takeWhile (not . isSpace) . T.dropWhile (not . isDigit)
+            adaOf <$> readMaybe ada

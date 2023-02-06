@@ -44,6 +44,7 @@ import           Servant.API.ContentTypes         (JSON, MimeRender(..), NoConte
 import           Servant.Checked.Exceptions       (ErrStatus(..), toErrEnvelope, Envelope, IsMember, Contains,
                                                    toSuccEnvelope, Throws)
 import           Types.Error                      (ConnectionError, MkTxError, BalanceExternalTxError(..))
+import Cardano.Server.Utils.Logger ((.<))
 
 ---------------------------------------------------- Common errors ----------------------------------------------------
 
@@ -60,7 +61,7 @@ instance IsCardanoServerError ConnectionError where
 
 instance IsCardanoServerError MkTxError where
     errStatus _ = toEnum 422
-    errMsg _ = "The requested transaction could not be built."
+    errMsg e = "The requested transaction could not be built. Reason:" .< e
 
 instance IsCardanoServerError BalanceExternalTxError where
     errStatus _ = toEnum 422
