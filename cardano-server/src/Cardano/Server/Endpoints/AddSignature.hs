@@ -18,7 +18,7 @@ import           Data.Aeson                       (ToJSON)
 import           Data.Text                        (Text)
 import           GHC.Generics                     (Generic)
 import           Servant                          (JSON, (:>), ReqBody, Post)
-import           Utils.Tx                         (textToCardanoTx)
+import           PlutusAppsExtra.Utils.Tx         (textToCardanoTx)
 
 type AddSignatureApi s = "addSignature"
               :> Throws AddSignatureError
