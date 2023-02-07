@@ -20,7 +20,7 @@ module Cardano.Server.Internal
 import           Cardano.Node.Emulator       (Params (..), pParamsFromProtocolParams)
 import           Cardano.Server.Class        (Env (..), HasServer (..), Queue, QueueRef)
 import           Cardano.Server.Config       (Config (..), InactiveEndpoints, decodeOrErrorFromFile, loadConfig)
-import           Cardano.Server.Utils.Logger (HasLogger (..))
+import           Cardano.Server.Utils.Logger (HasLogger (..), logSmth)
 import           Control.Monad.Catch         (Exception (..), MonadCatch, MonadThrow (..))
 import           Control.Monad.Except        (throwError)
 import           Control.Monad.Extra         (whenM)
@@ -45,9 +45,11 @@ newtype NetworkM s a = NetworkM { unNetworkM :: ReaderT (Env s) Handler a }
 
 -- Servant does not notice its own errors thrown through throwM
 instance MonadThrow (NetworkM s) where
-    throwM e = case fromException $ toException e of 
-        Just servantError -> NetworkM . lift $ throwError servantError
-        Nothing           -> NetworkM $ throwM e
+    throwM e = do
+        logSmth e
+        case fromException $ toException e of 
+            Just servantError -> NetworkM . lift $ throwError servantError
+            Nothing           -> NetworkM $ throwM e
 
 instance HasLogger (NetworkM s) where
     loggerFilePath = "server.log"
