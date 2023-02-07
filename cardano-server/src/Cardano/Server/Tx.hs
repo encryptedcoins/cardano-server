@@ -30,7 +30,7 @@ import           Ledger                               (Address, CardanoTx (..), 
 import           Ledger.Ada                           (adaOf, lovelaceValueOf)
 import           Ledger.Tx.CardanoAPI                 as CardanoAPI
 import           PlutusAppsExtra.Constraints.Balance  (balanceExternalTx)
-import           PlutusAppsExtra.Constraints.OffChain (utxoProducedPublicKeyTx)
+import           PlutusAppsExtra.Constraints.OffChain (utxoProducedPublicKeyTx, useAsCollateralTx')
 import           PlutusAppsExtra.IO.ChainIndex        (getUtxosAt)
 import           PlutusAppsExtra.IO.Time              (currentTime)
 import           PlutusAppsExtra.IO.Wallet            (HasWallet (..), balanceTx, getWalletAddr, getWalletUtxos, signTx,
@@ -60,13 +60,14 @@ mkBalanceTx addressesTracked context txs = do
     utxosTracked <- liftIO $ mconcatMapM getUtxosAt addressesTracked
     ct           <- liftIO currentTime
     ledgerParams <- asks envLedgerParams
+    collateral   <- asks envCollateral 
     let utxos = utxosTracked `Map.union` inputUTXO context
-
+        txs' = void (useAsCollateralTx' collateral) : txs
     let constrInit = mkTxConstructor ct utxos
-        constr = selectTxConstructor $ map (`execState` constrInit) txs
+        constr = selectTxConstructor $ map (`execState` constrInit) txs'
     when (isNothing constr) $ do
         logMsg "\tNo transactions can be constructed. Last error:"
-        logSmth $ head $ txConstructorErrors $ last $ map (`execState` constrInit) txs
+        logSmth $ head $ txConstructorErrors $ last $ map (`execState` constrInit) txs'
         throwM AllConstructorsFailed
     let (lookups, cons) = fromJust $ txConstructorResult $ fromJust constr
     logMsg "\tLookups:"

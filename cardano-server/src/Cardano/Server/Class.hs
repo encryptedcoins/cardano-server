@@ -18,6 +18,7 @@ import           Data.Data                   (Typeable)
 import           Data.IORef                  (IORef)
 import           Data.Kind                   (Type)
 import           Data.Sequence               (Seq)
+import           Ledger                      (TxOutRef)
 import           Ledger.Address              (Address)
 import           PlutusAppsExtra.IO.Wallet   (HasWallet (..), RestoredWallet, getWalletAddr)
 import           Servant                     (JSON, MimeUnrender)
@@ -58,6 +59,7 @@ data Env s = Env
     , envAuxiliary          :: AuxiliaryEnvOf s
     , envMinUtxosAmount     :: Int
     , envLedgerParams       :: Params
+    , envCollateral         :: Maybe TxOutRef
     , envInactiveEndpoints  :: InactiveEndpoints
     }
 

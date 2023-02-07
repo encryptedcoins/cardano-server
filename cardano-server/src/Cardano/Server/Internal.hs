@@ -62,9 +62,10 @@ loadEnv = do
     envWallet    <- decodeOrErrorFromFile cWalletFile
     envAuxiliary <- loadAuxiliaryEnv @s cAuxiliaryEnvFile
     pp           <- decodeOrErrorFromFile "testnet/protocol-parameters.json"
-    let envMinUtxosAmount = cMinUtxosAmount
-        envLedgerParams   = Params def (pParamsFromProtocolParams pp) cNetworkId
+    let envMinUtxosAmount    = cMinUtxosAmount
+        envLedgerParams      = Params def (pParamsFromProtocolParams pp) cNetworkId
         envInactiveEndpoints = cInactiveEndpoints
+        envCollateral        = cCollateral
     pure Env{..}
 
 newtype AppM s a = AppM { unAppM :: ReaderT (Env s) IO a }

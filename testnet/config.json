@@ -5,6 +5,7 @@
 , "wallet_file"         : "testnet/wallets/wallet.json"
 , "min_utxos_amount"    : 1
 , "network_id"          : {"tag" : "Testnet", "contents" : 2}
+, "collateral"          : {"txOutRefId" : {"getTxId" : ""}, "txOutRefIdx" : 0}
 , "inactive_endpoints"  :
     { "ping"          : false
     , "funds"         : false
