@@ -6,22 +6,23 @@
 
 module Cardano.Server.Class where
 
-import           Cardano.Node.Emulator       (Params)
-import           Cardano.Server.Config       (InactiveEndpoints, decodeOrErrorFromFile)
-import           Cardano.Server.Input        (InputContext)
-import           Cardano.Server.Utils.Logger (HasLogger)
-import           Control.Monad.Catch         (MonadThrow)
-import           Control.Monad.IO.Class      (MonadIO)
-import           Control.Monad.Reader        (MonadReader, ReaderT, asks)
-import           Data.Aeson                  (FromJSON (..), ToJSON)
-import           Data.Data                   (Typeable)
-import           Data.IORef                  (IORef)
-import           Data.Kind                   (Type)
-import           Data.Sequence               (Seq)
-import           Ledger                      (TxOutRef)
-import           Ledger.Address              (Address)
-import           PlutusAppsExtra.IO.Wallet   (HasWallet (..), RestoredWallet, getWalletAddr)
-import           Servant                     (JSON, MimeUnrender)
+import           Cardano.Node.Emulator             (Params)
+import           Cardano.Server.Config             (InactiveEndpoints, decodeOrErrorFromFile)
+import           Cardano.Server.Input              (InputContext)
+import           Cardano.Server.Utils.ChainIndex   (ChainIndex, HasChainIndex (..))
+import           Cardano.Server.Utils.Logger       (HasLogger)
+import           Control.Monad.Catch               (MonadThrow)
+import           Control.Monad.IO.Class            (MonadIO)
+import           Control.Monad.Reader              (MonadReader, ReaderT, asks)
+import           Data.Aeson                        (FromJSON (..), ToJSON)
+import           Data.Data                         (Typeable)
+import           Data.IORef                        (IORef)
+import           Data.Kind                         (Type)
+import           Data.Sequence                     (Seq)
+import           Ledger                            (TxOutRef)
+import           Ledger.Address                    (Address)
+import           PlutusAppsExtra.IO.Wallet         (HasWallet (..), RestoredWallet, getWalletAddr)
+import           Servant                           (JSON, MimeUnrender)
 
 class ( Show (AuxiliaryEnvOf s)
       , MimeUnrender JSON (InputOf s)
@@ -61,8 +62,12 @@ data Env s = Env
     , envLedgerParams       :: Params
     , envCollateral         :: Maybe TxOutRef
     , envNodeFilePath       :: FilePath
+    , envChainIndex         :: ChainIndex
     , envInactiveEndpoints  :: InactiveEndpoints
     }
 
 instance (MonadIO m, MonadThrow m) => HasWallet (ReaderT (Env s) m) where 
     getRestoredWallet = asks envWallet
+
+instance MonadIO m => HasChainIndex (ReaderT (Env s) m) where
+    getChainIndex = asks envChainIndex

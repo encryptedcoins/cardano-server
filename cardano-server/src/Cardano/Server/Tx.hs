@@ -11,6 +11,7 @@ module Cardano.Server.Tx where
 
 import           Cardano.Server.Input                 (InputContext (..))
 import           Cardano.Server.Internal              (Env (..))
+import           Cardano.Server.Utils.ChainIndex      (HasChainIndex, getUtxosAt)
 import           Cardano.Server.Utils.Logger          (HasLogger (..), logPretty, logSmth)
 import           Control.Lens                         ((^?))
 import           Control.Monad.Catch                  (Handler (..), MonadCatch, MonadThrow (..), catches)
@@ -30,8 +31,7 @@ import           Ledger                               (Address, CardanoTx (..), 
 import           Ledger.Ada                           (adaOf, lovelaceValueOf)
 import           Ledger.Tx.CardanoAPI                 as CardanoAPI
 import           PlutusAppsExtra.Constraints.Balance  (balanceExternalTx)
-import           PlutusAppsExtra.Constraints.OffChain (utxoProducedPublicKeyTx, useAsCollateralTx')
-import           PlutusAppsExtra.IO.ChainIndex        (getUtxosAt)
+import           PlutusAppsExtra.Constraints.OffChain (useAsCollateralTx', utxoProducedPublicKeyTx)
 import           PlutusAppsExtra.IO.Time              (currentTime)
 import           PlutusAppsExtra.IO.Wallet            (HasWallet (..), balanceTx, getWalletAddr, getWalletUtxos, signTx,
                                                        submitTxConfirmed)
@@ -45,6 +45,7 @@ import           Text.Read                            (readMaybe)
 
 type MkTxConstraints m s =
     ( HasWallet m
+    , HasChainIndex m
     , HasLogger m
     , MonadReader (Env s) m
     , MonadCatch m
@@ -57,7 +58,7 @@ mkBalanceTx :: MkTxConstraints m s
     -> [TransactionBuilder ()]
     -> m CardanoTx
 mkBalanceTx addressesTracked context txs = do
-    utxosTracked <- liftIO $ mconcatMapM getUtxosAt addressesTracked
+    utxosTracked <- mconcatMapM getUtxosAt addressesTracked
     ct           <- liftIO currentTime
     ledgerParams <- asks envLedgerParams
     collateral   <- asks envCollateral 

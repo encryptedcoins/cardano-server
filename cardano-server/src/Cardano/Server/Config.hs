@@ -4,13 +4,14 @@
 
 module Cardano.Server.Config where
 
-import           Cardano.Api           (NetworkId (..))
-import           Cardano.Node.Emulator ()
-import           Data.Aeson            (FromJSON (..), genericParseJSON, eitherDecodeFileStrict)
-import           Data.Aeson.Casing     (aesonDrop, aesonPrefix, snakeCase)
-import           Data.Text             (Text)
-import           GHC.Generics          (Generic)
-import           Ledger                (TxOutRef)
+import           Cardano.Api                     (NetworkId (..))
+import           Cardano.Node.Emulator           ()
+import           Cardano.Server.Utils.ChainIndex (ChainIndex)
+import           Data.Aeson                      (FromJSON (..), eitherDecodeFileStrict, genericParseJSON)
+import           Data.Aeson.Casing               (aesonDrop, aesonPrefix, snakeCase)
+import           Data.Text                       (Text)
+import           GHC.Generics                    (Generic)
+import           Ledger                          (TxOutRef)
 
 data Config = Config
     { cServerAddress     :: Text
@@ -19,7 +20,8 @@ data Config = Config
     , cWalletFile        :: FilePath
     , cNetworkId         :: NetworkId
     , cCollateral        :: Maybe TxOutRef
-    , cNodeFilePath      :: FilePath 
+    , cNodeFilePath      :: FilePath
+    , cChainIndex        :: ChainIndex
     , cInactiveEndpoints :: InactiveEndpoints
     } deriving (Show, Generic)
 

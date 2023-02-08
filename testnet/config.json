@@ -5,6 +5,7 @@
 , "network_id"          : {"tag" : "Testnet", "contents" : 2}
 , "collateral"          : {"txOutRefId" : {"getTxId" : ""}, "txOutRefIdx" : 0}
 , "node_file_path"      : ""
+, "chain_index"         : "Plutus"
 , "inactive_endpoints"  :
     { "ping"          : false
     , "funds"         : false

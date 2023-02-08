@@ -44,6 +44,7 @@ library
       Cardano.Server.Internal
       Cardano.Server.Main
       Cardano.Server.Tx
+      Cardano.Server.Utils.ChainIndex
       Cardano.Server.Utils.Logger
       Cardano.Server.Utils.Wait
     other-modules:

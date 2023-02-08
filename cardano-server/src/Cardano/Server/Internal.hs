@@ -17,20 +17,21 @@ module Cardano.Server.Internal
     , checkEndpointAvailability
     ) where
 
-import           Cardano.Node.Emulator       (Params (..), pParamsFromProtocolParams)
-import           Cardano.Server.Class        (Env (..), HasServer (..), Queue, QueueRef)
-import           Cardano.Server.Config       (Config (..), InactiveEndpoints, decodeOrErrorFromFile, loadConfig)
-import           Cardano.Server.Utils.Logger (HasLogger (..), logSmth)
-import           Control.Monad.Catch         (Exception (..), MonadCatch, MonadThrow (..))
-import           Control.Monad.Except        (throwError)
-import           Control.Monad.Extra         (whenM)
-import           Control.Monad.IO.Class      (MonadIO)
-import           Control.Monad.Reader        (MonadReader, ReaderT (ReaderT, runReaderT), asks, lift)
-import           Data.Default                (def)
-import           Data.IORef                  (newIORef)
-import           Data.Sequence               (empty)
-import           PlutusAppsExtra.IO.Wallet   (HasWallet (..))
-import           Servant                     (Handler, err404)
+import           Cardano.Node.Emulator           (Params (..), pParamsFromProtocolParams)
+import           Cardano.Server.Class            (Env (..), HasServer (..), Queue, QueueRef)
+import           Cardano.Server.Config           (Config (..), InactiveEndpoints, decodeOrErrorFromFile, loadConfig)
+import           Cardano.Server.Utils.ChainIndex (HasChainIndex)
+import           Cardano.Server.Utils.Logger     (HasLogger (..), logSmth)
+import           Control.Monad.Catch             (Exception (..), MonadCatch, MonadThrow (..))
+import           Control.Monad.Except            (throwError)
+import           Control.Monad.Extra             (whenM)
+import           Control.Monad.IO.Class          (MonadIO)
+import           Control.Monad.Reader            (MonadReader, ReaderT (ReaderT, runReaderT), asks, lift)
+import           Data.Default                    (def)
+import           Data.IORef                      (newIORef)
+import           Data.Sequence                   (empty)
+import           PlutusAppsExtra.IO.Wallet       (HasWallet (..))
+import           Servant                         (Handler, err404)
 
 newtype NetworkM s a = NetworkM { unNetworkM :: ReaderT (Env s) Handler a }
     deriving newtype
@@ -41,6 +42,7 @@ newtype NetworkM s a = NetworkM { unNetworkM :: ReaderT (Env s) Handler a }
         , MonadReader (Env s)
         , MonadCatch
         , HasWallet
+        , HasChainIndex
         )
 
 -- Servant does not notice its own errors thrown through throwM
@@ -69,6 +71,7 @@ loadEnv = do
         envInactiveEndpoints = cInactiveEndpoints
         envCollateral        = cCollateral
         envNodeFilePath      = cNodeFilePath
+        envChainIndex        = cChainIndex
     pure Env{..}
 
 newtype AppM s a = AppM { unAppM :: ReaderT (Env s) IO a }
@@ -80,6 +83,7 @@ newtype AppM s a = AppM { unAppM :: ReaderT (Env s) IO a }
         , MonadReader (Env s)
         , MonadThrow
         , MonadCatch
+        , HasChainIndex
         )
 
 runAppM :: HasServer s => AppM s a -> IO a
