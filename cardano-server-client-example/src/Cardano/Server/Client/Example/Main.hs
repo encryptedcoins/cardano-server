@@ -31,5 +31,3 @@ instance HasClient ExampleServer where
         inputLength <- randomRIO (1, 15)
         let genBbs = stringToBuiltinByteString <$> (randomRIO (2, 8) >>= (`replicateM` randomIO))
         replicateM inputLength genBbs
-    
-    toServerInput = pure

@@ -40,6 +40,8 @@ class (HasServer c
 
     -- Converts a client input into the server input
     toServerInput :: ClientInput c -> AppM c (InputOf c)
+    default toServerInput :: ClientInput c ~ InputOf c => ClientInput c -> AppM c (InputOf c)
+    toServerInput = pure
 
     -- Function that adds InputContext to the request
     addInputContext :: InputOf c -> AppM c (InputWithContext c)
