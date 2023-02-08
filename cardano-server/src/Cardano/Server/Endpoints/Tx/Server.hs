@@ -29,6 +29,8 @@ import           Data.IORef                        (atomicModifyIORef, atomicWri
 import           Data.Sequence                     (Seq (..), (|>))
 import           PlutusAppsExtra.IO.Wallet         (HasWallet (..))
 import           Servant                           (JSON, NoContent (..), Post, ReqBody, (:>))
+import Data.Time (getCurrentTime)
+import qualified Data.Time as Time
 
 type ServerTxApi s = "serverTx"
     :> Throws ConnectionError
@@ -71,13 +73,24 @@ processQueue env = runQueueM env $ do
             logSmth err
             go
     where
-        go = checkQueue (0 :: Int)
-        checkQueue n = do
+        go = liftIO getCurrentTime >>= checkQueue
+        checkQueue t = do
             qRef <- asks envQueueRef
             liftIO (readIORef qRef) >>= \case
-                Empty -> logIdle n >> waitTime 3 >> checkQueue (n + 1)
+                Empty -> idleQueue t >>= checkQueue
                 input :<| inputs -> processQueueElem qRef input inputs >> go
-        logIdle n = when (n `mod` 100 == 0) $ logMsg "No new inputs to process."
+
+idleQueue :: forall s. HasServer s => Time.UTCTime -> QueueM s Time.UTCTime
+idleQueue st = do
+    ct <- liftIO getCurrentTime
+    let delta = Time.diffUTCTime ct st
+        enoughTimePassed = delta > 300
+        firstTime        = delta < 3
+    when (enoughTimePassed || firstTime) $ logMsg "No new inputs to process."
+    checkForCleanUtxos
+    serverIdle
+    waitTime 3
+    pure $ if enoughTimePassed then ct else st
 
 processQueueElem :: forall s. HasTxEndpoints s => QueueRef s -> InputWithContext s -> Queue s -> QueueM s ()
 processQueueElem qRef qElem@(input, context) elems = do
