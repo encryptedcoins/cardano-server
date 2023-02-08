@@ -32,9 +32,11 @@ A class that defines a cardano-server:
 
 A class that defines a console client corresponding to your cardano-server. The console client allows you to construct and send requests to the server using the command line.
 
-* `parseServerInput` is the parser used to get `InputOf s` from the command line. Optional if `InputOf s` has a read instance.
-* `genServerInput` generates `InputOf s` type for request simulation. Optional if `InputOf s` has a `Random` instance. 
-* `extractActionsFromInput` is a function that is used to obtain a pair of actions from the `InputOf s` type. These actions are performed before the request is sent and after a successful response is received, respectively. It can be useful, for example, if you need to write some additional information about your inputs to external files. Optional if you don't need to execute any actions.
+* `ClientInput s` is the type of input generated on the client side.
+* `parseClientInput` is the parser used to get `ClientInput s` from the command line. Optional if `ClientInput s` has a read instance.
+* `genClientInput` generates `ClientInput s` type for request simulation. Optional if `ClientInput s` has a `Random` instance. 
+* `extractActionsFromInput` is a function that is used to obtain a pair of actions from the `ClientInput s` type. These actions are performed before the request is sent and after a successful response is received, respectively. It can be useful, for example, if you need to write some additional information about your inputs to external files. Optional if you don't need to execute any actions.
+& `toServerInput` is a function that converts `ClientInput s` into the `InputOf s` type.
 * `addInputContext` is a function that constructs `InputWithContext s` type from the `InputOf s` before sending a request. The default is an empty `ServerInputContext`.
 
 Alternatively, you can use the [defaultClient](https://github.com/encryptedcoins/cardano-server/blob/main/src/Cardano/Server/Client/Default.hs) which requires only the `FromJSON` instance of `InputOf s` instead of the `HasClient` instance of `s`. It reads an `InputOf s` type from the file and sends the respective request to the `sumbitTx` endpoint of your server.

@@ -52,4 +52,4 @@ newTxHandler req = toEnvelope $ do
     balancedTx <- join $ liftM3 mkBalanceTx (serverTrackedAddresses @s) (pure context) (txEndpointsTxBuilders @s input)
     case cardanoTxToText balancedTx of
         Just res -> pure res
-        Nothing -> throwM $ UnserialisableCardanoTx balancedTx
+        Nothing  -> throwM $ UnserialisableCardanoTx balancedTx

@@ -35,7 +35,7 @@ data InactiveEndpoints = InactiveEndpoints
     } deriving (Show, Generic)
 
 configFile :: FilePath
-configFile = "testnet/config.json"
+configFile = "config.json"
 
 loadConfig :: IO Config
 loadConfig = decodeOrErrorFromFile configFile

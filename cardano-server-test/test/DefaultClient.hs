@@ -17,7 +17,7 @@ import           System.Directory              (removeFile)
 
 testDefaultClient :: forall s. (HasClient s, FromJSON (InputOf s)) => IO ()
 testDefaultClient = runAppM @s $ do
-    input <- encode <$> genServerInput @s
+    input <- encode <$> genClientInput @s
     let fp = "testnet/DefaultClientTestInput.json"
     liftIO $ do
         LBS.writeFile fp input

@@ -10,7 +10,7 @@ module Cardano.Server.Client.Client where
 import           Cardano.Server.Client.Class (HasClient(..))
 import           Cardano.Server.Client.Opts  (Options(..), runWithOpts, Mode (..))
 import           Cardano.Server.Config       (Config(..), loadConfig)       
-import           Cardano.Server.Internal     (AppM, runAppM, HasServer(..))
+import           Cardano.Server.Internal     (AppM, runAppM)
 import           Cardano.Server.Utils.Logger (HasLogger(..), (.<))
 import           Cardano.Server.Utils.Wait   (waitTime)
 import           Control.Monad.Reader        (MonadIO(..), forever, when)
@@ -32,19 +32,19 @@ startClient = do
     manager <- newManager defaultManagerSettings
     let client' = client @s fullAddress manager
     runAppM $ withGreetings $ case optsMode of
-        Manual serverInput          -> client' serverInput
+        Manual clientInput     -> client' clientInput
         Auto   averageInterval -> forever $ do
-            serverInput <- genServerInput @s
-            client' serverInput
+            clientInput <- genClientInput @s
+            client' clientInput
             waitTime =<< randomRIO (1, averageInterval * 2)
     where
         withGreetings = (logMsg "Starting client..." >>)
 
-client :: forall s. HasClient s => String -> Manager -> InputOf s -> AppM s ()
-client fullAddress manager serverInput = do
-        (beforeRequestSend, onSuccessfulResponse) <- extractActionsFromInput serverInput
+client :: forall s. HasClient s => String -> Manager -> ClientInput s -> AppM s ()
+client fullAddress manager clientInput = do
+        (beforeRequestSend, onSuccessfulResponse) <- extractActionsFromInput clientInput
         beforeRequestSend
-        resp <- addInputContext serverInput >>= mkRequest fullAddress manager 
+        resp <- toServerInput clientInput >>= addInputContext >>= mkRequest fullAddress manager
         when (successful resp) onSuccessfulResponse
     where
         successful = (== status204) . responseStatus

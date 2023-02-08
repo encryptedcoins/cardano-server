@@ -65,9 +65,9 @@ loadEnv = do
     envQueueRef  <- newIORef empty
     envWallet    <- decodeOrErrorFromFile cWalletFile
     envAuxiliary <- loadAuxiliaryEnv @s cAuxiliaryEnvFile
-    pp           <- decodeOrErrorFromFile "testnet/protocol-parameters.json"
-    let envMinUtxosAmount    = cMinUtxosAmount
-        envLedgerParams      = Params def (pParamsFromProtocolParams pp) cNetworkId
+    pp           <- decodeOrErrorFromFile "protocol-parameters.json"
+    let envMinUtxosAmount = cMinUtxosAmount
+        envLedgerParams   = Params def (pParamsFromProtocolParams pp) cNetworkId
         envInactiveEndpoints = cInactiveEndpoints
         envCollateral        = cCollateral
         envNodeFilePath      = cNodeFilePath

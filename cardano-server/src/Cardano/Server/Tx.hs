@@ -103,14 +103,14 @@ checkForCleanUtxos = mkTxErrorH $ do
     cleanUtxos <- length . filterCleanUtxos <$> getWalletUtxos
     minUtxos   <- asks envMinUtxosAmount
     when (cleanUtxos < minUtxos) $ do
-        logMsg "Address doesn't has enough clean UTXO's."
-        void $ mkWalletTxOutRefs addr (cleanUtxos - minUtxos)
+        logMsg $ "Address doesn't has enough clean UTXO's: " <> (pack . show $ minUtxos - cleanUtxos)
+        void $ mkWalletTxOutRefs addr (minUtxos - cleanUtxos)
 
 mkWalletTxOutRefs :: MkTxConstraints m s => Address -> Int -> m [TxOutRef]
 mkWalletTxOutRefs addr n = do
     (pkh, scr) <- throwMaybe (CantExtractKeyHashesFromAddress addr) $ addressToKeyHashes addr
     let txBuilder = mapM_ (const $ utxoProducedPublicKeyTx pkh scr (lovelaceValueOf 10_000_000) (Nothing :: Maybe ())) [1..n]
-    signedTx <- mkTx [addr] def [txBuilder]
+    signedTx <- mkTx [] def [txBuilder]
     let refs =  onCardanoTx (Map.keys . Ledger.unspentOutputsTx) (Map.keys . CardanoAPI.unspentOutputsTx) signedTx
     pure refs
 

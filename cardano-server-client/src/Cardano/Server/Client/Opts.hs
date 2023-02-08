@@ -6,7 +6,6 @@
 
 module Cardano.Server.Client.Opts where
 
-import           Cardano.Server.Class          (HasServer(..))
 import           Cardano.Server.Client.Class   (HasClient(..))
 import           Control.Applicative           ((<|>))
 import           Options.Applicative           (Parser, (<**>), auto, fullDesc, help, info, long, option, short, value,
@@ -45,7 +44,7 @@ serverEndpointParser = argument auto
 
 data Mode s
     = Auto   Interval
-    | Manual (InputOf s)
+    | Manual (ClientInput s)
 deriving instance HasClient s => Show (Mode s)
 
 --------------------------------------------- Auto ---------------------------------------------
