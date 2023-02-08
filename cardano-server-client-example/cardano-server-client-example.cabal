@@ -38,6 +38,7 @@ library
       cardano-server                         -any,
       cardano-server-client                  -any,
       cardano-server-example                 -any,
+      split                                  -any,
       optparse-applicative                   -any,
       plutus-tx                              -any,
       random                                 -any,

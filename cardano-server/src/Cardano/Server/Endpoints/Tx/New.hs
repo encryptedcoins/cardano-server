@@ -10,22 +10,22 @@
 
 module Cardano.Server.Endpoints.Tx.New where
 
-import           Cardano.Server.Config                (isInactiveNewTx)
-import           Cardano.Server.Endpoints.Tx.Class    (HasTxEndpoints(..))
-import           Cardano.Server.Error                 (ConnectionError, Envelope, Throws, IsCardanoServerError(..),
-                                                       ExceptionDeriving(..), toEnvelope)
-import           Cardano.Server.Internal              (NetworkM, HasServer(..), checkEndpointAvailability)
-import           Cardano.Server.Tx                    (mkBalanceTx)
-import           Cardano.Server.Utils.Logger          (HasLogger(..), (.<))
-import           Control.Monad                        (join, liftM3)
-import           Control.Monad.Catch                  (Exception, MonadThrow (throwM))
-import           Data.Aeson                           (ToJSON)
-import           Data.Text                            (Text)
-import           GHC.Generics                         (Generic)
-import           Ledger                               (CardanoTx)
-import           Servant                              (JSON, (:>), ReqBody, Post)
-import           Types.Error                          (MkTxError)
-import           Utils.Tx                             (cardanoTxToText)
+import           Cardano.Server.Config             (isInactiveNewTx)
+import           Cardano.Server.Endpoints.Tx.Class (HasTxEndpoints (..))
+import           Cardano.Server.Error              (ConnectionError, Envelope, ExceptionDeriving (..), IsCardanoServerError (..),
+                                                    Throws, toEnvelope)
+import           Cardano.Server.Internal           (HasServer (..), NetworkM, checkEndpointAvailability)
+import           Cardano.Server.Tx                 (mkBalanceTx)
+import           Cardano.Server.Utils.Logger       (HasLogger (..), (.<))
+import           Control.Monad                     (join, liftM3)
+import           Control.Monad.Catch               (Exception, MonadThrow (throwM))
+import           Data.Aeson                        (ToJSON)
+import           Data.Text                         (Text)
+import           GHC.Generics                      (Generic)
+import           Ledger                            (CardanoTx)
+import           PlutusAppsExtra.Types.Error       (MkTxError)
+import           PlutusAppsExtra.Utils.Tx          (cardanoTxToText)
+import           Servant                           (JSON, Post, ReqBody, (:>))
 
 type NewTxApi s = "newTx"
               :> Throws NewTxApiError

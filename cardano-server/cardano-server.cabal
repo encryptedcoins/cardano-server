@@ -44,6 +44,7 @@ library
       Cardano.Server.Internal
       Cardano.Server.Main
       Cardano.Server.Tx
+      Cardano.Server.Utils.ChainIndex
       Cardano.Server.Utils.Logger
       Cardano.Server.Utils.Wait
     other-modules:
@@ -62,6 +63,8 @@ library
       filepath                               -any,
       hex-text                               -any,
       http-types                             -any,
+      lens                                   -any,
+      lens-aeson                             -any,
       mtl                                    -any,
       plutus-apps-extra                      -any,
       plutus-ledger                          -any,
@@ -70,6 +73,7 @@ library
       prettyprinter                          -any,
       servant                                -any,
       servant-checked-exceptions             -any,
+      servant-client                         -any,
       servant-server                         -any,
       text                                   -any,
       time                                   -any,

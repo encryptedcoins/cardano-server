@@ -1,24 +1,24 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeApplications  #-}
 {-# LANGUAGE TupleSections     #-}
+{-# LANGUAGE TypeApplications  #-}
 
 module ExampleServer where
 
-import           Cardano.Server.Endpoints.Tx.Server   (processInputs)
-import           Cardano.Server.Internal              (HasServer(..), runAppM)
-import           Cardano.Server.Example.Main          (ExampleServer)
-import           Cardano.Server.Tx                    (mkWalletTxOutRefs)
-import           Cardano.Server.Utils.Logger          (HasLogger(..), logSmth, (.<))
-import           Cardano.Server.Client.Example.Main   ()
-import           Control.Monad.IO.Class               (MonadIO(..))
-import           Data.Default                         (def)
-import qualified Data.Map                             as Map
-import           IO.ChainIndex                        (getUtxosAt)
-import           IO.Wallet                            (getWalletAddr, getWalletUtxos)
-import           PlutusTx.Builtins.Class              (stringToBuiltinByteString)
-import           DefaultClient                        (testDefaultClient)
-import           Internal                             (testFunds, testFundsAll)
-import           Utils.ChainIndex                     (filterCleanUtxos)
+import           Cardano.Server.Client.Example.Main ()
+import           Cardano.Server.Endpoints.Tx.Server (processInputs)
+import           Cardano.Server.Example.Main        (ExampleServer)
+import           Cardano.Server.Internal            (HasServer (..), runAppM)
+import           Cardano.Server.Tx                  (mkWalletTxOutRefs)
+import           Cardano.Server.Utils.ChainIndex    (getUtxosAt)
+import           Cardano.Server.Utils.Logger        (HasLogger (..), logSmth, (.<))
+import           Control.Monad.IO.Class             (MonadIO (..))
+import           Data.Default                       (def)
+import qualified Data.Map                           as Map
+import           DefaultClient                      (testDefaultClient)
+import           Internal                           (testFunds, testFundsAll)
+import           PlutusAppsExtra.IO.Wallet          (getWalletAddr, getWalletUtxos)
+import           PlutusAppsExtra.Utils.ChainIndex   (filterCleanUtxos)
+import           PlutusTx.Builtins.Class            (stringToBuiltinByteString)
 
 testFundsExample :: IO ()
 testFundsExample = testFunds @ExampleServer

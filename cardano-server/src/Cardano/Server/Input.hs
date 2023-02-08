@@ -1,18 +1,18 @@
-{-# LANGUAGE AllowAmbiguousTypes        #-}
-{-# LANGUAGE DeriveAnyClass             #-}
-{-# LANGUAGE DeriveGeneric              #-}
-{-# LANGUAGE FlexibleContexts           #-}
-{-# LANGUAGE FlexibleInstances          #-}
-{-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE DeriveAnyClass      #-}
+{-# LANGUAGE DeriveGeneric       #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE FlexibleInstances   #-}
+{-# LANGUAGE TypeFamilies        #-}
 
 module Cardano.Server.Input where
 
-import           Data.Aeson             (ToJSON, FromJSON)
-import           Data.Default           (Default (..))
-import           GHC.Generics           (Generic)
-import           Ledger                 (TxOutRef)
-import           Ledger.Address         (Address)
-import           Utils.ChainIndex       (MapUTXO)
+import           Data.Aeson                       (FromJSON, ToJSON)
+import           Data.Default                     (Default (..))
+import           GHC.Generics                     (Generic)
+import           Ledger                           (TxOutRef)
+import           Ledger.Address                   (Address)
+import           PlutusAppsExtra.Utils.ChainIndex (MapUTXO)
 
 data InputContext = InputContextServer
     {

@@ -1,36 +1,37 @@
 {-# LANGUAGE DerivingStrategies         #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE RecordWildCards            #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE TypeApplications           #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 
-module Cardano.Server.Internal 
+module Cardano.Server.Internal
     ( module Cardano.Server.Class
-    , NetworkM(..)
-    , AppM(..)
+    , NetworkM (..)
+    , AppM (..)
     , runAppM
     , getQueueRef
     , loadEnv
     , checkEndpointAvailability
     ) where
 
-import           Cardano.Node.Emulator       (Params(..), pParamsFromProtocolParams)
-import           Cardano.Server.Class        (HasServer(..), Env(..), Queue, QueueRef)
-import           Cardano.Server.Config       (Config(..), decodeOrErrorFromFile, loadConfig, InactiveEndpoints)
-import           Cardano.Server.Utils.Logger (HasLogger(..))
-import           Control.Monad.Catch         (MonadThrow (..), MonadCatch, Exception (..))
-import           Control.Monad.Except        (throwError)
-import           Control.Monad.Extra         (whenM)
-import           Control.Monad.IO.Class      (MonadIO)
-import           Control.Monad.Reader        (ReaderT(ReaderT, runReaderT), MonadReader, asks, lift)
-import           Data.Default                (def)
-import           Data.IORef                  (newIORef)
-import           Data.Sequence               (empty)
-import           IO.Wallet                   (HasWallet(..))
-import           Servant                     (Handler, err404)
+import           Cardano.Node.Emulator           (Params (..), pParamsFromProtocolParams)
+import           Cardano.Server.Class            (Env (..), HasServer (..), Queue, QueueRef)
+import           Cardano.Server.Config           (Config (..), InactiveEndpoints, decodeOrErrorFromFile, loadConfig)
+import           Cardano.Server.Utils.ChainIndex (HasChainIndex)
+import           Cardano.Server.Utils.Logger     (HasLogger (..), logSmth)
+import           Control.Monad.Catch             (Exception (..), MonadCatch, MonadThrow (..))
+import           Control.Monad.Except            (throwError)
+import           Control.Monad.Extra             (whenM)
+import           Control.Monad.IO.Class          (MonadIO)
+import           Control.Monad.Reader            (MonadReader, ReaderT (ReaderT, runReaderT), asks, lift)
+import           Data.Default                    (def)
+import           Data.IORef                      (newIORef)
+import           Data.Sequence                   (empty)
+import           PlutusAppsExtra.IO.Wallet       (HasWallet (..))
+import           Servant                         (Handler, err404)
 
 newtype NetworkM s a = NetworkM { unNetworkM :: ReaderT (Env s) Handler a }
     deriving newtype
@@ -41,13 +42,16 @@ newtype NetworkM s a = NetworkM { unNetworkM :: ReaderT (Env s) Handler a }
         , MonadReader (Env s)
         , MonadCatch
         , HasWallet
+        , HasChainIndex
         )
 
 -- Servant does not notice its own errors thrown through throwM
 instance MonadThrow (NetworkM s) where
-    throwM e = case fromException $ toException e of 
-        Just servantError -> NetworkM . lift $ throwError servantError
-        Nothing           -> NetworkM $ throwM e
+    throwM e = do
+        logSmth e
+        case fromException $ toException e of 
+            Just servantError -> NetworkM . lift $ throwError servantError
+            Nothing           -> NetworkM $ throwM e
 
 instance HasLogger (NetworkM s) where
     loggerFilePath = "server.log"
@@ -65,6 +69,9 @@ loadEnv = do
     let envMinUtxosAmount = cMinUtxosAmount
         envLedgerParams   = Params def (pParamsFromProtocolParams pp) cNetworkId
         envInactiveEndpoints = cInactiveEndpoints
+        envCollateral        = cCollateral
+        envNodeFilePath      = cNodeFilePath
+        envChainIndex        = cChainIndex
     pure Env{..}
 
 newtype AppM s a = AppM { unAppM :: ReaderT (Env s) IO a }
@@ -76,6 +83,7 @@ newtype AppM s a = AppM { unAppM :: ReaderT (Env s) IO a }
         , MonadReader (Env s)
         , MonadThrow
         , MonadCatch
+        , HasChainIndex
         )
 
 runAppM :: HasServer s => AppM s a -> IO a

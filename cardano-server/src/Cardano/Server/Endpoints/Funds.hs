@@ -10,26 +10,25 @@
 
 module Cardano.Server.Endpoints.Funds where
 
-import           Cardano.Server.Config            (isInactiveFunds)
-import           Cardano.Server.Internal          (NetworkM, checkEndpointAvailability)
-import           Cardano.Server.Utils.Logger      (logMsg)
-import           Cardano.Server.Error             (ConnectionError, IsCardanoServerError(..), ExceptionDeriving(..), toEnvelope,
-                                                   Throws, Envelope)
-import           Control.Exception                (throw, Exception(..))
-import           Control.Monad.IO.Class           (MonadIO(..))
-import           Data.Aeson                       (ToJSON, FromJSON)
-import           Data.Text                        (Text)
-import qualified Data.Map                         as Map
-import           Data.Maybe                       (fromMaybe)
-import           GHC.Generics                     (Generic)
-import           IO.ChainIndex                    (getUtxosAt)
-import           Ledger                           (DecoratedTxOut(..))
-import           Plutus.V2.Ledger.Api             (Address, CurrencySymbol (CurrencySymbol), TokenName, TxOutRef, Value(..))
-import qualified PlutusTx.AssocMap                as PAM
-import           PlutusTx.Builtins                (toBuiltin)
-import           Servant                          ((:>), JSON, HasStatus, ReqBody, WithStatus, Get)
-import           Text.Hex                         (decodeHex)
-import           Utils.Address                    (bech32ToAddress)
+import           Cardano.Server.Config           (isInactiveFunds)
+import           Cardano.Server.Error            (ConnectionError, Envelope, ExceptionDeriving (..), IsCardanoServerError (..),
+                                                  Throws, toEnvelope)
+import           Cardano.Server.Internal         (NetworkM, checkEndpointAvailability)
+import           Cardano.Server.Utils.ChainIndex (HasChainIndex, getUtxosAt)
+import           Cardano.Server.Utils.Logger     (logMsg)
+import           Control.Exception               (Exception (..), throw)
+import           Data.Aeson                      (FromJSON, ToJSON)
+import qualified Data.Map                        as Map
+import           Data.Maybe                      (fromMaybe)
+import           Data.Text                       (Text)
+import           GHC.Generics                    (Generic)
+import           Ledger                          (DecoratedTxOut (..))
+import           Plutus.V2.Ledger.Api            (Address, CurrencySymbol (CurrencySymbol), TokenName, TxOutRef, Value (..))
+import           PlutusAppsExtra.Utils.Address   (bech32ToAddress)
+import qualified PlutusTx.AssocMap               as PAM
+import           PlutusTx.Builtins               (toBuiltin)
+import           Servant                         (Get, HasStatus, JSON, ReqBody, WithStatus, (:>))
+import           Text.Hex                        (decodeHex)
 
 data FundsReqBody = FundsReqBody
     {
@@ -68,9 +67,9 @@ fundsHandler (FundsReqBody addrBech32 csHex) = toEnvelope $ do
         addr =  fromMaybe (throw UnparsableAddress) $ bech32ToAddress addrBech32
     getFunds cs addr
 
-getFunds :: MonadIO m => CurrencySymbol -> Address -> m Funds
+getFunds :: HasChainIndex m => CurrencySymbol -> Address -> m Funds
 getFunds cs addr = do
-        coins <- liftIO $ Map.toList . Map.map getNames <$> getUtxosAt addr
+        coins <- Map.toList . Map.map getNames <$> getUtxosAt addr
         pure $ Funds $ concatMap (\(ref, names) -> zip names (repeat ref)) coins
     where
         getNames = maybe [] PAM.keys . PAM.lookup cs . getValue . _decoratedTxOutValue

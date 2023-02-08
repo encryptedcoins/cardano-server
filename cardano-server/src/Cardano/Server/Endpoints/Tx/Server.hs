@@ -6,28 +6,32 @@
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE RankNTypes                 #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
+{-# LANGUAGE TupleSections              #-}
 {-# LANGUAGE TypeApplications           #-}
 {-# LANGUAGE TypeOperators              #-}
-{-# LANGUAGE TupleSections              #-}
 
 module Cardano.Server.Endpoints.Tx.Server where
 
 import           Cardano.Server.Class              (InputWithContext)
 import           Cardano.Server.Config             (isInactiveServerTx)
-import           Cardano.Server.Endpoints.Tx.Class (HasTxEndpoints(..))
+import           Cardano.Server.Endpoints.Tx.Class (HasTxEndpoints (..))
 import           Cardano.Server.Error              (ConnectionError, Envelope, Throws, toEnvelope)
-import           Cardano.Server.Internal           (HasServer(..),  Env(..), NetworkM, Queue, QueueRef, getQueueRef, checkEndpointAvailability)
-import           Cardano.Server.Tx                 (mkTx, checkForCleanUtxos)
-import           Cardano.Server.Utils.Logger       (HasLogger(..), (.<), logSmth)
+import           Cardano.Server.Internal           (Env (..), HasServer (..), NetworkM, Queue, QueueRef,
+                                                    checkEndpointAvailability, getQueueRef)
+import           Cardano.Server.Tx                 (MkTxConstraints, checkForCleanUtxos, mkTx)
+import           Cardano.Server.Utils.ChainIndex   (HasChainIndex)
+import           Cardano.Server.Utils.Logger       (HasLogger (..), logSmth, (.<))
 import           Cardano.Server.Utils.Wait         (waitTime)
-import           Control.Monad                     (join, void, when, liftM3)
-import           Control.Monad.IO.Class            (MonadIO(..))
-import           Control.Monad.Catch               (SomeException, catch, MonadThrow, MonadCatch)
-import           Control.Monad.Reader              (ReaderT(..), MonadReader, asks)
-import           Data.IORef                        (atomicWriteIORef, atomicModifyIORef, readIORef)
-import           Data.Sequence                     (Seq(..), (|>))
-import           IO.Wallet                         (HasWallet(..))
-import           Servant                           (NoContent(..), JSON, (:>), ReqBody, Post)
+import           Control.Monad                     (join, liftM3, void, when)
+import           Control.Monad.Catch               (MonadCatch, MonadThrow, SomeException, catch)
+import           Control.Monad.IO.Class            (MonadIO (..))
+import           Control.Monad.Reader              (MonadReader, ReaderT (..), asks)
+import           Data.IORef                        (atomicModifyIORef, atomicWriteIORef, readIORef)
+import           Data.Sequence                     (Seq (..), (|>))
+import           Data.Time                         (getCurrentTime)
+import qualified Data.Time                         as Time
+import           PlutusAppsExtra.IO.Wallet         (HasWallet (..))
+import           Servant                           (JSON, NoContent (..), Post, ReqBody, (:>))
 
 type ServerTxApi s = "serverTx"
     :> Throws ConnectionError
@@ -55,6 +59,7 @@ newtype QueueM s a = QueueM { unQueueM :: ReaderT (Env s) IO a }
         , MonadThrow
         , MonadCatch
         , HasWallet
+        , HasChainIndex
         )
 
 instance HasLogger (QueueM s) where
@@ -70,13 +75,24 @@ processQueue env = runQueueM env $ do
             logSmth err
             go
     where
-        go = checkQueue (0 :: Int)
-        checkQueue n = do
+        go = liftIO getCurrentTime >>= checkQueue
+        checkQueue t = do
             qRef <- asks envQueueRef
             liftIO (readIORef qRef) >>= \case
-                Empty -> logIdle n >> waitTime 3 >> checkQueue (n + 1)
+                Empty -> idleQueue t >>= checkQueue
                 input :<| inputs -> processQueueElem qRef input inputs >> go
-        logIdle n = when (n `mod` 100 == 0) $ logMsg "No new inputs to process."
+
+idleQueue :: forall s. HasServer s => Time.UTCTime -> QueueM s Time.UTCTime
+idleQueue st = do
+    ct <- liftIO getCurrentTime
+    let delta = Time.diffUTCTime ct st
+        enoughTimePassed = delta > 300
+        firstTime        = delta < 3
+    when (enoughTimePassed || firstTime) $ logMsg "No new inputs to process."
+    checkForCleanUtxos
+    serverIdle
+    waitTime 3
+    pure $ if enoughTimePassed then ct else st
 
 processQueueElem :: forall s. HasTxEndpoints s => QueueRef s -> InputWithContext s -> Queue s -> QueueM s ()
 processQueueElem qRef qElem@(input, context) elems = do
@@ -85,10 +101,8 @@ processQueueElem qRef qElem@(input, context) elems = do
     processInputs @s qElem
 
 processInputs :: forall s m.
-    (HasTxEndpoints s
-    , HasWallet m
-    , HasLogger m
-    , MonadReader (Env s) m
+    ( HasTxEndpoints s
+    , MkTxConstraints m s
     ) => InputWithContext s -> m ()
 processInputs (input, context) = do
     checkForCleanUtxos

@@ -11,7 +11,7 @@ import           Cardano.Server.Internal (HasServer(..), AppM)
 import           Data.Aeson              (ToJSON)
 import           Data.Default            (def)
 import           Data.Kind               (Type)
-import           Options.Applicative     (Parser, argument, auto, metavar)
+import           Options.Applicative     (auto, ReadM)
 import           System.Random           (Random, randomIO)
 
 class (HasServer c
@@ -22,9 +22,9 @@ class (HasServer c
     type ClientInput c :: Type
 
     -- Input parser for manual client mode.
-    parseClientInput :: Parser (ClientInput c)
-    default parseClientInput :: Read (ClientInput c) => Parser (ClientInput c)
-    parseClientInput = argument auto (metavar "Server input")
+    parseClientInput :: ReadM (ClientInput c)
+    default parseClientInput :: Read (ClientInput c) => ReadM (ClientInput c)
+    parseClientInput = auto
 
     -- Input generator for automatic client mode.
     genClientInput :: AppM c (ClientInput c)
@@ -40,6 +40,8 @@ class (HasServer c
 
     -- Converts a client input into the server input
     toServerInput :: ClientInput c -> AppM c (InputOf c)
+    default toServerInput :: ClientInput c ~ InputOf c => ClientInput c -> AppM c (InputOf c)
+    toServerInput = pure
 
     -- Function that adds InputContext to the request
     addInputContext :: InputOf c -> AppM c (InputWithContext c)
