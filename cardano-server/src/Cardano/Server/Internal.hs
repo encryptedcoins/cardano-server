@@ -68,6 +68,7 @@ loadEnv = do
         envLedgerParams      = Params def (pParamsFromProtocolParams pp) cNetworkId
         envInactiveEndpoints = cInactiveEndpoints
         envCollateral        = cCollateral
+        envNodeFilePath      = cNodeFilePath
     pure Env{..}
 
 newtype AppM s a = AppM { unAppM :: ReaderT (Env s) IO a }

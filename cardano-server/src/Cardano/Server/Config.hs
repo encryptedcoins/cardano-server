@@ -14,13 +14,12 @@ import           Ledger                (TxOutRef)
 
 data Config = Config
     { cServerAddress     :: Text
-    , cNodeAddress       :: Text
-    , cChainIndexAddress :: Text
     , cMinUtxosAmount    :: Int
     , cAuxiliaryEnvFile  :: FilePath
     , cWalletFile        :: FilePath
     , cNetworkId         :: NetworkId
     , cCollateral        :: Maybe TxOutRef
+    , cNodeFilePath      :: FilePath 
     , cInactiveEndpoints :: InactiveEndpoints
     } deriving (Show, Generic)
 

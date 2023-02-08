@@ -60,6 +60,7 @@ data Env s = Env
     , envMinUtxosAmount     :: Int
     , envLedgerParams       :: Params
     , envCollateral         :: Maybe TxOutRef
+    , envNodeFilePath       :: FilePath
     , envInactiveEndpoints  :: InactiveEndpoints
     }
 
