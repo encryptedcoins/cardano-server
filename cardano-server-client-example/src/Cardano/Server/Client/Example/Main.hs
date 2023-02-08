@@ -8,6 +8,7 @@ module Cardano.Server.Client.Example.Main
     ( runExampleClient
     ) where
 
+import           Cardano.Server.Class         (HasServer(..))
 import           Cardano.Server.Client.Class  (HasClient (..))
 import           Cardano.Server.Client.Client (startClient)
 import           Cardano.Server.Example.Main  (ExampleServer)
