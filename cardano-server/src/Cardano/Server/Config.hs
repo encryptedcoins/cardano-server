@@ -21,7 +21,7 @@ data Config = Config
     , cNetworkId         :: NetworkId
     , cCollateral        :: Maybe TxOutRef
     , cNodeFilePath      :: FilePath
-    , cChainIndex        :: ChainIndex
+    , cChainIndex        :: Maybe ChainIndex
     , cInactiveEndpoints :: InactiveEndpoints
     } deriving (Show, Generic)
 

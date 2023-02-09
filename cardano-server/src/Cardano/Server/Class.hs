@@ -9,7 +9,7 @@ module Cardano.Server.Class where
 import           Cardano.Node.Emulator             (Params)
 import           Cardano.Server.Config             (InactiveEndpoints, decodeOrErrorFromFile)
 import           Cardano.Server.Input              (InputContext)
-import           Cardano.Server.Utils.ChainIndex   (ChainIndex, HasChainIndex (..))
+import           Cardano.Server.Utils.ChainIndex   (ChainIndex(..), HasChainIndex (..))
 import           Cardano.Server.Utils.Logger       (HasLogger)
 import           Control.Monad.Catch               (MonadThrow, MonadCatch)
 import           Control.Monad.IO.Class            (MonadIO)
@@ -47,6 +47,10 @@ class ( Show (AuxiliaryEnvOf s)
 
     serverTrackedAddresses :: (MonadReader (Env s) m, HasWallet m) => m [Address]
     serverTrackedAddresses = (:[]) <$> getWalletAddr
+
+    -- This chainindex will be used when no other is specified in the config
+    defaultChainIndex :: ChainIndex
+    defaultChainIndex = Plutus
 
 type InputWithContext s = (InputOf s, InputContext)
 
