@@ -29,6 +29,7 @@ import           Control.Monad.IO.Class          (MonadIO)
 import           Control.Monad.Reader            (MonadReader, ReaderT (ReaderT, runReaderT), asks, lift)
 import           Data.Default                    (def)
 import           Data.IORef                      (newIORef)
+import           Data.Maybe                      (fromMaybe)
 import           Data.Sequence                   (empty)
 import           PlutusAppsExtra.IO.Wallet       (HasWallet (..))
 import           Servant                         (Handler, err404)
@@ -71,7 +72,7 @@ loadEnv = do
         envInactiveEndpoints = cInactiveEndpoints
         envCollateral        = cCollateral
         envNodeFilePath      = cNodeFilePath
-        envChainIndex        = cChainIndex
+        envChainIndex        = fromMaybe (defaultChainIndex @s) cChainIndex
     pure Env{..}
 
 newtype AppM s a = AppM { unAppM :: ReaderT (Env s) IO a }
