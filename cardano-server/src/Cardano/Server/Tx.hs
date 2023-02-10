@@ -51,7 +51,6 @@ type MkTxConstraints m s =
     , MonadCatch m
     )
 
--- TODO: implement two types of balancing
 mkBalanceTx :: MkTxConstraints m s
     => [Address]
     -> InputContext
@@ -61,9 +60,9 @@ mkBalanceTx addressesTracked context txs = do
     utxosTracked <- mconcatMapM getUtxosAt addressesTracked
     ct           <- liftIO currentTime
     ledgerParams <- asks envLedgerParams
-    collateral   <- asks envCollateral 
+    collateral   <- asks envCollateral
     let utxos = utxosTracked `Map.union` inputUTXO context
-        txs' = void (useAsCollateralTx' collateral) : txs
+        txs'  = map (useAsCollateralTx' collateral >>) txs
     let constrInit = mkTxConstructor ct utxos
         constr = selectTxConstructor $ map (`execState` constrInit) txs'
     when (isNothing constr) $ do
@@ -122,6 +121,6 @@ mkTxErrorH = (`catches` [failedReponseH])
             e -> throwM e
         getLackingFundsFromFailedResponse r = do
             body <- decode @Value $ responseBody r
-            guard $ body  ^? key "code" == Just "not_enough_money" 
+            guard $ body  ^? key "code" == Just "not_enough_money"
             ada  <- body  ^? key "message" . _String <&> T.unpack . T.takeWhile (not . isSpace) . T.dropWhile (not . isDigit)
             adaOf <$> readMaybe ada
