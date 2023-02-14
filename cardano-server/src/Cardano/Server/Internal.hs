@@ -12,6 +12,7 @@ module Cardano.Server.Internal
     , NetworkM (..)
     , AppM (..)
     , runAppM
+    , getNetworkId
     , getQueueRef
     , loadEnv
     , checkEndpointAvailability
@@ -33,6 +34,7 @@ import           Data.Maybe                      (fromMaybe)
 import           Data.Sequence                   (empty)
 import           PlutusAppsExtra.IO.Wallet       (HasWallet (..))
 import           Servant                         (Handler, err404)
+import Ledger (NetworkId)
 
 newtype NetworkM s a = NetworkM { unNetworkM :: ReaderT (Env s) Handler a }
     deriving newtype
@@ -59,6 +61,9 @@ instance HasLogger (NetworkM s) where
 
 getQueueRef :: NetworkM s (QueueRef s)
 getQueueRef = asks envQueueRef
+
+getNetworkId :: MonadReader (Env s) m => m NetworkId
+getNetworkId = asks $ pNetworkId . envLedgerParams
 
 loadEnv :: forall s. HasServer s => IO (Env s)
 loadEnv = do
