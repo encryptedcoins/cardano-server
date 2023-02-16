@@ -14,7 +14,7 @@ import           Cardano.Server.Client.Client (startClient)
 import           Cardano.Server.Example.Main  (ExampleServer)
 import           Control.Applicative          (Alternative (..))
 import           Control.Monad                (replicateM)
-import           Options.Applicative          (help, long, option, short)
+import           Options.Applicative          (help, long, option, short, metavar)
 import           Options.Applicative.Types    (readerAsk)
 import           PlutusTx.Builtins.Class      (stringToBuiltinByteString)
 import           System.Random                (randomIO, randomRIO)
@@ -29,6 +29,7 @@ instance HasClient ExampleServer where
                             (  long  "mint"
                             <> short 'm'
                             <> help  "Token to mint."
+                            <> metavar "TOKEN"
                             )
 
     genClientInput = do

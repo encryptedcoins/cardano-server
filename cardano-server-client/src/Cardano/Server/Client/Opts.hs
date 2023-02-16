@@ -61,6 +61,7 @@ intervalParser = option auto
     <> short 'i'
     <> help  "Average client request interval in seconds."
     <> value 30
+    <> metavar "SECONDS"
     )
 
 -------------------------------------------- Manual --------------------------------------------
