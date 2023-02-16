@@ -8,13 +8,13 @@ module Cardano.Server.Client.Example.Main
     ( runExampleClient
     ) where
 
-import           Cardano.Server.Class         (HasServer(..))
+import           Cardano.Server.Class         (HasServer (..))
 import           Cardano.Server.Client.Class  (HasClient (..))
 import           Cardano.Server.Client.Client (startClient)
 import           Cardano.Server.Example.Main  (ExampleServer)
+import           Control.Applicative          (Alternative (..))
 import           Control.Monad                (replicateM)
-import           Data.Functor                 ((<&>))
-import           Data.List.Split              (splitOn)
+import           Options.Applicative          (help, long, option, short)
 import           Options.Applicative.Types    (readerAsk)
 import           PlutusTx.Builtins.Class      (stringToBuiltinByteString)
 import           System.Random                (randomIO, randomRIO)
@@ -25,7 +25,11 @@ runExampleClient = startClient @ExampleServer
 instance HasClient ExampleServer where
     type ClientInput ExampleServer = InputOf ExampleServer
 
-    parseClientInput = readerAsk <&> map stringToBuiltinByteString . splitOn ","
+    parseClientInput = some $ stringToBuiltinByteString <$> option readerAsk
+                            (  long  "mint"
+                            <> short 'm'
+                            <> help  "Token to mint."
+                            )
 
     genClientInput = do
         inputLength <- randomRIO (1, 15)

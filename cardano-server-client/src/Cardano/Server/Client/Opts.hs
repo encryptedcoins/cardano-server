@@ -66,4 +66,4 @@ intervalParser = option auto
 -------------------------------------------- Manual --------------------------------------------
 
 manualModeParser :: forall s. HasClient s => Parser (Mode s)
-manualModeParser = Manual <$> option (parseClientInput @s) (long "manual" <> help "Input of manual mode.")
+manualModeParser = flag' Manual (long "manual" <> help "Input of manual mode.") <*> parseClientInput @s
