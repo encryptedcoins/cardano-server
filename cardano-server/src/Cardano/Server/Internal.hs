@@ -1,3 +1,4 @@
+{-# LANGUAGE AllowAmbiguousTypes        #-}
 {-# LANGUAGE DerivingStrategies         #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -21,7 +22,6 @@ module Cardano.Server.Internal
 import           Cardano.Node.Emulator           (Params (..), pParamsFromProtocolParams)
 import           Cardano.Server.Class            (Env (..), HasServer (..), Queue, QueueRef)
 import           Cardano.Server.Config           (Config (..), InactiveEndpoints, decodeOrErrorFromFile, loadConfig)
-import           Cardano.Server.Utils.ChainIndex (HasChainIndex)
 import           Cardano.Server.Utils.Logger     (HasLogger (..), logSmth)
 import           Control.Monad.Catch             (Exception (..), MonadCatch, MonadThrow (..))
 import           Control.Monad.Except            (throwError)
@@ -32,9 +32,10 @@ import           Data.Default                    (def)
 import           Data.IORef                      (newIORef)
 import           Data.Maybe                      (fromMaybe)
 import           Data.Sequence                   (empty)
+import           Ledger                          (NetworkId)
+import           PlutusAppsExtra.IO.ChainIndex   (HasChainIndex)
 import           PlutusAppsExtra.IO.Wallet       (HasWallet (..))
 import           Servant                         (Handler, err404)
-import Ledger (NetworkId)
 
 newtype NetworkM s a = NetworkM { unNetworkM :: ReaderT (Env s) Handler a }
     deriving newtype

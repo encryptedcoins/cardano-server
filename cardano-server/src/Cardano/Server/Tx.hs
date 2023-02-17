@@ -11,7 +11,6 @@ module Cardano.Server.Tx where
 
 import           Cardano.Server.Input                 (InputContext (..))
 import           Cardano.Server.Internal              (Env (..))
-import           Cardano.Server.Utils.ChainIndex      (HasChainIndex, getUtxosAt)
 import           Cardano.Server.Utils.Logger          (HasLogger (..), logPretty, logSmth)
 import           Control.Lens                         ((^?))
 import           Control.Monad.Catch                  (Handler (..), MonadCatch, MonadThrow (..), catches)
@@ -34,6 +33,7 @@ import           Ledger.Tx.CardanoAPI                 as CardanoAPI
 import           Ledger.Value                         (CurrencySymbol (..), TokenName (..), Value (..))
 import           PlutusAppsExtra.Constraints.Balance  (balanceExternalTx)
 import           PlutusAppsExtra.Constraints.OffChain (useAsCollateralTx', utxoProducedPublicKeyTx)
+import           PlutusAppsExtra.IO.ChainIndex        (HasChainIndex, getUtxosAt)
 import           PlutusAppsExtra.IO.Time              (currentTime)
 import           PlutusAppsExtra.IO.Wallet            (HasWallet (..), balanceTx, getWalletAddr, getWalletUtxos, signTx,
                                                        submitTxConfirmed)
@@ -69,11 +69,9 @@ mkBalanceTx addressesTracked context txs = do
     let utxos = utxosTracked `Map.union` inputUTXO context
         txs'  = map (useAsCollateralTx' collateral >>) txs
     let constrInit = mkTxConstructor ct utxos
-        constr = selectTxConstructor $ map (`execState` constrInit) txs'
-    when (isNothing constr) $ do
-        logMsg "\tNo transactions can be constructed. Last error:"
-        logSmth $ head $ txConstructorErrors $ last $ map (`execState` constrInit) txs'
-        throwM AllConstructorsFailed
+        constrs = map (`execState` constrInit) txs'
+        constr = selectTxConstructor constrs
+    when (isNothing constr) $ throwM $ AllConstructorsFailed $ concatMap txConstructorErrors constrs
     let (lookups, cons) = fromJust $ txConstructorResult $ fromJust constr
     logMsg "\tLookups:"
     logSmth lookups
