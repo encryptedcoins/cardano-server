@@ -19,8 +19,9 @@ import           Cardano.Server.Endpoints.Tx.Submit    (SubmitTxApi, submitTxHan
 import           Cardano.Server.Error                  (errorMW)
 import           Cardano.Server.Internal               (Env, NetworkM (..), loadEnv)
 import           Cardano.Server.Tx                     (checkForCleanUtxos)
-import           Cardano.Server.Utils.Logger           (HasLogger (..))
+import           Cardano.Server.Utils.Logger           (HasLogger (..), logMsg, (.<))
 import           Control.Concurrent                    (forkIO)
+import           Control.Monad                         (void)
 import           Control.Monad.Except                  (runExceptT)
 import           Control.Monad.Reader                  (ReaderT (runReaderT))
 import qualified Network.Wai                           as Wai
@@ -62,14 +63,22 @@ runServer = do
         hSetBuffering stdout LineBuffering
         forkIO $ processQueue env
         prepareServer env
-        Warp.runSettings settings
+        Warp.runSettings (settings env)
             $ errorMW
             $ mkApp @s env
     where
-        prepareServer env = runExceptT . runHandler' . flip runReaderT env . unNetworkM $ do
+        unApp env = runExceptT . runHandler' . flip runReaderT env . unNetworkM 
+        prepareServer env = unApp env $ do
             logMsg "Starting server..."
             checkForCleanUtxos
-        settings = Warp.setPort port Warp.defaultSettings
+        settings env = Warp.setLogger (logReceivedRequest env) 
+                     $ Warp.setOnException (const $ logException env)
+                     $ Warp.setPort port 
+                       Warp.defaultSettings
+        logReceivedRequest env req status _ = void . unApp env $
+            logMsg $ "Received request:\n" .< req <> "\nStatus:\n" .< status
+        logException env e = void . unApp env $
+            logMsg $ "Unhandled exception:\n" .< e
 
 corsWithContentType :: Wai.Middleware
 corsWithContentType = cors (const $ Just policy)
