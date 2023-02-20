@@ -15,7 +15,8 @@ import           PlutusAppsExtra.IO.ChainIndex   (ChainIndex)
 
 data Config = Config
     { cServerAddress     :: Text
-    , cMinUtxosAmount    :: Int
+    , cMinUtxosNumber    :: Int
+    , cMaxUtxosNumber    :: Int
     , cAuxiliaryEnvFile  :: FilePath
     , cWalletFile        :: FilePath
     , cNetworkId         :: NetworkId

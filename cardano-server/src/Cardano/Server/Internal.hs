@@ -73,8 +73,9 @@ loadEnv = do
     envWallet    <- decodeOrErrorFromFile cWalletFile
     envAuxiliary <- loadAuxiliaryEnv @s cAuxiliaryEnvFile
     pp           <- decodeOrErrorFromFile "protocol-parameters.json"
-    let envMinUtxosAmount = cMinUtxosAmount
-        envLedgerParams   = Params def (pParamsFromProtocolParams pp) cNetworkId
+    let envMinUtxosNumber    = cMinUtxosNumber
+        envMaxUtxosNumber    = cMaxUtxosNumber
+        envLedgerParams      = Params def (pParamsFromProtocolParams pp) cNetworkId
         envInactiveEndpoints = cInactiveEndpoints
         envCollateral        = cCollateral
         envNodeFilePath      = cNodeFilePath

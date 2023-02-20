@@ -103,10 +103,11 @@ checkForCleanUtxos :: MkTxConstraints m s => m ()
 checkForCleanUtxos = mkTxErrorH $ do
     addr       <- getWalletAddr
     cleanUtxos <- length . filterCleanUtxos <$> getWalletUtxos
-    minUtxos   <- asks envMinUtxosAmount
+    minUtxos   <- asks envMinUtxosNumber
+    maxUtxos   <- asks envMaxUtxosNumber
     when (cleanUtxos < minUtxos) $ do
         logMsg $ "Address doesn't has enough clean UTXO's: " <> (T.pack . show $ minUtxos - cleanUtxos)
-        void $ mkWalletTxOutRefs addr (minUtxos - cleanUtxos)
+        void $ mkWalletTxOutRefs addr (maxUtxos - cleanUtxos)
 
 mkWalletTxOutRefs :: MkTxConstraints m s => Address -> Int -> m [TxOutRef]
 mkWalletTxOutRefs addr n = do

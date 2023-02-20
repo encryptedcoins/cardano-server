@@ -62,7 +62,8 @@ data Env s = Env
     { envQueueRef           :: QueueRef s
     , envWallet             :: RestoredWallet
     , envAuxiliary          :: AuxiliaryEnvOf s
-    , envMinUtxosAmount     :: Int
+    , envMinUtxosNumber     :: Int
+    , envMaxUtxosNumber     :: Int
     , envLedgerParams       :: Params
     , envCollateral         :: Maybe TxOutRef
     , envNodeFilePath       :: FilePath
