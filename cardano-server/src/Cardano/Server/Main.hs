@@ -12,24 +12,25 @@ module Cardano.Server.Main where
 
 import           Cardano.Server.Endpoints.Funds        (FundsApi, fundsHandler)
 import           Cardano.Server.Endpoints.Ping         (PingApi, pingHandler)
-import           Cardano.Server.Endpoints.Tx.Class     (HasTxEndpoints(..))
+import           Cardano.Server.Endpoints.Tx.Class     (HasTxEndpoints (..))
 import           Cardano.Server.Endpoints.Tx.New       (NewTxApi, newTxHandler)
-import           Cardano.Server.Endpoints.Tx.Server    (ServerTxApi, serverTxHandler, processQueue)
+import           Cardano.Server.Endpoints.Tx.Server    (ServerTxApi, processQueue, serverTxHandler)
 import           Cardano.Server.Endpoints.Tx.Submit    (SubmitTxApi, submitTxHandler)
 import           Cardano.Server.Error                  (errorMW)
-import           Cardano.Server.Internal               (NetworkM(..), Env, loadEnv)
+import           Cardano.Server.Internal               (Env, NetworkM (..), loadEnv)
 import           Cardano.Server.Tx                     (checkForCleanUtxos)
+import           Cardano.Server.Utils.Logger           (HasLogger (..), logMsg, (.<))
 import           Control.Concurrent                    (forkIO)
+import           Control.Monad                         (void)
 import           Control.Monad.Except                  (runExceptT)
-import           Control.Monad.Reader                  (ReaderT(runReaderT))
-import           Cardano.Server.Utils.Logger           (HasLogger(logMsg))
+import           Control.Monad.Reader                  (ReaderT (runReaderT))
 import qualified Network.Wai                           as Wai
 import qualified Network.Wai.Handler.Warp              as Warp
-import           Network.Wai.Middleware.Cors           (CorsResourcePolicy(..), simpleCorsResourcePolicy, cors)
+import           Network.Wai.Middleware.Cors           (CorsResourcePolicy (..), cors, simpleCorsResourcePolicy)
+import           Servant                               (Application, Proxy (..), ServerT, hoistServer, runHandler', serve,
+                                                        type (:<|>) (..))
 import qualified Servant
-import           Servant                               (Proxy(..), type (:<|>)(..), ServerT,
-                                                        hoistServer, Application, runHandler', serve)
-import           System.IO                             (stdout, BufferMode(LineBuffering), hSetBuffering)
+import           System.IO                             (BufferMode (LineBuffering), hSetBuffering, stdout)
 
 type ServerAPI s
     =    PingApi
@@ -61,14 +62,23 @@ runServer = do
         env <- loadEnv
         hSetBuffering stdout LineBuffering
         forkIO $ processQueue env
-        prepareServer env 
-        Warp.run port 
-            $ errorMW 
+        prepareServer env
+        Warp.runSettings (settings env)
+            $ errorMW
             $ mkApp @s env
     where
-        prepareServer env = runExceptT . runHandler' . flip runReaderT env . unNetworkM $ do 
+        unApp env = runExceptT . runHandler' . flip runReaderT env . unNetworkM 
+        prepareServer env = unApp env $ do
             logMsg "Starting server..."
             checkForCleanUtxos
+        settings env = Warp.setLogger (logReceivedRequest env) 
+                     $ Warp.setOnException (const $ logException env)
+                     $ Warp.setPort port 
+                       Warp.defaultSettings
+        logReceivedRequest env req status _ = void . unApp env $
+            logMsg $ "Received request:\n" .< req <> "\nStatus:\n" .< status
+        logException env e = void . unApp env $
+            logMsg $ "Unhandled exception:\n" .< e
 
 corsWithContentType :: Wai.Middleware
 corsWithContentType = cors (const $ Just policy)

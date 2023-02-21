@@ -19,7 +19,6 @@ import           Cardano.Server.Error              (ConnectionError, Envelope, T
 import           Cardano.Server.Internal           (Env (..), HasServer (..), NetworkM, Queue, QueueRef,
                                                     checkEndpointAvailability, getQueueRef)
 import           Cardano.Server.Tx                 (MkTxConstraints, checkForCleanUtxos, mkTx)
-import           Cardano.Server.Utils.ChainIndex   (HasChainIndex)
 import           Cardano.Server.Utils.Logger       (HasLogger (..), logSmth, (.<))
 import           Cardano.Server.Utils.Wait         (waitTime)
 import           Control.Monad                     (join, liftM3, void, when)
@@ -30,6 +29,7 @@ import           Data.IORef                        (atomicModifyIORef, atomicWri
 import           Data.Sequence                     (Seq (..), (|>))
 import           Data.Time                         (getCurrentTime)
 import qualified Data.Time                         as Time
+import           PlutusAppsExtra.IO.ChainIndex     (HasChainIndex)
 import           PlutusAppsExtra.IO.Wallet         (HasWallet (..))
 import           Servant                           (JSON, NoContent (..), Post, ReqBody, (:>))
 

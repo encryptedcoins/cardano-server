@@ -61,9 +61,10 @@ intervalParser = option auto
     <> short 'i'
     <> help  "Average client request interval in seconds."
     <> value 30
+    <> metavar "SECONDS"
     )
 
 -------------------------------------------- Manual --------------------------------------------
 
 manualModeParser :: forall s. HasClient s => Parser (Mode s)
-manualModeParser = Manual <$> option (parseClientInput @s) (long "manual" <> help "Input of manual mode.")
+manualModeParser = flag' Manual (long "manual" <> help "Input of manual mode.") <*> parseClientInput @s

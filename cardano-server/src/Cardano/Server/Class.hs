@@ -9,9 +9,8 @@ module Cardano.Server.Class where
 import           Cardano.Node.Emulator             (Params)
 import           Cardano.Server.Config             (InactiveEndpoints, decodeOrErrorFromFile)
 import           Cardano.Server.Input              (InputContext)
-import           Cardano.Server.Utils.ChainIndex   (ChainIndex(..), HasChainIndex (..))
 import           Cardano.Server.Utils.Logger       (HasLogger)
-import           Control.Monad.Catch               (MonadThrow, MonadCatch)
+import           Control.Monad.Catch               (MonadCatch, MonadThrow)
 import           Control.Monad.IO.Class            (MonadIO)
 import           Control.Monad.Reader              (MonadReader, ReaderT, asks)
 import           Data.Aeson                        (FromJSON (..), ToJSON)
@@ -21,6 +20,7 @@ import           Data.Kind                         (Type)
 import           Data.Sequence                     (Seq)
 import           Ledger                            (TxOutRef)
 import           Ledger.Address                    (Address)
+import           PlutusAppsExtra.IO.ChainIndex     (ChainIndex (..), HasChainIndex (..))
 import           PlutusAppsExtra.IO.Wallet         (HasWallet (..), RestoredWallet, getWalletAddr)
 import           Servant                           (JSON, MimeUnrender)
 
@@ -62,7 +62,8 @@ data Env s = Env
     { envQueueRef           :: QueueRef s
     , envWallet             :: RestoredWallet
     , envAuxiliary          :: AuxiliaryEnvOf s
-    , envMinUtxosAmount     :: Int
+    , envMinUtxosNumber     :: Int
+    , envMaxUtxosNumber     :: Int
     , envLedgerParams       :: Params
     , envCollateral         :: Maybe TxOutRef
     , envNodeFilePath       :: FilePath

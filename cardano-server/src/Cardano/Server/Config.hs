@@ -6,16 +6,17 @@ module Cardano.Server.Config where
 
 import           Cardano.Api                     (NetworkId (..))
 import           Cardano.Node.Emulator           ()
-import           Cardano.Server.Utils.ChainIndex (ChainIndex)
 import           Data.Aeson                      (FromJSON (..), eitherDecodeFileStrict, genericParseJSON)
 import           Data.Aeson.Casing               (aesonDrop, aesonPrefix, snakeCase)
 import           Data.Text                       (Text)
 import           GHC.Generics                    (Generic)
 import           Ledger                          (TxOutRef)
+import           PlutusAppsExtra.IO.ChainIndex   (ChainIndex)
 
 data Config = Config
     { cServerAddress     :: Text
-    , cMinUtxosAmount    :: Int
+    , cMinUtxosNumber    :: Int
+    , cMaxUtxosNumber    :: Int
     , cAuxiliaryEnvFile  :: FilePath
     , cWalletFile        :: FilePath
     , cNetworkId         :: NetworkId
