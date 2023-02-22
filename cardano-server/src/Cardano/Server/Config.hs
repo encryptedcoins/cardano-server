@@ -14,16 +14,17 @@ import           Ledger                          (TxOutRef)
 import           PlutusAppsExtra.IO.ChainIndex   (ChainIndex)
 
 data Config = Config
-    { cServerAddress     :: Text
-    , cMinUtxosNumber    :: Int
-    , cMaxUtxosNumber    :: Int
-    , cAuxiliaryEnvFile  :: FilePath
-    , cWalletFile        :: FilePath
-    , cNetworkId         :: NetworkId
-    , cCollateral        :: Maybe TxOutRef
-    , cNodeFilePath      :: FilePath
-    , cChainIndex        :: Maybe ChainIndex
-    , cInactiveEndpoints :: InactiveEndpoints
+    { cServerAddress      :: Text
+    , cMinUtxosNumber     :: Int
+    , cMaxUtxosNumber     :: Int
+    , cNodeFilePath       :: FilePath
+    , cProtocolParameters :: FilePath
+    , cWalletFile         :: FilePath
+    , cAuxiliaryEnvFile   :: FilePath
+    , cNetworkId          :: NetworkId
+    , cCollateral         :: Maybe TxOutRef
+    , cChainIndex         :: Maybe ChainIndex
+    , cInactiveEndpoints  :: InactiveEndpoints
     } deriving (Show, Generic)
 
 data InactiveEndpoints = InactiveEndpoints
