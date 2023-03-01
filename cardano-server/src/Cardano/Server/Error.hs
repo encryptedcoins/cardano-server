@@ -35,7 +35,7 @@ import           Control.Monad.Catch                  (Exception (..), MonadCatc
 import qualified Data.ByteString.Lazy                 as LBS
 import           Data.Data                            (cast)
 import           Data.Kind                            (Constraint, Type)
-import           Data.Text                            (Text)
+import           Data.Text                            (Text, pack)
 import qualified Data.Text.Encoding                   as T
 import           Network.HTTP.Types                   (Status)
 import           Network.Wai                          (Middleware, ResponseReceived, responseLBS)
@@ -74,8 +74,8 @@ instance IsCardanoServerError BalanceExternalTxError where
             -> "Unable to extract CardanoBuildTx from EmulatorTx."
         NonBabbageEraChangeAddress     
             -> "Change address is not from Babbage era."
-        MakeUtxoProviderError          
-            -> "Unable to extract an utxoProvider from wallet outputs."
+        MakeUtxoProviderError err        
+            -> "Unable to extract an utxoProvider from wallet outputs. Cardano API error: " <> pack (show err)
         MakeAutoBalancedTxError        
             -> "Unable to build an auto balanced tx."
 
