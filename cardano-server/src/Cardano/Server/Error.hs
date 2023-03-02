@@ -74,8 +74,8 @@ instance IsCardanoServerError BalanceExternalTxError where
             -> "Unable to extract CardanoBuildTx from EmulatorTx."
         NonBabbageEraChangeAddress     
             -> "Change address is not from Babbage era."
-        MakeUtxoProviderError          
-            -> "Unable to extract an utxoProvider from wallet outputs."
+        MakeUtxoProviderError err         
+            -> "Unable to extract an utxoProvider from wallet outputs:\n" .< err
         MakeAutoBalancedTxError        
             -> "Unable to build an auto balanced tx."
 

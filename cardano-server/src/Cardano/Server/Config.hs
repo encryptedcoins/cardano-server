@@ -4,14 +4,15 @@
 
 module Cardano.Server.Config where
 
-import           Cardano.Api                     (NetworkId (..))
-import           Cardano.Node.Emulator           ()
-import           Data.Aeson                      (FromJSON (..), eitherDecodeFileStrict, genericParseJSON)
-import           Data.Aeson.Casing               (aesonDrop, aesonPrefix, snakeCase)
-import           Data.Text                       (Text)
-import           GHC.Generics                    (Generic)
-import           Ledger                          (TxOutRef)
-import           PlutusAppsExtra.IO.ChainIndex   (ChainIndex)
+import           Cardano.Api                   (NetworkId (..))
+import           Cardano.Node.Emulator         ()
+import           Data.Aeson                    (FromJSON (..), eitherDecodeFileStrict, genericParseJSON)
+import           Data.Aeson.Casing             (aesonDrop, aesonPrefix, snakeCase)
+import           Data.Text                     (Text)
+import           GHC.Generics                  (Generic)
+import           Ledger                        (TxOutRef)
+import           PlutusAppsExtra.IO.Blockfrost (BfToken)
+import           PlutusAppsExtra.IO.ChainIndex (ChainIndex)
 
 data Config = Config
     { cServerAddress     :: Text
@@ -19,6 +20,7 @@ data Config = Config
     , cMaxUtxosNumber    :: Int
     , cAuxiliaryEnvFile  :: FilePath
     , cWalletFile        :: FilePath
+    , cBfToken           :: BfToken
     , cNetworkId         :: NetworkId
     , cCollateral        :: Maybe TxOutRef
     , cNodeFilePath      :: FilePath

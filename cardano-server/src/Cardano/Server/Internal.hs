@@ -7,6 +7,7 @@
 {-# LANGUAGE RecordWildCards            #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE TypeApplications           #-}
+{-# LANGUAGE DerivingVia           #-}
 
 module Cardano.Server.Internal
     ( module Cardano.Server.Class
@@ -36,6 +37,7 @@ import           Ledger                          (NetworkId)
 import           PlutusAppsExtra.IO.ChainIndex   (HasChainIndex)
 import           PlutusAppsExtra.IO.Wallet       (HasWallet (..))
 import           Servant                         (Handler, err404)
+import qualified PlutusAppsExtra.IO.Blockfrost   as BF
 
 newtype NetworkM s a = NetworkM { unNetworkM :: ReaderT (Env s) Handler a }
     deriving newtype
@@ -48,7 +50,6 @@ newtype NetworkM s a = NetworkM { unNetworkM :: ReaderT (Env s) Handler a }
         , HasWallet
         , HasChainIndex
         )
-
 -- Servant does not notice its own errors thrown through throwM
 instance MonadThrow (NetworkM s) where
     throwM e = do
@@ -59,6 +60,10 @@ instance MonadThrow (NetworkM s) where
 
 instance HasLogger (NetworkM s) where
     loggerFilePath = "server.log"
+
+instance BF.HasBlockfrost (NetworkM s) where
+  getBfToken = asks envBfToken
+  getNetworkId = getNetworkId
 
 getQueueRef :: NetworkM s (QueueRef s)
 getQueueRef = asks envQueueRef
@@ -80,6 +85,8 @@ loadEnv = do
         envCollateral        = cCollateral
         envNodeFilePath      = cNodeFilePath
         envChainIndex        = fromMaybe (defaultChainIndex @s) cChainIndex
+        envBfToken           = cBfToken
+    print cBfToken
     pure Env{..}
 
 newtype AppM s a = AppM { unAppM :: ReaderT (Env s) IO a }
@@ -102,6 +109,10 @@ instance HasLogger (AppM s) where
 
 instance HasWallet (AppM s) where
     getRestoredWallet = asks envWallet
+
+instance BF.HasBlockfrost (AppM s) where
+  getBfToken = asks envBfToken
+  getNetworkId = getNetworkId
 
 checkEndpointAvailability :: (InactiveEndpoints -> Bool) -> NetworkM s ()
 checkEndpointAvailability endpoint = whenM (asks (endpoint . envInactiveEndpoints)) $ throwM err404 
