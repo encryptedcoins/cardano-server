@@ -26,6 +26,7 @@ import           Ledger.Crypto               (PubKey, Signature)
 import           PlutusAppsExtra.IO.Node     (sumbitTxToNodeLocal)
 import           PlutusAppsExtra.Utils.Tx    (addCardanoTxSignature, textToCardanoTx, textToPubkey, textToSignature)
 import           Servant                     (JSON, NoContent (..), Post, ReqBody, (:>))
+import PlutusAppsExtra.Types.Error (SubmitTxToLocalNodeError)
 
 data SubmitTxReqBody = SubmitTxReqBody
     {
@@ -36,6 +37,7 @@ data SubmitTxReqBody = SubmitTxReqBody
 
 type SubmitTxApi s = "submitTx"
               :> Throws SubmitTxApiError
+              :> Throws SubmitTxToLocalNodeError
               :> Throws ConnectionError
               :> ReqBody '[JSON] SubmitTxReqBody
               :> Post '[JSON] NoContent
@@ -51,7 +53,7 @@ instance IsCardanoServerError SubmitTxApiError where
     errMsg (UnparsableWitnesses wtns) = "Cannot parse witnesses from hex:" .< wtns
 
 submitTxHandler :: SubmitTxReqBody
-    -> NetworkM s (Envelope '[SubmitTxApiError, ConnectionError] NoContent)
+    -> NetworkM s (Envelope '[SubmitTxApiError, SubmitTxToLocalNodeError, ConnectionError] NoContent)
 submitTxHandler req@(SubmitTxReqBody tx wtnsText) = toEnvelope $ do
         logMsg $ "New submitTx request received:\n" .< req
         checkEndpointAvailability isInactiveSubmitTx

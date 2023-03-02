@@ -43,7 +43,7 @@ import           Network.Wai                          (Middleware, ResponseRecei
 import           PlutusAppsExtra.IO.ChainIndex.Kupo   (pattern KupoConnectionError)
 import           PlutusAppsExtra.IO.ChainIndex.Plutus (pattern PlutusChainIndexConnectionError)
 import           PlutusAppsExtra.IO.Wallet            (pattern WalletApiConnectionError)
-import           PlutusAppsExtra.Types.Error          (BalanceExternalTxError (..), ConnectionError, MkTxError)
+import           PlutusAppsExtra.Types.Error          (BalanceExternalTxError (..), ConnectionError, MkTxError, SubmitTxToLocalNodeError(..))
 import           Servant.API.ContentTypes             (JSON, MimeRender (..), NoContent, PlainText)
 import           Servant.Checked.Exceptions           (Contains, Envelope, ErrStatus (..), IsMember, Throws, toErrEnvelope,
                                                        toSuccEnvelope)
@@ -83,6 +83,12 @@ instance IsCardanoServerError BalanceExternalTxError where
             -> "Unable to extract an utxoProvider from wallet outputs:\n" .< err
         MakeAutoBalancedTxError        
             -> "Unable to build an auto balanced tx."
+
+instance IsCardanoServerError SubmitTxToLocalNodeError where
+    errStatus _ = toEnum 422
+    errMsg = \case
+        CantSubmitEmulatorTx{} -> "Can not sumbit emulator tx to local node."
+        FailedSumbit err -> "Unable to submit tx to local node. Reason:\n" .< err
 
 ----------------------------------------- Helper newtype to exception deriving  -----------------------------------------
 
