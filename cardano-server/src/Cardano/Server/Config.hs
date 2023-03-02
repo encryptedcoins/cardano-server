@@ -19,7 +19,7 @@ data Config = Config
     , cMinUtxosNumber    :: Int
     , cMaxUtxosNumber    :: Int
     , cAuxiliaryEnvFile  :: FilePath
-    , cWalletFile        :: FilePath
+    , cWalletFile        :: Maybe FilePath
     , cBfToken           :: BfToken
     , cNetworkId         :: NetworkId
     , cCollateral        :: Maybe TxOutRef

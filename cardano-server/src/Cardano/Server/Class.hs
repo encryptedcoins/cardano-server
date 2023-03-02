@@ -8,15 +8,19 @@ module Cardano.Server.Class where
 
 import           Cardano.Node.Emulator         (Params)
 import           Cardano.Server.Config         (InactiveEndpoints, decodeOrErrorFromFile)
+import           Cardano.Server.Error          (InternalServerError (NoWalletProvided))
 import           Cardano.Server.Input          (InputContext)
 import           Cardano.Server.Utils.Logger   (HasLogger)
+import           Control.Exception             (throw)
 import           Control.Monad.Catch           (MonadCatch, MonadThrow)
 import           Control.Monad.IO.Class        (MonadIO)
 import           Control.Monad.Reader          (MonadReader, ReaderT, asks)
 import           Data.Aeson                    (FromJSON (..), ToJSON)
 import           Data.Data                     (Typeable)
+import           Data.Functor                  ((<&>))
 import           Data.IORef                    (IORef)
 import           Data.Kind                     (Type)
+import           Data.Maybe                    (fromMaybe)
 import           Data.Sequence                 (Seq)
 import           Ledger                        (TxOutRef)
 import           Ledger.Address                (Address)
@@ -61,7 +65,7 @@ type QueueRef s = IORef (Queue s)
 
 data Env s = Env
     { envQueueRef           :: QueueRef s
-    , envWallet             :: RestoredWallet
+    , envWallet             :: Maybe RestoredWallet
     , envAuxiliary          :: AuxiliaryEnvOf s
     , envBfToken            :: BfToken
     , envMinUtxosNumber     :: Int
@@ -74,7 +78,7 @@ data Env s = Env
     }
 
 instance (MonadIO m, MonadThrow m) => HasWallet (ReaderT (Env s) m) where 
-    getRestoredWallet = asks envWallet
+    getRestoredWallet = asks envWallet <&> fromMaybe (throw NoWalletProvided)
 
 instance MonadIO m => HasChainIndex (ReaderT (Env s) m) where
     getChainIndex = asks envChainIndex

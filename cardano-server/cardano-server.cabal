@@ -65,6 +65,7 @@ library
       lens                                   -any,
       lens-aeson                             -any,
       mtl                                    -any,
+      http-client                            -any,
       plutus-apps-extra                      -any,
       plutus-ledger                          -any,
       plutus-ledger-api                      -any,

@@ -28,6 +28,7 @@ module Cardano.Server.Error
     , errorMW
     , Throws
     , Envelope
+    , InternalServerError(..)
     ) where
 
 import           Cardano.Server.Utils.Logger          ((.<))
@@ -48,6 +49,10 @@ import           Servant.Checked.Exceptions           (Contains, Envelope, ErrSt
                                                        toSuccEnvelope)
 
 ---------------------------------------------------- Common errors ----------------------------------------------------
+
+data InternalServerError 
+    = NoWalletProvided 
+    deriving (Show, Exception)
 
 -- Unlike other server errors, these errors are defined in another packages
 -- and can't be derived via ExceptionDeriving.
