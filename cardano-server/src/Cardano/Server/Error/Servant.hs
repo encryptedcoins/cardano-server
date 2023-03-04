@@ -11,6 +11,7 @@
 {-# LANGUAGE RankNTypes                #-}
 {-# LANGUAGE ScopedTypeVariables       #-}
 {-# LANGUAGE TupleSections             #-}
+{-# LANGUAGE TypeApplications          #-}
 {-# LANGUAGE TypeFamilies              #-}
 {-# LANGUAGE TypeOperators             #-}
 {-# LANGUAGE UndecidableInstances      #-}
@@ -31,7 +32,7 @@ import           Network.HTTP.Types              (HeaderName, Method, Status, hA
 import           Network.Wai                     (Request (requestHeaders, requestMethod), Response, ResponseReceived,
                                                   responseLBS)
 import           Servant                         (Handler, HasServer (..), IsMember, Proxy (..), ReflectMethod (..), Verb, err405,
-                                                  err406, type (:>))
+                                                  err406, type (:>), ServerError)
 import           Servant.API                     (Accept (..), NoContent (..))
 import           Servant.API.ContentTypes        (AcceptHeader (AcceptHeader), AllCTRender (handleAcceptH), AllMime (..),
                                                   AllMimeRender (..), canHandleAcceptH)
@@ -39,7 +40,8 @@ import           Servant.Server.Internal         (RouteResult (FailFatal, Route)
                                                   leafRouter)
 import           Servant.Server.Internal.Delayed (Delayed, addAcceptCheck, addMethodCheck, runAction)
 import           Servant.Server.Internal.Router  (Router')
-
+import Servant.Client (HasClient (..))
+import Servant.Client.Core.RunClient
 ------------------------------------------------ Servant combinators ------------------------------------------------
 
 data Throws (e :: Type)
@@ -79,6 +81,14 @@ instance HasServer (Throwing '[e] :> api) ctx => HasServer (Throws e :> api) ctx
 
     route _ = route (Proxy :: Proxy (Throwing '[e] :> api))
 
+instance (RunClient m, HasClient m (Throwing '[e] :> api)) => HasClient m (Throws e :> api) where
+    
+    type Client m (Throws e :> api) = Client m (Throwing '[e] :> api)
+    
+    clientWithRoute p Proxy = clientWithRoute p (Proxy @(Throwing '[e] :> api))
+
+    hoistClientMonad pm _ = hoistClientMonad pm (Proxy @(Throwing '[e] :> api))
+
 -- Throwing:
 -- Change Throwing to VerbWithErrors
 instance HasServer (VerbWithErrors es method status ctypes a) ctx
@@ -93,11 +103,23 @@ instance HasServer (VerbWithErrors es method status ctypes a) ctx
     route _ = route
         (Proxy :: Proxy (VerbWithErrors es method status ctypes a))
 
+instance (RunClient m, HasClient m (VerbWithErrors es method status ctypes a))
+    => HasClient m (Throwing es :> Verb method status ctypes a) where
+
+    type Client m (Throwing es :> Verb method status ctypes a) =
+        Client m (VerbWithErrors es method status ctypes a)
+
+    clientWithRoute p Proxy =
+        clientWithRoute p (Proxy :: Proxy (VerbWithErrors es method status ctypes a))
+
+    hoistClientMonad pm _ =
+        hoistClientMonad pm (Proxy :: Proxy (VerbWithErrors es method status ctypes a))
+
 -- When a Throws e comes immediately after a Throwing' es 'Snoc' the
 -- e onto the es. Otherwise, if Throws e comes before any other
 -- combinator, push it down so it is closer to the 'Verb'.
-instance HasServer (ThrowingNonterminal (Throwing es :> api :> apis)) ctx =>
-    HasServer (Throwing es :> api :> apis) ctx where
+instance HasServer (ThrowingNonterminal (Throwing es :> api :> apis)) ctx 
+    => HasServer (Throwing es :> api :> apis) ctx where
 
     type ServerT (Throwing es :> api :> apis) m =
         ServerT (ThrowingNonterminal (Throwing es :> api :> apis)) m
@@ -106,6 +128,18 @@ instance HasServer (ThrowingNonterminal (Throwing es :> api :> apis)) ctx =>
         hoistServerWithContext (Proxy :: Proxy (ThrowingNonterminal (Throwing es :> api :> apis)))
 
     route _ = route (Proxy :: Proxy (ThrowingNonterminal (Throwing es :> api :> apis)))
+
+instance (RunClient m, HasClient m (ThrowingNonterminal (Throwing es :> api :> apis)))
+    => HasClient m (Throwing es :> api :> apis) where
+
+    type Client m (Throwing es :> api :> apis) =
+        Client m (ThrowingNonterminal (Throwing es :> api :> apis))
+
+    clientWithRoute p _ =
+        clientWithRoute p (Proxy :: Proxy (ThrowingNonterminal (Throwing es :> api :> apis)))
+
+    hoistClientMonad pm _ =
+        hoistClientMonad pm (Proxy @(ThrowingNonterminal (Throwing es :> api :> apis)))
 
 -- VerbWithErrors:
 instance 
@@ -123,6 +157,18 @@ instance
         where
             method        = reflectMethod (Proxy :: Proxy method)
             successStatus = toEnum . fromInteger $ natVal (Proxy :: Proxy status)
+
+instance (RunClient m, HasClient m (Verb method status ctypes (Either Servant.ServerError a)))
+    => HasClient m (VerbWithErrors es method status ctypes a) where
+
+    type Client m (VerbWithErrors es method status ctypes a) =
+        Client m (Verb method status ctypes (Either Servant.ServerError a))
+
+    clientWithRoute p _ = clientWithRoute p 
+        (Proxy :: Proxy (Verb method status ctypes (Either Servant.ServerError a)))
+
+    hoistClientMonad pm _ =
+        hoistClientMonad pm (Proxy @(Verb method status ctypes (Either Servant.ServerError a)))
 
 methodRouter :: forall ctypes a es env.
     AllCTRender ctypes (Envelope es a)

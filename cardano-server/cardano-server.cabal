@@ -78,6 +78,7 @@ library
       prettyprinter                          -any,
       servant                                -any,
       servant-client                         -any,
+      servant-client-core                    -any,
       servant-server                         -any,
       text                                   -any,
       time                                   -any,
