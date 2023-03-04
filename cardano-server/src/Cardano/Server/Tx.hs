@@ -9,6 +9,7 @@
 
 module Cardano.Server.Tx where
 
+import           Cardano.Server.Error                 (MkTxError (..), throwMaybe)
 import           Cardano.Server.Input                 (InputContext (..))
 import           Cardano.Server.Internal              (Env (..))
 import           Cardano.Server.Utils.Logger          (HasLogger (..), logPretty, logSmth)
@@ -37,7 +38,6 @@ import           PlutusAppsExtra.IO.ChainIndex        (HasChainIndex, getUtxosAt
 import           PlutusAppsExtra.IO.Time              (currentTime)
 import           PlutusAppsExtra.IO.Wallet            (HasWallet (..), balanceTx, getWalletAddr, getWalletUtxos, signTx,
                                                        submitTxConfirmed)
-import           PlutusAppsExtra.Types.Error          (MkTxError (..), throwMaybe)
 import           PlutusAppsExtra.Types.Tx             (TransactionBuilder, TxConstructor (..), mkTxConstructor,
                                                        selectTxConstructor)
 import           PlutusAppsExtra.Utils.Address        (addressToKeyHashes)

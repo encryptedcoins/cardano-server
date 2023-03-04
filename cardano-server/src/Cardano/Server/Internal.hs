@@ -22,12 +22,12 @@ module Cardano.Server.Internal
 import           Cardano.Node.Emulator         (Params (..), pParamsFromProtocolParams)
 import           Cardano.Server.Class          (Env (..), HasServer (..), Queue, QueueRef)
 import           Cardano.Server.Config         (Config (..), InactiveEndpoints, decodeOrErrorFromFile, loadConfig)
-import           Cardano.Server.Utils.Logger   (HasLogger (..), logSmth)
-import           Control.Monad.Catch           (Exception (..), MonadCatch, MonadThrow (..))
-import           Control.Monad.Except          (throwError)
+import           Cardano.Server.Utils.Logger   (HasLogger (..))
+import           Control.Monad.Catch           (MonadCatch, MonadThrow (..))
+import           Control.Monad.Except          (MonadError)
 import           Control.Monad.Extra           (whenM)
 import           Control.Monad.IO.Class        (MonadIO)
-import           Control.Monad.Reader          (MonadReader, ReaderT (ReaderT, runReaderT), asks, lift)
+import           Control.Monad.Reader          (MonadReader, ReaderT (ReaderT, runReaderT), asks)
 import           Data.Default                  (def)
 import           Data.IORef                    (newIORef)
 import           Data.Maybe                    (fromMaybe)
@@ -37,6 +37,7 @@ import qualified PlutusAppsExtra.IO.Blockfrost as BF
 import           PlutusAppsExtra.IO.ChainIndex (HasChainIndex)
 import           PlutusAppsExtra.IO.Wallet     (HasWallet (..))
 import           Servant                       (Handler, err404)
+import qualified Servant
 
 newtype NetworkM s a = NetworkM { unNetworkM :: ReaderT (Env s) Handler a }
     deriving newtype
@@ -45,18 +46,12 @@ newtype NetworkM s a = NetworkM { unNetworkM :: ReaderT (Env s) Handler a }
         , Monad
         , MonadIO
         , MonadReader (Env s)
+        , MonadError Servant.ServerError
+        , MonadThrow
         , MonadCatch
         , HasWallet
         , HasChainIndex
         )
--- Servant does not notice its own errors thrown through throwM
-
-instance MonadThrow (NetworkM s) where
-    throwM e = do
-        logSmth e
-        case fromException $ toException e of 
-            Just servantError -> NetworkM . lift $ throwError servantError
-            Nothing           -> NetworkM $ throwM e
 
 instance HasLogger (NetworkM s) where
     loggerFilePath = "server.log"

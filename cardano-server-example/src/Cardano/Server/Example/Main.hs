@@ -1,20 +1,24 @@
-{-# LANGUAGE FlexibleInstances          #-}
-{-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE TypeApplications           #-}
-{-# LANGUAGE TypeFamilies               #-}
-{-# LANGUAGE UndecidableInstances       #-}
+{-# LANGUAGE DeriveAnyClass       #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE TypeApplications     #-}
+{-# LANGUAGE TypeFamilies         #-}
+{-# LANGUAGE UndecidableInstances #-}
 
-module Cardano.Server.Example.Main (ExampleServer, runExampleServer) where
+module Cardano.Server.Example.Main
+    ( ExampleServer
+    , runExampleServer
+    ) where
 
-import Cardano.Server.Endpoints.Tx.Class     (HasTxEndpoints(..))
-import Cardano.Server.Error                  (IsCardanoServerError(..))
-import Cardano.Server.Class                  (HasServer(..), InputWithContext)
-import Cardano.Server.Main                   (runServer)
-import Cardano.Server.Example.OffChain       (testMintTx)
-import Control.Monad                         (when)
-import Control.Monad.Catch                   (throwM)
-import Data.List                             (nub)
-import Plutus.V2.Ledger.Api                  (BuiltinByteString)
+import           Cardano.Server.Class              (HasServer (..), InputWithContext)
+import           Cardano.Server.Endpoints.Tx.Class (HasTxEndpoints (..))
+import           Cardano.Server.Error              (IsCardanoServerError (..))
+import           Cardano.Server.Example.OffChain   (testMintTx)
+import           Cardano.Server.Main               (runServer)
+import           Control.Monad                     (when)
+import           Control.Monad.Catch               (Exception, throwM)
+import           Data.List                         (nub)
+import           Plutus.V2.Ledger.Api              (BuiltinByteString)
  
 runExampleServer :: IO ()
 runExampleServer = runServer @ExampleServer
@@ -34,7 +38,7 @@ instance HasTxEndpoints ExampleServer where
     type TxApiRequestOf ExampleServer = InputWithContext ExampleServer
 
     data (TxEndpointsErrorOf ExampleServer) = HasDuplicates
-        deriving Show
+        deriving (Show, Exception)
 
     txEndpointsProcessRequest req@(bbs, _) = do
         let hasDuplicates = length bbs /= length (nub bbs)

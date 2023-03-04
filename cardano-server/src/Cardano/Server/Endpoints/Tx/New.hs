@@ -1,19 +1,19 @@
-{-# LANGUAGE DataKinds                  #-}
-{-# LANGUAGE DeriveGeneric              #-}
-{-# LANGUAGE DerivingVia                #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE RankNTypes                 #-}
-{-# LANGUAGE ScopedTypeVariables        #-}
-{-# LANGUAGE TypeApplications           #-}
-{-# LANGUAGE TypeOperators              #-}
+{-# LANGUAGE DataKinds           #-}
+{-# LANGUAGE DeriveAnyClass      #-}
+{-# LANGUAGE DeriveGeneric       #-}
+{-# LANGUAGE DerivingVia         #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications    #-}
+{-# LANGUAGE TypeOperators       #-}
 
 module Cardano.Server.Endpoints.Tx.New where
 
 import           Cardano.Server.Config             (isInactiveNewTx)
 import           Cardano.Server.Endpoints.Tx.Class (HasTxEndpoints (..))
-import           Cardano.Server.Error              (ConnectionError, Envelope, ExceptionDeriving (..), IsCardanoServerError (..),
-                                                    Throws, toEnvelope)
+import           Cardano.Server.Error              (ConnectionError, Envelope, IsCardanoServerError (..), MkTxError, Throws,
+                                                    toEnvelope)
 import           Cardano.Server.Internal           (HasServer (..), NetworkM, checkEndpointAvailability)
 import           Cardano.Server.Tx                 (mkBalanceTx)
 import           Cardano.Server.Utils.Logger       (HasLogger (..), (.<))
@@ -23,7 +23,6 @@ import           Data.Aeson                        (ToJSON)
 import           Data.Text                         (Text)
 import           GHC.Generics                      (Generic)
 import           Ledger                            (CardanoTx)
-import           PlutusAppsExtra.Types.Error       (MkTxError)
 import           PlutusAppsExtra.Utils.Tx          (cardanoTxToText)
 import           Servant                           (JSON, Post, ReqBody, (:>))
 
@@ -35,14 +34,14 @@ type NewTxApi s = "newTx"
               :> Post '[JSON] Text
 
 newtype NewTxApiError = UnserialisableCardanoTx CardanoTx
-    deriving (Show, Generic, ToJSON)
-    deriving Exception via (ExceptionDeriving NewTxApiError)
+    deriving stock    (Show, Generic)
+    deriving anyclass (ToJSON, Exception)
 
 instance IsCardanoServerError NewTxApiError where
     errStatus _ = toEnum 422
     errMsg (UnserialisableCardanoTx tx) = "Cannot serialise balanced tx:" .< tx
 
-newTxHandler :: forall s. HasTxEndpoints s 
+newTxHandler :: forall s. HasTxEndpoints s
     => TxApiRequestOf s
     -> NetworkM s (Envelope '[NewTxApiError, ConnectionError, MkTxError] Text)
 newTxHandler req = toEnvelope $ do

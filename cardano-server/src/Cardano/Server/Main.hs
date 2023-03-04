@@ -17,7 +17,7 @@ import           Cardano.Server.Endpoints.Tx.Class    (HasTxEndpoints (..))
 import           Cardano.Server.Endpoints.Tx.New      (NewTxApi, newTxHandler)
 import           Cardano.Server.Endpoints.Tx.Server   (ServerTxApi, processQueue, serverTxHandler)
 import           Cardano.Server.Endpoints.Tx.Submit   (SubmitTxApi, submitTxHandler)
-import           Cardano.Server.Error                 (errorMW)
+import           Cardano.Server.Error.CommonErrors    (ConnectionError (..))
 import           Cardano.Server.Internal              (Env, NetworkM (..), loadEnv)
 import           Cardano.Server.Tx                    (checkForCleanUtxos)
 import           Cardano.Server.Utils.Logger          (HasLogger (..), logMsg, (.<))
@@ -35,7 +35,6 @@ import           Network.Wai.Middleware.Cors          (CorsResourcePolicy (..), 
 import           PlutusAppsExtra.IO.ChainIndex.Kupo   (pattern KupoConnectionError)
 import           PlutusAppsExtra.IO.ChainIndex.Plutus (pattern PlutusChainIndexConnectionError)
 import           PlutusAppsExtra.IO.Wallet            (pattern WalletApiConnectionError)
-import           PlutusAppsExtra.Types.Error          (ConnectionError (..))
 import           Servant                              (Application, Proxy (..), ServerT, hoistServer, runHandler', serve,
                                                        type (:<|>) (..))
 import qualified Servant
@@ -72,9 +71,7 @@ runServer = (`catches` errorHanlders) $ do
         hSetBuffering stdout LineBuffering
         forkIO $ processQueue env
         prepareServer env
-        Warp.runSettings (settings env)
-            $ errorMW
-            $ mkApp @s env
+        Warp.runSettings (settings env) $ mkApp @s env
     where
         unApp env = runExceptT . runHandler' . flip runReaderT env . unNetworkM 
         prepareServer env = unApp env $ do

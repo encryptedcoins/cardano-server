@@ -40,6 +40,11 @@ library
       Cardano.Server.Endpoints.Tx.Server
       Cardano.Server.Endpoints.Tx.Submit
       Cardano.Server.Error
+      Cardano.Server.Error.Class
+      Cardano.Server.Error.CommonErrors
+      Cardano.Server.Error.Servant
+      Cardano.Server.Error.ToEnvelope
+      Cardano.Server.Error.Utils
       Cardano.Server.Input
       Cardano.Server.Internal
       Cardano.Server.Main
@@ -72,7 +77,6 @@ library
       plutus-tx                              -any,
       prettyprinter                          -any,
       servant                                -any,
-      servant-checked-exceptions             -any,
       servant-client                         -any,
       servant-server                         -any,
       text                                   -any,
