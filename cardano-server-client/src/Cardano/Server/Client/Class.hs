@@ -6,17 +6,20 @@
 
 module Cardano.Server.Client.Class where
 
-import           Cardano.Server.Class    (InputWithContext)
-import           Cardano.Server.Internal (HasServer(..), AppM)
-import           Data.Aeson              (ToJSON)
-import           Data.Default            (def)
-import           Data.Kind               (Type)
-import           Options.Applicative     (Parser, auto, option, long, help)
-import           System.Random           (Random, randomIO)
+import           Cardano.Server.Class              (InputWithContext)
+import           Cardano.Server.Endpoints.Tx.Class (HasTxEndpoints (..))
+import           Cardano.Server.Internal           (AppM, HasServer (..))
+import           Data.Aeson                        (ToJSON)
+import           Data.Default                      (def)
+import           Data.Kind                         (Type)
+import           Options.Applicative               (Parser, auto, help, long, option)
+import           Servant                           (JSON, MimeRender)
+import           System.Random                     (Random, randomIO)
 
-class (HasServer c
+class ( HasServer c
       , ToJSON (ClientInput c)
       , Show (ClientInput c)
+      , MimeRender JSON (TxApiRequestOf c)
       ) => HasClient c where
 
     type ClientInput c :: Type

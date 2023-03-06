@@ -31,6 +31,7 @@ common lang
 library
     import: lang
     exposed-modules: 
+      Cardano.Server.Client.Api
       Cardano.Server.Client.Class
       Cardano.Server.Client.Client
       Cardano.Server.Client.Default
@@ -48,6 +49,10 @@ library
       http-types                             -any,
       mtl                                    -any,
       optparse-applicative                   -any,
+      plutus-apps-extra                      -any,
       random                                 -any,
+      servant                                -any,
+      servant-client                         -any,
+      servant-server                         -any,
       text                                   -any,
     hs-source-dirs: src

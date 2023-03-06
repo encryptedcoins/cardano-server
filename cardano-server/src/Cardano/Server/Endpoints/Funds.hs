@@ -45,7 +45,7 @@ type FundsApi = "funds"
 
 newtype Funds = Funds [(TokenName, TxOutRef)]
     deriving (Show, Generic)
-    deriving newtype ToJSON
+    deriving newtype (ToJSON, FromJSON)
     deriving HasStatus via WithStatus 200 Funds
 
 data FundsError
@@ -63,8 +63,8 @@ fundsHandler :: FundsReqBody -> NetworkM s (Envelope '[FundsError, ConnectionErr
 fundsHandler (FundsReqBody addrBech32 csHex) = toEnvelope $ do
     logMsg $ "New funds request received:\n" <> addrBech32
     checkEndpointAvailability isInactiveFunds
-    let cs   =  maybe (throw UnparsableCurrencySymbol) (CurrencySymbol . toBuiltin) $ decodeHex csHex
-        addr =  fromMaybe (throw UnparsableAddress) $ bech32ToAddress addrBech32
+    let cs   = maybe (throw UnparsableCurrencySymbol) (CurrencySymbol . toBuiltin) $ decodeHex csHex
+        addr = fromMaybe (throw UnparsableAddress) $ bech32ToAddress addrBech32
     getFunds cs addr
 
 getFunds :: HasChainIndex m => CurrencySymbol -> Address -> m Funds

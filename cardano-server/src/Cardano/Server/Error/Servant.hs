@@ -19,9 +19,11 @@
 
 module Cardano.Server.Error.Servant where
 
-import           Cardano.Server.Error.Class      (IsCardanoServerError (errStatus), cardanoServerErrorToJSON)
+import           Cardano.Server.Error.Class      (IsCardanoServerError (errStatus), cardanoServerErrorParser,
+                                                  cardanoServerErrorToJSON)
 import           Cardano.Server.Error.Utils      (Snoc)
-import           Data.Aeson.Types                (ToJSON (..))
+import           Control.Applicative             ((<|>))
+import           Data.Aeson.Types                (FromJSON (..), ToJSON (..))
 import           Data.ByteString                 (ByteString)
 import qualified Data.ByteString.Lazy.Char8      as LBS
 import           Data.Kind                       (Type)
@@ -31,17 +33,18 @@ import           GHC.TypeLits                    (KnownNat, Nat, natVal)
 import           Network.HTTP.Types              (HeaderName, Method, Status, hAccept, hContentType, methodGet, methodHead)
 import           Network.Wai                     (Request (requestHeaders, requestMethod), Response, ResponseReceived,
                                                   responseLBS)
-import           Servant                         (Handler, HasServer (..), IsMember, Proxy (..), ReflectMethod (..), Verb, err405,
-                                                  err406, type (:>), ServerError)
+import           Servant                         (Handler, HasServer (..), IsMember, Proxy (..), ReflectMethod (..), ServerError,
+                                                  Verb, err405, err406, type (:>))
 import           Servant.API                     (Accept (..), NoContent (..))
 import           Servant.API.ContentTypes        (AcceptHeader (AcceptHeader), AllCTRender (handleAcceptH), AllMime (..),
                                                   AllMimeRender (..), canHandleAcceptH)
+import           Servant.Client                  (HasClient (..))
+import           Servant.Client.Core.RunClient
 import           Servant.Server.Internal         (RouteResult (FailFatal, Route), allowedMethod, ct_wildcard, delayedFail,
                                                   leafRouter)
 import           Servant.Server.Internal.Delayed (Delayed, addAcceptCheck, addMethodCheck, runAction)
 import           Servant.Server.Internal.Router  (Router')
-import Servant.Client (HasClient (..))
-import Servant.Client.Core.RunClient
+
 ------------------------------------------------ Servant combinators ------------------------------------------------
 
 data Throws (e :: Type)
@@ -63,6 +66,18 @@ instance ToJSON a => ToJSON (Envelope es a) where
     toJSON = \case
         SuccEnvelope a -> toJSON a
         ErrEnvelope e  -> cardanoServerErrorToJSON e
+
+data ClientEnvelope a 
+    = ClientErrEnvelope Servant.ServerError 
+    | ClientSuccEnvelope a
+
+instance FromJSON a => FromJSON (ClientEnvelope a) where
+    parseJSON v = ClientErrEnvelope <$> cardanoServerErrorParser v
+              <|> ClientSuccEnvelope <$> parseJSON @a v
+
+instance {-# OVERLAPPING #-} FromJSON (ClientEnvelope NoContent) where
+    parseJSON v = ClientErrEnvelope <$> cardanoServerErrorParser v
+              <|> pure (ClientSuccEnvelope NoContent)
 
 type family ThrowingNonterminal api where
     ThrowingNonterminal (Throwing es :> Throws e :> api) = Throwing (Snoc es e) :> api
@@ -158,17 +173,17 @@ instance
             method        = reflectMethod (Proxy :: Proxy method)
             successStatus = toEnum . fromInteger $ natVal (Proxy :: Proxy status)
 
-instance (RunClient m, HasClient m (Verb method status ctypes (Either Servant.ServerError a)))
+instance (RunClient m, HasClient m (Verb method status ctypes (ClientEnvelope a)))
     => HasClient m (VerbWithErrors es method status ctypes a) where
 
     type Client m (VerbWithErrors es method status ctypes a) =
-        Client m (Verb method status ctypes (Either Servant.ServerError a))
+        Client m (Verb method status ctypes (ClientEnvelope a))
 
     clientWithRoute p _ = clientWithRoute p 
-        (Proxy :: Proxy (Verb method status ctypes (Either Servant.ServerError a)))
+        (Proxy :: Proxy (Verb method status ctypes (ClientEnvelope a)))
 
     hoistClientMonad pm _ =
-        hoistClientMonad pm (Proxy @(Verb method status ctypes (Either Servant.ServerError a)))
+        hoistClientMonad pm (Proxy @(Verb method status ctypes (ClientEnvelope a)))
 
 methodRouter :: forall ctypes a es env.
     AllCTRender ctypes (Envelope es a)
