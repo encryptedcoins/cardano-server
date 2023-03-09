@@ -72,7 +72,7 @@ loadEnv = do
     envQueueRef  <- newIORef empty
     envWallet    <- sequence $ decodeOrErrorFromFile <$> cWalletFile
     envAuxiliary <- loadAuxiliaryEnv @s cAuxiliaryEnvFile
-    pp           <- decodeOrErrorFromFile "protocol-parameters.json"
+    pp           <- decodeOrErrorFromFile cProtocolParameters
     let envMinUtxosNumber    = cMinUtxosNumber
         envMaxUtxosNumber    = cMaxUtxosNumber
         envLedgerParams      = Params def (pParamsFromProtocolParams pp) cNetworkId
@@ -81,7 +81,6 @@ loadEnv = do
         envNodeFilePath      = cNodeFilePath
         envChainIndex        = fromMaybe (defaultChainIndex @s) cChainIndex
         envBfToken           = cBfToken
-    print cBfToken
     pure Env{..}
 
 newtype AppM s a = AppM { unAppM :: ReaderT (Env s) IO a }
