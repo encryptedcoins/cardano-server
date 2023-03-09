@@ -33,7 +33,6 @@ import           Data.IORef                    (newIORef)
 import           Data.Maybe                    (fromMaybe)
 import           Data.Sequence                 (empty)
 import           Ledger                        (NetworkId)
-import qualified PlutusAppsExtra.IO.Blockfrost as BF
 import           PlutusAppsExtra.IO.ChainIndex (HasChainIndex)
 import           PlutusAppsExtra.IO.Wallet     (HasWallet (..))
 import           Servant                       (Handler, err404)
@@ -60,10 +59,6 @@ instance MonadThrow (NetworkM s) where
 
 instance HasLogger (NetworkM s) where
     loggerFilePath = "server.log"
-
-instance BF.HasBlockfrost (NetworkM s) where
-  getBfToken = asks envBfToken
-  getNetworkId = getNetworkId
 
 getQueueRef :: NetworkM s (QueueRef s)
 getQueueRef = asks envQueueRef
@@ -107,10 +102,6 @@ runAppM app = loadEnv >>= runReaderT (unAppM app)
 
 instance HasLogger (AppM s) where
     loggerFilePath = "server.log"
-
-instance BF.HasBlockfrost (AppM s) where
-  getBfToken = asks envBfToken
-  getNetworkId = getNetworkId
 
 checkEndpointAvailability :: (InactiveEndpoints -> Bool) -> NetworkM s ()
 checkEndpointAvailability endpoint = whenM (asks (endpoint . envInactiveEndpoints)) $ throwM err404
