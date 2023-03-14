@@ -15,16 +15,19 @@ module Cardano.Server.Example.Main
 import           Cardano.Server.Error.Class      (IsCardanoServerError (..))
 import           Cardano.Server.Example.OffChain (testMintTx)
 import           Cardano.Server.Input            (InputContext)
-import           Cardano.Server.Internal         (InputOf)
+import           Cardano.Server.Internal         (AuxillaryEnvOf, InputOf)
 import           Cardano.Server.Main             (ServerApi, runServer)
-import           Control.Monad.Catch             (Exception)
+import           Control.Monad                   (when)
+import           Control.Monad.Catch             (Exception, MonadThrow (throwM))
+import           Data.List                       (nub)
 import           Plutus.V2.Ledger.Api            (BuiltinByteString)
 import           PlutusAppsExtra.IO.ChainIndex   (ChainIndex (..))
 import           PlutusAppsExtra.IO.Wallet       (getWalletAddr)
 
 type ExampleApi = ServerApi ([BuiltinByteString], InputContext) ExampleApiError
 
-type instance InputOf ExampleApi = [BuiltinByteString]
+type instance InputOf        ExampleApi = [BuiltinByteString]
+type instance AuxillaryEnvOf ExampleApi = ()
 
 data ExampleApiError = HasDuplicates
     deriving (Show, Exception)
@@ -35,34 +38,16 @@ instance IsCardanoServerError ExampleApiError where
 
 runExampleServer :: IO ()
 runExampleServer = runServer
-    @ExampleApi
-    Kupo
-    ((:[]) <$> getWalletAddr)
-    (\bbs -> pure [testMintTx bbs])
-    (pure ())
-    pure
-
--- data ExampleServer
-
--- instance HasServer ExampleServer where
-
---     type AuxiliaryEnvOf ExampleServer = ()
-
---     loadAuxiliaryEnv _ = pure ()
-
---     type InputOf ExampleServer = [BuiltinByteString]
-
--- instance HasTxEndpoints ExampleServer where
-
---     type TxApiRequestOf ExampleServer = InputWithContext ExampleServer
-
---     data (TxEndpointsErrorOf ExampleServer) = HasDuplicates
---         deriving (Show, Exception)
-
---     txEndpointsProcessRequest req@(bbs, _) = do
---         let hasDuplicates = length bbs /= length (nub bbs)
---         when hasDuplicates $ throwM HasDuplicates
---         return req
-
---     txEndpointsTxBuilders bbs = pure [testMintTx bbs]
+        @ExampleApi
+        ()
+        Kupo
+        ((:[]) <$> getWalletAddr)
+        (\bbs -> pure [testMintTx bbs])
+        (pure ())
+        processRequest
+    where
+        processRequest req@(bbs, _) = do
+            let hasDuplicates = length bbs /= length (nub bbs)
+            when hasDuplicates $ throwM HasDuplicates
+            return req
 

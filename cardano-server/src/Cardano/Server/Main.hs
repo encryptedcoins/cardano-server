@@ -21,7 +21,7 @@ import           Cardano.Server.Endpoints.Tx.Submit   (SubmitTxApi, submitTxHand
 import           Cardano.Server.Error.Class           (IsCardanoServerError)
 import           Cardano.Server.Error.CommonErrors    (ConnectionError (..))
 import           Cardano.Server.Internal              (Env (envProcessRequest),InputOf, InputWithContext,
-                                                       ServerM (..), TxApiRequestOf, loadEnv)
+                                                       ServerM (..), TxApiRequestOf, loadEnv, AuxillaryEnvOf)
 import           Cardano.Server.Tx                    (checkForCleanUtxos)
 import           Cardano.Server.Utils.Logger          (HasLogger (..), logMsg, (.<))
 import           Control.Concurrent                   (forkIO)
@@ -82,15 +82,16 @@ port :: Int
 port = 3000
 
 runServer :: forall api. ServerConstraints api
-    => ChainIndex
+    => AuxillaryEnvOf api
+    -> ChainIndex
     -> ServerM api [Address]
     -> (InputOf api -> ServerM api [TransactionBuilder ()])
     -> ServerM api ()
     -> (TxApiRequestOf api -> ServerM api  (InputWithContext api))
     -> IO ()
-runServer defaultCI getTrackedAddresses txEndpointsTxBuilders serverIdle processRequest
+runServer auxEnv defaultCI getTrackedAddresses txEndpointsTxBuilders serverIdle processRequest
     = (`catches` errorHanlders) $ do
-        env <- loadEnv @api defaultCI getTrackedAddresses txEndpointsTxBuilders serverIdle processRequest
+        env <- loadEnv @api defaultCI getTrackedAddresses txEndpointsTxBuilders serverIdle processRequest auxEnv
         hSetBuffering stdout LineBuffering
         forkIO $ processQueue env
         prepareServer env

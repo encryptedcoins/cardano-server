@@ -69,6 +69,8 @@ type family TxApiRequestOf api :: Type
 
 type family InputOf api :: Type
 
+type family AuxillaryEnvOf api :: Type
+
 type InputWithContext api = (InputOf api, InputContext)
 
 type Queue api = Seq (InputWithContext api)
@@ -78,6 +80,7 @@ type QueueRef api = IORef (Queue api)
 data Env api = Env
     { envQueueRef              :: QueueRef api
     , envWallet                :: Maybe RestoredWallet
+    , envAuxiliary             :: AuxillaryEnvOf api
     , envBfToken               :: BF.BfToken
     , envMinUtxosNumber        :: Int
     , envMaxUtxosNumber        :: Int
@@ -123,8 +126,9 @@ loadEnv :: forall api.
     -> (InputOf api -> ServerM api [TransactionBuilder ()])
     -> ServerM api ()
     -> (TxApiRequestOf api -> ServerM api (InputWithContext api))
+    -> AuxillaryEnvOf api
     -> IO (Env api)
-loadEnv defaultCI envGetTrackedAddresses envTxEndpointsTxBuilders envServerIdle envProcessRequest = do
+loadEnv defaultCI envGetTrackedAddresses envTxEndpointsTxBuilders envServerIdle envProcessRequest envAuxiliary = do
     Config{..}   <- loadConfig
     envQueueRef  <- newIORef empty
     envWallet    <- sequence $ decodeOrErrorFromFile <$> cWalletFile
