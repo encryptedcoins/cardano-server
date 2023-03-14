@@ -21,7 +21,7 @@ module Cardano.Server.Endpoints.Tx.New where
 import           Cardano.Server.Config       (isInactiveNewTx)
 import           Cardano.Server.Error        (ConnectionError, Envelope, IsCardanoServerError (..), MkTxError, Throws, toEnvelope)
 import           Cardano.Server.Internal     (InputWithContext, ServerM, TxApiRequestOf, checkEndpointAvailability,
-                                              serverTrackedAddresses, txEndpointsTxBuilders)
+                                              serverTrackedAddresses, txEndpointsTxBuilders, TxApiErrorOf)
 import           Cardano.Server.Tx           (mkBalanceTx)
 import           Cardano.Server.Utils.Logger (HasLogger (..), (.<))
 import           Control.Monad               (join, liftM3)
@@ -46,8 +46,6 @@ data NoError deriving (Show, Exception)
 instance IsCardanoServerError NoError where
     errStatus = \case
     errMsg = \case
-
-type family TxApiErrorOf api
 
 type ErrorsOfNewTxApi err = err ': [NewTxApiError, ConnectionError, MkTxError]
 

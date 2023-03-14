@@ -36,7 +36,7 @@ import           Data.Sequence                     (Seq, empty)
 import           Ledger                            (Address, NetworkId, TxOutRef)
 import qualified PlutusAppsExtra.IO.Blockfrost     as BF
 import           PlutusAppsExtra.IO.ChainIndex     (ChainIndex, HasChainIndex (..))
-import           PlutusAppsExtra.IO.Wallet         (HasWallet (..), RestoredWallet, getWalletAddr)
+import           PlutusAppsExtra.IO.Wallet         (HasWallet (..), RestoredWallet)
 import           PlutusAppsExtra.Types.Tx          (TransactionBuilder)
 import           Servant                           (Handler, err404)
 import qualified Servant
@@ -51,8 +51,6 @@ newtype ServerM api a = ServerM {unServerM :: ReaderT (Env api) Handler a}
         , MonadError Servant.ServerError
         , MonadThrow
         , MonadCatch
-        , HasWallet
-        , HasChainIndex
         )
 
 runServerM :: Env api -> ServerM api a -> IO a
@@ -65,7 +63,15 @@ instance BF.HasBlockfrost (ServerM api) where
     getBfToken = asks envBfToken
     getNetworkId = getNetworkId
 
+instance HasWallet (ServerM api) where
+    getRestoredWallet = asks envWallet <&> fromMaybe (throw NoWalletProvided)
+
+instance HasChainIndex (ServerM api) where
+    getChainIndex = asks envChainIndex
+
 type family TxApiRequestOf api :: Type
+
+type family TxApiErrorOf api :: Type
 
 type family InputOf api :: Type
 
@@ -99,9 +105,6 @@ data Env api = Env
 serverTrackedAddresses :: ServerM api [Address]
 serverTrackedAddresses = join $ asks envGetTrackedAddresses
 
-defaultGetServerTrackedAddresses :: ServerM api [Address]
-defaultGetServerTrackedAddresses = (:[]) <$> getWalletAddr
-
 txEndpointsTxBuilders :: InputOf api -> ServerM api [TransactionBuilder ()]
 txEndpointsTxBuilders input = asks envTxEndpointsTxBuilders >>= ($ input)
 
@@ -113,12 +116,6 @@ getQueueRef = asks envQueueRef
 
 getNetworkId :: ServerM api NetworkId
 getNetworkId = asks $ pNetworkId . envLedgerParams
-
-instance (MonadIO m, MonadThrow m) => HasWallet (ReaderT (Env e) m) where
-    getRestoredWallet = asks envWallet <&> fromMaybe (throw NoWalletProvided)
-
-instance MonadIO m => HasChainIndex (ReaderT (Env e) m) where
-    getChainIndex = asks envChainIndex
 
 loadEnv :: forall api.
        ChainIndex
@@ -132,7 +129,6 @@ loadEnv defaultCI envGetTrackedAddresses envTxEndpointsTxBuilders envServerIdle 
     Config{..}   <- loadConfig
     envQueueRef  <- newIORef empty
     envWallet    <- sequence $ decodeOrErrorFromFile <$> cWalletFile
-    -- envAuxiliary <- loadAuxiliaryEnv @s cAuxiliaryEnvFile
     pp           <- decodeOrErrorFromFile "protocol-parameters.json"
     let envMinUtxosNumber    = cMinUtxosNumber
         envMaxUtxosNumber    = cMaxUtxosNumber

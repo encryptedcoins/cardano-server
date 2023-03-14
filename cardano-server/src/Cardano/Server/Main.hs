@@ -15,13 +15,13 @@ module Cardano.Server.Main where
 
 import           Cardano.Server.Endpoints.Funds       (FundsApi, fundsHandler)
 import           Cardano.Server.Endpoints.Ping        (PingApi, pingHandler)
-import           Cardano.Server.Endpoints.Tx.New      (NewTxApi, TxApiErrorOf, newTxHandler)
+import           Cardano.Server.Endpoints.Tx.New      (NewTxApi, newTxHandler)
 import           Cardano.Server.Endpoints.Tx.Server   (ServerTxApi, processQueue, serverTxHandler)
 import           Cardano.Server.Endpoints.Tx.Submit   (SubmitTxApi, submitTxHandler)
 import           Cardano.Server.Error.Class           (IsCardanoServerError)
 import           Cardano.Server.Error.CommonErrors    (ConnectionError (..))
-import           Cardano.Server.Internal              (Env (envProcessRequest),InputOf, InputWithContext,
-                                                       ServerM (..), TxApiRequestOf, loadEnv, AuxillaryEnvOf)
+import           Cardano.Server.Internal              (AuxillaryEnvOf, Env (envProcessRequest), InputOf, InputWithContext,
+                                                       ServerM (..), TxApiErrorOf, TxApiRequestOf, envLoggerFilePath, loadEnv)
 import           Cardano.Server.Tx                    (checkForCleanUtxos)
 import           Cardano.Server.Utils.Logger          (HasLogger (..), logMsg, (.<))
 import           Control.Concurrent                   (forkIO)
@@ -31,6 +31,7 @@ import           Control.Monad.Except                 (runExceptT)
 import           Control.Monad.Reader                 (ReaderT (runReaderT))
 import qualified Data.Text.Encoding                   as T
 import qualified Data.Text.IO                         as T
+import           Ledger                               (Address)
 import           Network.HTTP.Client                  (path)
 import qualified Network.Wai                          as Wai
 import qualified Network.Wai.Handler.Warp             as Warp
@@ -39,24 +40,21 @@ import           PlutusAppsExtra.IO.ChainIndex        (ChainIndex)
 import           PlutusAppsExtra.IO.ChainIndex.Kupo   (pattern KupoConnectionError)
 import           PlutusAppsExtra.IO.ChainIndex.Plutus (pattern PlutusChainIndexConnectionError)
 import           PlutusAppsExtra.IO.Wallet            (pattern WalletApiConnectionError)
+import           PlutusAppsExtra.Types.Tx             (TransactionBuilder)
 import           Servant                              (Application, Proxy (..), ServerT, hoistServer, runHandler', serve,
                                                        type (:<|>) (..))
 import qualified Servant
 import           System.IO                            (BufferMode (LineBuffering), hSetBuffering, stdout)
-import Ledger (Address)
-import PlutusAppsExtra.Types.Tx (TransactionBuilder)
 
-
-type ServerApi reqBody newTxApiError
+type ServerApi reqBody txApiError
     = PingApi
     :<|> FundsApi
-    :<|> NewTxApi reqBody newTxApiError
+    :<|> NewTxApi reqBody txApiError
     :<|> SubmitTxApi
-    :<|> ServerTxApi reqBody
+    :<|> ServerTxApi reqBody txApiError
 
 type instance TxApiRequestOf (ServerApi reqBody _) = reqBody
-type instance TxApiErrorOf (ServerApi _ newTxApiError) = newTxApiError
--- type instance InputOf (ServerApi reqBody input newTxApiError) = input
+type instance TxApiErrorOf (ServerApi _ txApiError) = txApiError
 
 type ServerAPI' api = ServerApi (TxApiRequestOf api) (TxApiErrorOf api)
 
@@ -87,7 +85,7 @@ runServer :: forall api. ServerConstraints api
     -> ServerM api [Address]
     -> (InputOf api -> ServerM api [TransactionBuilder ()])
     -> ServerM api ()
-    -> (TxApiRequestOf api -> ServerM api  (InputWithContext api))
+    -> (TxApiRequestOf api -> ServerM api (InputWithContext api))
     -> IO ()
 runServer auxEnv defaultCI getTrackedAddresses txEndpointsTxBuilders serverIdle processRequest
     = (`catches` errorHanlders) $ do
@@ -95,7 +93,7 @@ runServer auxEnv defaultCI getTrackedAddresses txEndpointsTxBuilders serverIdle 
         hSetBuffering stdout LineBuffering
         forkIO $ processQueue env
         prepareServer env
-        Warp.runSettings (settings env) $ mkApp @api env
+        Warp.runSettings (settings env) $ mkApp @api env {envLoggerFilePath = Just "server.log"}
     where
         unApp env = runExceptT . runHandler' . flip runReaderT env . unServerM
         prepareServer env = unApp env $ do

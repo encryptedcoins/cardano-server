@@ -13,10 +13,10 @@
 module Cardano.Server.Endpoints.Tx.Server where
 
 import           Cardano.Server.Config       (isInactiveServerTx)
-import           Cardano.Server.Error        (ConnectionError, Envelope, Throws, toEnvelope)
+import           Cardano.Server.Error        (ConnectionError, Envelope, IsCardanoServerError, Throws, toEnvelope)
 import           Cardano.Server.Internal     (Env (envLoggerFilePath, envQueueRef), InputOf, InputWithContext, Queue, QueueRef,
-                                              ServerM, TxApiRequestOf, checkEndpointAvailability, getQueueRef, runServerM,
-                                              serverIdle, serverTrackedAddresses, txEndpointsTxBuilders)
+                                              ServerM, TxApiErrorOf, TxApiRequestOf, checkEndpointAvailability, getQueueRef,
+                                              runServerM, serverIdle, serverTrackedAddresses, txEndpointsTxBuilders)
 import           Cardano.Server.Tx           (checkForCleanUtxos, mkTx)
 import           Cardano.Server.Utils.Logger (HasLogger (..), logSmth, (.<))
 import           Cardano.Server.Utils.Wait   (waitTime)
@@ -30,15 +30,16 @@ import           Data.Time                   (getCurrentTime)
 import qualified Data.Time                   as Time
 import           Servant                     (JSON, NoContent (..), Post, ReqBody, (:>))
 
-type ServerTxApi reqBody = "serverTx"
+type ServerTxApi reqBody err = "serverTx"
+    :> Throws err
     :> Throws ConnectionError
     :> ReqBody '[JSON] reqBody
     :> Post '[JSON] NoContent
 
-serverTxHandler :: Show (TxApiRequestOf api)
+serverTxHandler :: (Show (TxApiRequestOf api), IsCardanoServerError (TxApiErrorOf api))
     => (TxApiRequestOf api -> ServerM api (InputWithContext api))
     -> TxApiRequestOf api
-    -> ServerM api (Envelope '[ConnectionError] NoContent)
+    -> ServerM api (Envelope '[TxApiErrorOf api, ConnectionError] NoContent)
 serverTxHandler txEndpointsProcessRequest req = toEnvelope $ do
     logMsg $ "New serverTx request received:\n" .< req
     checkEndpointAvailability isInactiveServerTx
