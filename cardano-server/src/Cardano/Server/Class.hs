@@ -3,6 +3,8 @@
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE FlexibleInstances   #-}
 {-# LANGUAGE TypeFamilies        #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ConstraintKinds #-}
 
 module Cardano.Server.Class where
 
@@ -28,57 +30,33 @@ import           PlutusAppsExtra.IO.Blockfrost     (BfToken)
 import           PlutusAppsExtra.IO.ChainIndex     (ChainIndex (..), HasChainIndex (..))
 import           PlutusAppsExtra.IO.Wallet         (HasWallet (..), RestoredWallet, getWalletAddr)
 import           Servant                           (JSON, MimeUnrender)
+import PlutusAppsExtra.Types.Tx (TransactionBuilder)
 
-class ( Show (AuxiliaryEnvOf s)
-      , MimeUnrender JSON (InputOf s)
-      , ToJSON (InputOf s)
-      , Show (InputOf s)
-      , Typeable s
-      ) => HasServer s where
+-- class ( Show (AuxiliaryEnvOf s)
+--       , MimeUnrender JSON (InputOf s)
+--       , ToJSON (InputOf s)
+--       , Show (InputOf s)
+--       , Typeable s
+--       ) => HasServer s where
 
-    type AuxiliaryEnvOf s :: Type
+--     type AuxiliaryEnvOf s :: Type
 
-    loadAuxiliaryEnv :: FilePath -> IO (AuxiliaryEnvOf s)
-    default loadAuxiliaryEnv :: FromJSON (AuxiliaryEnvOf s) => FilePath -> IO (AuxiliaryEnvOf s)
-    loadAuxiliaryEnv = decodeOrErrorFromFile
+--     loadAuxiliaryEnv :: FilePath -> IO (AuxiliaryEnvOf s)
+--     default loadAuxiliaryEnv :: FromJSON (AuxiliaryEnvOf s) => FilePath -> IO (AuxiliaryEnvOf s)
+--     loadAuxiliaryEnv = decodeOrErrorFromFile
 
-    type InputOf s :: Type
+--     type InputOf s :: Type
 
-    serverSetup :: (MonadCatch m, MonadReader (Env s) m, HasLogger m, HasWallet m, HasChainIndex m) => m ()
-    serverSetup = pure ()
+--     serverSetup :: (MonadCatch m, MonadReader (Env s) m, HasLogger m, HasWallet m, HasChainIndex m) => m ()
+--     serverSetup = pure ()
 
-    serverIdle :: (MonadCatch m, MonadReader (Env s) m, HasLogger m, HasWallet m, HasChainIndex m) => m ()
-    serverIdle = pure ()
+--     serverIdle :: (MonadCatch m, MonadReader (Env s) m, HasLogger m, HasWallet m, HasChainIndex m) => m ()
+--     serverIdle = pure ()
 
-    serverTrackedAddresses :: (MonadReader (Env s) m, HasWallet m) => m [Address]
-    serverTrackedAddresses = (:[]) <$> getWalletAddr
+--     serverTrackedAddresses :: (MonadReader (Env s) m, HasWallet m) => m [Address]
+--     serverTrackedAddresses = (:[]) <$> getWalletAddr
 
-    -- This chainindex will be used when no other is specified in the config
-    defaultChainIndex :: ChainIndex
-    defaultChainIndex = Plutus
+--     -- This chainindex will be used when no other is specified in the config
+--     defaultChainIndex :: ChainIndex
+--     defaultChainIndex = Plutus
 
-type InputWithContext s = (InputOf s, InputContext)
-
-type Queue s = Seq (InputWithContext s)
-
-type QueueRef s = IORef (Queue s)
-
-data Env s = Env
-    { envQueueRef           :: QueueRef s
-    , envWallet             :: Maybe RestoredWallet
-    , envAuxiliary          :: AuxiliaryEnvOf s
-    , envBfToken            :: BfToken
-    , envMinUtxosNumber     :: Int
-    , envMaxUtxosNumber     :: Int
-    , envLedgerParams       :: Params
-    , envCollateral         :: Maybe TxOutRef
-    , envNodeFilePath       :: FilePath
-    , envChainIndex         :: ChainIndex
-    , envInactiveEndpoints  :: InactiveEndpoints
-    }
-
-instance (MonadIO m, MonadThrow m) => HasWallet (ReaderT (Env s) m) where 
-    getRestoredWallet = asks envWallet <&> fromMaybe (throw NoWalletProvided)
-
-instance MonadIO m => HasChainIndex (ReaderT (Env s) m) where
-    getChainIndex = asks envChainIndex

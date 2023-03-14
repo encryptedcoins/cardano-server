@@ -10,7 +10,7 @@
 module Cardano.Server.Endpoints.Tx.Submit where
 
 import           Cardano.Node.Emulator       (Params (..))
-import           Cardano.Server.Class        (Env (..))
+import           Cardano.Server.Internal        (Env (..))
 import           Cardano.Server.Config       (isInactiveSubmitTx)
 import           Cardano.Server.Error        (ConnectionError, Envelope, IsCardanoServerError (..), Throws, toEnvelope, SubmitTxToLocalNodeError)
 import           Cardano.Server.Internal     (NetworkM, checkEndpointAvailability)
@@ -33,7 +33,7 @@ data SubmitTxReqBody = SubmitTxReqBody
     }
     deriving (Show, Generic, ToJSON, FromJSON)
 
-type SubmitTxApi s = "submitTx"
+type SubmitTxApi = "submitTx"
               :> Throws SubmitTxApiError
               :> Throws SubmitTxToLocalNodeError
               :> Throws ConnectionError

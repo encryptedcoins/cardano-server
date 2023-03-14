@@ -11,13 +11,13 @@ module Cardano.Server.Tx where
 
 import           Cardano.Server.Error                 (MkTxError (..), throwMaybe)
 import           Cardano.Server.Input                 (InputContext (..))
-import           Cardano.Server.Internal              (Env (..))
+import           Cardano.Server.Internal              (CardanoServerMonad, Env (..))
 import           Cardano.Server.Utils.Logger          (HasLogger (..), logPretty, logSmth)
 import           Control.Lens                         ((^?))
 import           Control.Monad.Catch                  (Handler (..), MonadCatch, MonadThrow (..), catches)
 import           Control.Monad.Extra                  (guard, mconcatMapM, void, when)
 import           Control.Monad.IO.Class               (MonadIO (..))
-import           Control.Monad.Reader                 (MonadReader, asks)
+import           Control.Monad.Reader                 (asks)
 import           Control.Monad.State                  (execState)
 import           Data.Aeson                           (decode)
 import qualified Data.Aeson                           as J
@@ -34,10 +34,9 @@ import           Ledger.Tx.CardanoAPI                 as CardanoAPI
 import           Ledger.Value                         (CurrencySymbol (..), TokenName (..), Value (..))
 import           PlutusAppsExtra.Constraints.Balance  (balanceExternalTx)
 import           PlutusAppsExtra.Constraints.OffChain (useAsCollateralTx', utxoProducedPublicKeyTx)
-import           PlutusAppsExtra.IO.ChainIndex        (HasChainIndex, getUtxosAt)
+import           PlutusAppsExtra.IO.ChainIndex        (getUtxosAt)
 import           PlutusAppsExtra.IO.Time              (currentTime)
-import           PlutusAppsExtra.IO.Wallet            (HasWallet (..), balanceTx, getWalletAddr, getWalletUtxos, signTx,
-                                                       submitTxConfirmed)
+import           PlutusAppsExtra.IO.Wallet            (balanceTx, getWalletAddr, getWalletUtxos, signTx, submitTxConfirmed)
 import           PlutusAppsExtra.Types.Tx             (TransactionBuilder, TxConstructor (..), mkTxConstructor,
                                                        selectTxConstructor)
 import           PlutusAppsExtra.Utils.Address        (addressToKeyHashes)
@@ -48,15 +47,7 @@ import           Servant.Client                       (ClientError (..), Respons
 import           Text.Hex                             (decodeHex)
 import           Text.Read                            (readMaybe)
 
-type MkTxConstraints m s =
-    ( HasWallet m
-    , HasChainIndex m
-    , HasLogger m
-    , MonadReader (Env s) m
-    , MonadCatch m
-    )
-
-mkBalanceTx :: MkTxConstraints m s
+mkBalanceTx :: CardanoServerMonad m
     => [Address]
     -> InputContext
     -> [TransactionBuilder ()]
@@ -83,7 +74,7 @@ mkBalanceTx addressesTracked context txs = do
       InputContextServer {}   -> balanceTx ledgerParams lookups cons
       InputContextClient {..} -> balanceExternalTx ledgerParams inputWalletUTXO inputChangeAddress lookups cons
 
-mkTx :: MkTxConstraints m s
+mkTx :: CardanoServerMonad m
     => [Address]
     -> InputContext
     -> [TransactionBuilder ()]
@@ -99,7 +90,7 @@ mkTx addressesTracked ctx txs = mkTxErrorH $ do
     logMsg "Submited."
     return signedTx
 
-checkForCleanUtxos :: MkTxConstraints m s => m ()
+checkForCleanUtxos :: CardanoServerMonad m => m ()
 checkForCleanUtxos = mkTxErrorH $ do
     addr       <- getWalletAddr
     cleanUtxos <- length . filterCleanUtxos <$> getWalletUtxos
@@ -109,7 +100,7 @@ checkForCleanUtxos = mkTxErrorH $ do
         logMsg $ "Address doesn't has enough clean UTXO's: " <> (T.pack . show $ minUtxos - cleanUtxos)
         void $ mkWalletTxOutRefs addr (maxUtxos - cleanUtxos)
 
-mkWalletTxOutRefs :: MkTxConstraints m s => Address -> Int -> m [TxOutRef]
+mkWalletTxOutRefs :: CardanoServerMonad m => Address -> Int -> m [TxOutRef]
 mkWalletTxOutRefs addr n = do
     (pkh, scr) <- throwMaybe (CantExtractKeyHashesFromAddress addr) $ addressToKeyHashes addr
     let txBuilder = mapM_ (const $ utxoProducedPublicKeyTx pkh scr (lovelaceValueOf 10_000_000) (Nothing :: Maybe ())) [1..n]
