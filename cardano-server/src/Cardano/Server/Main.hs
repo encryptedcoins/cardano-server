@@ -20,9 +20,8 @@ import           Cardano.Server.Endpoints.Tx.Server   (ServerTxApi, processQueue
 import           Cardano.Server.Endpoints.Tx.Submit   (SubmitTxApi, submitTxHandler)
 import           Cardano.Server.Error.Class           (IsCardanoServerError)
 import           Cardano.Server.Error.CommonErrors    (ConnectionError (..))
-import           Cardano.Server.Internal              (Env (envProcessRequest), EnvProcessRequest, EnvServerIdle,
-                                                       EnvTrackedAddresses, EnvTxBuilders, InputOf, InputWithContext,
-                                                       NetworkM (..), TxApiRequestOf, loadEnv)
+import           Cardano.Server.Internal              (Env (envProcessRequest),InputOf, InputWithContext,
+                                                       ServerM (..), TxApiRequestOf, loadEnv)
 import           Cardano.Server.Tx                    (checkForCleanUtxos)
 import           Cardano.Server.Utils.Logger          (HasLogger (..), logMsg, (.<))
 import           Control.Concurrent                   (forkIO)
@@ -44,6 +43,9 @@ import           Servant                              (Application, Proxy (..), 
                                                        type (:<|>) (..))
 import qualified Servant
 import           System.IO                            (BufferMode (LineBuffering), hSetBuffering, stdout)
+import Ledger (Address)
+import PlutusAppsExtra.Types.Tx (TransactionBuilder)
+
 
 type ServerApi reqBody newTxApiError
     = PingApi
@@ -65,13 +67,13 @@ type ServerConstraints api =
     , Show (TxApiRequestOf api)
     )
 
-server :: ServerConstraints api => (TxApiRequestOf api -> NetworkM api (InputWithContext api)) -> ServerT (ServerAPI' api) (NetworkM api)
-server extractInputFromBody
+server :: ServerConstraints api => (TxApiRequestOf api -> ServerM api (InputWithContext api)) -> ServerT (ServerAPI' api) (ServerM api)
+server processRequest
     =    pingHandler
     :<|> fundsHandler
-    :<|> newTxHandler extractInputFromBody
+    :<|> newTxHandler processRequest
     :<|> submitTxHandler
-    :<|> serverTxHandler extractInputFromBody
+    :<|> serverTxHandler processRequest
 
 serverAPI :: forall api. Proxy (ServerAPI' api)
 serverAPI = Proxy @(ServerAPI' api)
@@ -81,20 +83,20 @@ port = 3000
 
 runServer :: forall api. ServerConstraints api
     => ChainIndex
-    -> EnvTrackedAddresses
-    -> EnvTxBuilders api
-    -> EnvServerIdle
-    -> EnvProcessRequest api
+    -> ServerM api [Address]
+    -> (InputOf api -> ServerM api [TransactionBuilder ()])
+    -> ServerM api ()
+    -> (TxApiRequestOf api -> ServerM api  (InputWithContext api))
     -> IO ()
-runServer defaultCI trackedAddresses txEndpointsTxBuilders serverIdle processRequest
+runServer defaultCI getTrackedAddresses txEndpointsTxBuilders serverIdle processRequest
     = (`catches` errorHanlders) $ do
-        env <- loadEnv @api defaultCI trackedAddresses txEndpointsTxBuilders serverIdle processRequest
+        env <- loadEnv @api defaultCI getTrackedAddresses txEndpointsTxBuilders serverIdle processRequest
         hSetBuffering stdout LineBuffering
         forkIO $ processQueue env
         prepareServer env
         Warp.runSettings (settings env) $ mkApp @api env
     where
-        unApp env = runExceptT . runHandler' . flip runReaderT env . unNetworkM
+        unApp env = runExceptT . runHandler' . flip runReaderT env . unServerM
         prepareServer env = unApp env $ do
             logMsg "Starting server..."
             checkForCleanUtxos
@@ -119,4 +121,4 @@ corsWithContentType = cors (const $ Just policy)
 
 mkApp :: forall api. ServerConstraints api => Env api -> Application
 mkApp env = corsWithContentType $ serve (serverAPI @api) $
-    hoistServer (serverAPI @api) ((`runReaderT` env) . unNetworkM) $ server (envProcessRequest env)
+    hoistServer (serverAPI @api) ((`runReaderT` env) . unServerM) $ server (envProcessRequest env)

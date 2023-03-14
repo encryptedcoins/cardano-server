@@ -13,7 +13,7 @@ module Cardano.Server.Endpoints.Funds where
 import           Cardano.Server.Config         (isInactiveFunds)
 import           Cardano.Server.Error          (ConnectionError, Envelope, IsCardanoServerError (errMsg, errStatus), Throws,
                                                 toEnvelope)
-import           Cardano.Server.Internal       (NetworkM, checkEndpointAvailability)
+import           Cardano.Server.Internal       (ServerM, checkEndpointAvailability)
 import           Cardano.Server.Utils.Logger   (logMsg)
 import           Control.Exception             (Exception (..), throw)
 import           Data.Aeson                    (FromJSON, ToJSON)
@@ -59,7 +59,7 @@ instance IsCardanoServerError FundsError where
         UnparsableAddress        -> "Incorrect wallet address."
         UnparsableCurrencySymbol -> "Incorrect currency symbol."
 
-fundsHandler :: FundsReqBody -> NetworkM s (Envelope '[FundsError, ConnectionError] Funds)
+fundsHandler :: FundsReqBody -> ServerM s (Envelope '[FundsError, ConnectionError] Funds)
 fundsHandler (FundsReqBody addrBech32 csHex) = toEnvelope $ do
     logMsg $ "New funds request received:\n" <> addrBech32
     checkEndpointAvailability isInactiveFunds

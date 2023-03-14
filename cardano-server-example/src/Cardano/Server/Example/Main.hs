@@ -15,11 +15,12 @@ module Cardano.Server.Example.Main
 import           Cardano.Server.Error.Class      (IsCardanoServerError (..))
 import           Cardano.Server.Example.OffChain (testMintTx)
 import           Cardano.Server.Input            (InputContext)
-import           Cardano.Server.Internal         (InputOf, defaultServerTrackedAddresses)
+import           Cardano.Server.Internal         (InputOf)
 import           Cardano.Server.Main             (ServerApi, runServer)
 import           Control.Monad.Catch             (Exception)
 import           Plutus.V2.Ledger.Api            (BuiltinByteString)
 import           PlutusAppsExtra.IO.ChainIndex   (ChainIndex (..))
+import           PlutusAppsExtra.IO.Wallet       (getWalletAddr)
 
 type ExampleApi = ServerApi ([BuiltinByteString], InputContext) ExampleApiError
 
@@ -36,7 +37,7 @@ runExampleServer :: IO ()
 runExampleServer = runServer
     @ExampleApi
     Kupo
-    defaultServerTrackedAddresses
+    ((:[]) <$> getWalletAddr)
     (\bbs -> pure [testMintTx bbs])
     (pure ())
     pure

@@ -10,10 +10,10 @@
 module Cardano.Server.Endpoints.Tx.Submit where
 
 import           Cardano.Node.Emulator       (Params (..))
-import           Cardano.Server.Internal        (Env (..))
 import           Cardano.Server.Config       (isInactiveSubmitTx)
-import           Cardano.Server.Error        (ConnectionError, Envelope, IsCardanoServerError (..), Throws, toEnvelope, SubmitTxToLocalNodeError)
-import           Cardano.Server.Internal     (NetworkM, checkEndpointAvailability)
+import           Cardano.Server.Error        (ConnectionError, Envelope, IsCardanoServerError (..), SubmitTxToLocalNodeError,
+                                              Throws, toEnvelope)
+import           Cardano.Server.Internal     (Env (..), ServerM, checkEndpointAvailability)
 import           Cardano.Server.Utils.Logger (HasLogger (..), (.<))
 import           Control.Monad.Catch         (Exception, MonadThrow (throwM))
 import           Control.Monad.IO.Class      (MonadIO (..))
@@ -34,11 +34,11 @@ data SubmitTxReqBody = SubmitTxReqBody
     deriving (Show, Generic, ToJSON, FromJSON)
 
 type SubmitTxApi = "submitTx"
-              :> Throws SubmitTxApiError
-              :> Throws SubmitTxToLocalNodeError
-              :> Throws ConnectionError
-              :> ReqBody '[JSON] SubmitTxReqBody
-              :> Post '[JSON] NoContent
+    :> Throws SubmitTxApiError
+    :> Throws SubmitTxToLocalNodeError
+    :> Throws ConnectionError
+    :> ReqBody '[JSON] SubmitTxReqBody
+    :> Post '[JSON] NoContent
 
 data SubmitTxApiError = UnparsableTx Text
                       | UnparsableWitnesses [(Text, Text)]
@@ -51,7 +51,7 @@ instance IsCardanoServerError SubmitTxApiError where
     errMsg (UnparsableWitnesses wtns) = "Cannot parse witnesses from hex:" .< wtns
 
 submitTxHandler :: SubmitTxReqBody
-    -> NetworkM s (Envelope '[SubmitTxApiError, SubmitTxToLocalNodeError, ConnectionError] NoContent)
+    -> ServerM s (Envelope '[SubmitTxApiError, SubmitTxToLocalNodeError, ConnectionError] NoContent)
 submitTxHandler req@(SubmitTxReqBody tx wtnsText) = toEnvelope $ do
         logMsg $ "New submitTx request received:\n" .< req
         checkEndpointAvailability isInactiveSubmitTx

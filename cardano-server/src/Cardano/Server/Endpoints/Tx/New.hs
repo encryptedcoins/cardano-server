@@ -20,7 +20,7 @@ module Cardano.Server.Endpoints.Tx.New where
 
 import           Cardano.Server.Config       (isInactiveNewTx)
 import           Cardano.Server.Error        (ConnectionError, Envelope, IsCardanoServerError (..), MkTxError, Throws, toEnvelope)
-import           Cardano.Server.Internal     (InputOf, InputWithContext, NetworkM, TxApiRequestOf, checkEndpointAvailability,
+import           Cardano.Server.Internal     (InputWithContext, ServerM, TxApiRequestOf, checkEndpointAvailability,
                                               serverTrackedAddresses, txEndpointsTxBuilders)
 import           Cardano.Server.Tx           (mkBalanceTx)
 import           Cardano.Server.Utils.Logger (HasLogger (..), (.<))
@@ -49,8 +49,7 @@ instance IsCardanoServerError NoError where
 
 type family TxApiErrorOf api
 
-type CommonErrorsOfNewTxApi = [NewTxApiError, ConnectionError, MkTxError]
-type ErrorsOfNewTxApi err = err ': CommonErrorsOfNewTxApi
+type ErrorsOfNewTxApi err = err ': [NewTxApiError, ConnectionError, MkTxError]
 
 newtype NewTxApiError = UnserialisableCardanoTx CardanoTx
     deriving stock    (Show, Generic)
@@ -62,11 +61,10 @@ instance IsCardanoServerError NewTxApiError where
 
 newTxHandler :: forall api. 
     ( Show (TxApiRequestOf api)
-    , Show (InputOf api)
     , IsCardanoServerError (TxApiErrorOf api)
-    ) => (TxApiRequestOf api -> NetworkM api (InputWithContext api))
+    ) => (TxApiRequestOf api -> ServerM api (InputWithContext api))
     -> TxApiRequestOf api
-    -> NetworkM api (Envelope (ErrorsOfNewTxApi (TxApiErrorOf api)) Text)
+    -> ServerM api (Envelope (ErrorsOfNewTxApi (TxApiErrorOf api)) Text)
 newTxHandler txEndpointsProcessRequest req = toEnvelope $ do
     logMsg $ "New newTx request received:\n" .< req
     checkEndpointAvailability isInactiveNewTx

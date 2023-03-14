@@ -23,7 +23,7 @@ class Exception e => IsCardanoServerError e where
 
     errMsg :: e -> Text
 
-    errBody   :: e -> LBS.ByteString
+    errBody :: e -> LBS.ByteString
     errBody e = J.encode $ cardanoServerErrorToJSON e
 
     errHeaders :: e -> [Network.HTTP.Types.Header.Header]

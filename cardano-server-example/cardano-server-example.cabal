@@ -39,6 +39,7 @@ library
       base                          >= 4.9 && < 5,
       cardano-server                         -any,
       cardano-ledger-alonzo                  -any,
+      data-default                           -any,
       exceptions                             -any,
       mtl                                    -any,
       optparse-applicative                   -any,

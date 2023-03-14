@@ -14,16 +14,16 @@ module Cardano.Server.Endpoints.Tx.Server where
 
 import           Cardano.Server.Config       (isInactiveServerTx)
 import           Cardano.Server.Error        (ConnectionError, Envelope, Throws, toEnvelope)
-import           Cardano.Server.Internal     (Env (envQueueRef), InputOf, InputWithContext, NetworkM, Queue, QueueM, QueueRef,
-                                              TxApiRequestOf, checkEndpointAvailability, getQueueRef, serverIdle,
-                                              serverTrackedAddresses, txEndpointsTxBuilders, unQueueM)
+import           Cardano.Server.Internal     (Env (envLoggerFilePath, envQueueRef), InputOf, InputWithContext, Queue, QueueRef,
+                                              ServerM, TxApiRequestOf, checkEndpointAvailability, getQueueRef, runServerM,
+                                              serverIdle, serverTrackedAddresses, txEndpointsTxBuilders)
 import           Cardano.Server.Tx           (checkForCleanUtxos, mkTx)
 import           Cardano.Server.Utils.Logger (HasLogger (..), logSmth, (.<))
 import           Cardano.Server.Utils.Wait   (waitTime)
 import           Control.Monad               (join, liftM3, void, when)
 import           Control.Monad.Catch         (SomeException, catch)
 import           Control.Monad.IO.Class      (MonadIO (..))
-import           Control.Monad.Reader        (ReaderT (..), asks)
+import           Control.Monad.Reader        (asks)
 import           Data.IORef                  (atomicModifyIORef, atomicWriteIORef, readIORef)
 import           Data.Sequence               (Seq (..), (|>))
 import           Data.Time                   (getCurrentTime)
@@ -36,9 +36,9 @@ type ServerTxApi reqBody = "serverTx"
     :> Post '[JSON] NoContent
 
 serverTxHandler :: Show (TxApiRequestOf api)
-    => (TxApiRequestOf api -> NetworkM api (InputWithContext api))
+    => (TxApiRequestOf api -> ServerM api (InputWithContext api))
     -> TxApiRequestOf api
-    -> NetworkM api (Envelope '[ConnectionError] NoContent)
+    -> ServerM api (Envelope '[ConnectionError] NoContent)
 serverTxHandler txEndpointsProcessRequest req = toEnvelope $ do
     logMsg $ "New serverTx request received:\n" .< req
     checkEndpointAvailability isInactiveServerTx
@@ -47,11 +47,8 @@ serverTxHandler txEndpointsProcessRequest req = toEnvelope $ do
     liftIO $ atomicModifyIORef ref ((,()) . (|> arg))
     pure NoContent
 
-runQueueM :: Env api -> QueueM api () -> IO ()
-runQueueM env = flip runReaderT env . unQueueM
-
-processQueue ::  (Show (InputOf api), Show (TxApiRequestOf api)) => Env api -> IO ()
-processQueue env = runQueueM env $ do
+processQueue ::  (Show (InputOf api)) => Env api -> IO ()
+processQueue env = runServerM env {envLoggerFilePath = Just "queue.log"} $ do
         logMsg "Starting queue handler..."
         catch go $ \(err :: SomeException) -> do
             logSmth err
@@ -64,7 +61,7 @@ processQueue env = runQueueM env $ do
                 Empty -> idleQueue t >>= checkQueue
                 input :<| inputs -> processQueueElem qRef input inputs >> go
 
-idleQueue :: (Show (InputOf api), Show (TxApiRequestOf api)) => Time.UTCTime -> QueueM api Time.UTCTime
+idleQueue :: Time.UTCTime -> ServerM api Time.UTCTime
 idleQueue st = do
     ct <- liftIO getCurrentTime
     let delta = Time.diffUTCTime ct st
@@ -76,13 +73,13 @@ idleQueue st = do
     waitTime 3
     pure $ if enoughTimePassed then ct else st
 
-processQueueElem :: (Show (InputOf api), Show (TxApiRequestOf api)) => QueueRef api -> InputWithContext api -> Queue api -> QueueM api ()
+processQueueElem :: (Show (InputOf api)) => QueueRef api -> InputWithContext api -> Queue api -> ServerM api ()
 processQueueElem qRef qElem@(input, context) elems = do
     liftIO $ atomicWriteIORef qRef elems
     logMsg $ "New input to process:" .< input <> "\nContext:" .< context
     processInputs qElem
 
-processInputs :: (Show (InputOf api), Show (TxApiRequestOf api)) => InputWithContext api -> QueueM api ()
+processInputs :: InputWithContext api -> ServerM api ()
 processInputs (input, context) = do
     checkForCleanUtxos
     void $ join $ liftM3 mkTx serverTrackedAddresses (pure context) $ txEndpointsTxBuilders input
