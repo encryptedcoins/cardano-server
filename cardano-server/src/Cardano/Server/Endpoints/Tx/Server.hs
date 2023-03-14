@@ -12,23 +12,24 @@
 
 module Cardano.Server.Endpoints.Tx.Server where
 
-import           Cardano.Server.Config       (isInactiveServerTx)
-import           Cardano.Server.Error        (ConnectionError, Envelope, IsCardanoServerError, Throws, toEnvelope)
-import           Cardano.Server.Internal     (Env (envLoggerFilePath, envQueueRef), InputOf, InputWithContext, Queue, QueueRef,
-                                              ServerM, TxApiErrorOf, TxApiRequestOf, checkEndpointAvailability, getQueueRef,
-                                              runServerM, serverIdle, serverTrackedAddresses, txEndpointsTxBuilders)
-import           Cardano.Server.Tx           (checkForCleanUtxos, mkTx)
-import           Cardano.Server.Utils.Logger (HasLogger (..), logSmth, (.<))
-import           Cardano.Server.Utils.Wait   (waitTime)
-import           Control.Monad               (join, liftM3, void, when)
-import           Control.Monad.Catch         (SomeException, catch)
-import           Control.Monad.IO.Class      (MonadIO (..))
-import           Control.Monad.Reader        (asks)
-import           Data.IORef                  (atomicModifyIORef, atomicWriteIORef, readIORef)
-import           Data.Sequence               (Seq (..), (|>))
-import           Data.Time                   (getCurrentTime)
-import qualified Data.Time                   as Time
-import           Servant                     (JSON, NoContent (..), Post, ReqBody, (:>))
+import           Cardano.Server.Config                (isInactiveServerTx)
+import           Cardano.Server.Endpoints.Tx.Internal (TxApiErrorOf)
+import           Cardano.Server.Error                 (ConnectionError, Envelope, IsCardanoServerError, Throws, toEnvelope)
+import           Cardano.Server.Internal              (Env (envLoggerFilePath, envQueueRef), InputOf, InputWithContext, Queue,
+                                                       QueueRef, ServerM, TxApiRequestOf, checkEndpointAvailability, getQueueRef,
+                                                       runServerM, serverIdle, serverTrackedAddresses, txEndpointsTxBuilders)
+import           Cardano.Server.Tx                    (checkForCleanUtxos, mkTx)
+import           Cardano.Server.Utils.Logger          (HasLogger (..), logSmth, (.<))
+import           Cardano.Server.Utils.Wait            (waitTime)
+import           Control.Monad                        (join, liftM3, void, when)
+import           Control.Monad.Catch                  (SomeException, catch)
+import           Control.Monad.IO.Class               (MonadIO (..))
+import           Control.Monad.Reader                 (asks)
+import           Data.IORef                           (atomicModifyIORef, atomicWriteIORef, readIORef)
+import           Data.Sequence                        (Seq (..), (|>))
+import           Data.Time                            (getCurrentTime)
+import qualified Data.Time                            as Time
+import           Servant                              (JSON, NoContent (..), Post, ReqBody, (:>))
 
 type ServerTxApi reqBody err = "serverTx"
     :> Throws err

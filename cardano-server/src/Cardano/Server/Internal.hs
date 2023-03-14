@@ -71,8 +71,6 @@ instance HasChainIndex (ServerM api) where
 
 type family TxApiRequestOf api :: Type
 
-type family TxApiErrorOf api :: Type
-
 type family InputOf api :: Type
 
 type family AuxillaryEnvOf api :: Type

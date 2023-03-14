@@ -15,13 +15,14 @@ module Cardano.Server.Main where
 
 import           Cardano.Server.Endpoints.Funds       (FundsApi, fundsHandler)
 import           Cardano.Server.Endpoints.Ping        (PingApi, pingHandler)
+import           Cardano.Server.Endpoints.Tx.Internal (TxApiErrorOf)
 import           Cardano.Server.Endpoints.Tx.New      (NewTxApi, newTxHandler)
 import           Cardano.Server.Endpoints.Tx.Server   (ServerTxApi, processQueue, serverTxHandler)
 import           Cardano.Server.Endpoints.Tx.Submit   (SubmitTxApi, submitTxHandler)
 import           Cardano.Server.Error.Class           (IsCardanoServerError)
 import           Cardano.Server.Error.CommonErrors    (ConnectionError (..))
 import           Cardano.Server.Internal              (AuxillaryEnvOf, Env (envProcessRequest), InputOf, InputWithContext,
-                                                       ServerM (..), TxApiErrorOf, TxApiRequestOf, envLoggerFilePath, loadEnv)
+                                                       ServerM (..), TxApiRequestOf, envLoggerFilePath, loadEnv)
 import           Cardano.Server.Tx                    (checkForCleanUtxos)
 import           Cardano.Server.Utils.Logger          (HasLogger (..), logMsg, (.<))
 import           Control.Concurrent                   (forkIO)
@@ -50,22 +51,22 @@ type ServerApi reqBody txApiError
     = PingApi
     :<|> FundsApi
     :<|> NewTxApi reqBody txApiError
-    :<|> SubmitTxApi
+    :<|> SubmitTxApi txApiError
     :<|> ServerTxApi reqBody txApiError
 
 type instance TxApiRequestOf (ServerApi reqBody _) = reqBody
 type instance TxApiErrorOf (ServerApi _ txApiError) = txApiError
 
-type ServerAPI' api = ServerApi (TxApiRequestOf api) (TxApiErrorOf api)
+type ServerApi' api = ServerApi (TxApiRequestOf api) (TxApiErrorOf api)
 
 type ServerConstraints api =
-    ( Servant.HasServer (ServerAPI' api) '[]
+    ( Servant.HasServer (ServerApi' api) '[]
     , IsCardanoServerError (TxApiErrorOf api)
     , Show (InputOf api)
     , Show (TxApiRequestOf api)
     )
 
-server :: ServerConstraints api => (TxApiRequestOf api -> ServerM api (InputWithContext api)) -> ServerT (ServerAPI' api) (ServerM api)
+server :: ServerConstraints api => (TxApiRequestOf api -> ServerM api (InputWithContext api)) -> ServerT (ServerApi' api) (ServerM api)
 server processRequest
     =    pingHandler
     :<|> fundsHandler
@@ -73,8 +74,8 @@ server processRequest
     :<|> submitTxHandler
     :<|> serverTxHandler processRequest
 
-serverAPI :: forall api. Proxy (ServerAPI' api)
-serverAPI = Proxy @(ServerAPI' api)
+serverAPI :: forall api. Proxy (ServerApi' api)
+serverAPI = Proxy @(ServerApi' api)
 
 port :: Int
 port = 3000

@@ -2,11 +2,9 @@
 {-# LANGUAGE DeriveAnyClass        #-}
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE DerivingVia           #-}
-{-# LANGUAGE EmptyCase             #-}
 {-# LANGUAGE EmptyDataDeriving     #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE PolyKinds             #-}
@@ -18,20 +16,22 @@
 
 module Cardano.Server.Endpoints.Tx.New where
 
-import           Cardano.Server.Config       (isInactiveNewTx)
-import           Cardano.Server.Error        (ConnectionError, Envelope, IsCardanoServerError (..), MkTxError, Throws, toEnvelope)
-import           Cardano.Server.Internal     (InputWithContext, ServerM, TxApiRequestOf, checkEndpointAvailability,
-                                              serverTrackedAddresses, txEndpointsTxBuilders, TxApiErrorOf)
-import           Cardano.Server.Tx           (mkBalanceTx)
-import           Cardano.Server.Utils.Logger (HasLogger (..), (.<))
-import           Control.Monad               (join, liftM3)
-import           Control.Monad.Catch         (Exception, MonadThrow (throwM))
-import           Data.Aeson                  (ToJSON)
-import           Data.Text                   (Text)
-import           GHC.Generics                (Generic)
-import           Ledger                      (CardanoTx)
-import           PlutusAppsExtra.Utils.Tx    (cardanoTxToText)
-import           Servant                     (JSON, Post, ReqBody, type (:>))
+import           Cardano.Server.Config                (isInactiveNewTx)
+import           Cardano.Server.Endpoints.Tx.Internal (TxApiErrorOf)
+import           Cardano.Server.Error                 (ConnectionError, Envelope, IsCardanoServerError (..), MkTxError, Throws,
+                                                       toEnvelope)
+import           Cardano.Server.Internal              (InputWithContext, ServerM, TxApiRequestOf, checkEndpointAvailability,
+                                                       serverTrackedAddresses, txEndpointsTxBuilders)
+import           Cardano.Server.Tx                    (mkBalanceTx)
+import           Cardano.Server.Utils.Logger          (HasLogger (..), (.<))
+import           Control.Monad                        (join, liftM3)
+import           Control.Monad.Catch                  (Exception, MonadThrow (throwM))
+import           Data.Aeson                           (ToJSON)
+import           Data.Text                            (Text)
+import           GHC.Generics                         (Generic)
+import           Ledger                               (CardanoTx)
+import           PlutusAppsExtra.Utils.Tx             (cardanoTxToText)
+import           Servant                              (JSON, Post, ReqBody, type (:>))
 
 type NewTxApi reqBody err = "newTx"
     :> Throws err
@@ -40,14 +40,6 @@ type NewTxApi reqBody err = "newTx"
     :> Throws MkTxError
     :> ReqBody '[JSON] reqBody
     :> Post '[JSON] Text
-
-data NoError deriving (Show, Exception)
-
-instance IsCardanoServerError NoError where
-    errStatus = \case
-    errMsg = \case
-
-type ErrorsOfNewTxApi err = err ': [NewTxApiError, ConnectionError, MkTxError]
 
 newtype NewTxApiError = UnserialisableCardanoTx CardanoTx
     deriving stock    (Show, Generic)
@@ -62,7 +54,7 @@ newTxHandler :: forall api.
     , IsCardanoServerError (TxApiErrorOf api)
     ) => (TxApiRequestOf api -> ServerM api (InputWithContext api))
     -> TxApiRequestOf api
-    -> ServerM api (Envelope (ErrorsOfNewTxApi (TxApiErrorOf api)) Text)
+    -> ServerM api (Envelope [TxApiErrorOf api, NewTxApiError, ConnectionError, MkTxError] Text)
 newTxHandler txEndpointsProcessRequest req = toEnvelope $ do
     logMsg $ "New newTx request received:\n" .< req
     checkEndpointAvailability isInactiveNewTx
