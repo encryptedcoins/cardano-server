@@ -80,7 +80,7 @@ serverAPI = Proxy @(ServerApi' api)
 port :: Int
 port = 3000
 
-runServer :: forall api. ServerConstraints api
+runServer :: ServerConstraints api
     => AuxillaryEnvOf api
     -> ChainIndex
     -> ServerM api [Address]
@@ -90,11 +90,11 @@ runServer :: forall api. ServerConstraints api
     -> IO ()
 runServer auxEnv defaultCI getTrackedAddresses txEndpointsTxBuilders serverIdle processRequest
     = (`catches` errorHanlders) $ do
-        env <- loadEnv @api defaultCI getTrackedAddresses txEndpointsTxBuilders serverIdle processRequest auxEnv
+        env <- loadEnv defaultCI getTrackedAddresses txEndpointsTxBuilders serverIdle processRequest auxEnv
         hSetBuffering stdout LineBuffering
         forkIO $ processQueue env
         prepareServer env
-        Warp.runSettings (settings env) $ mkApp @api env {envLoggerFilePath = Just "server.log"}
+        Warp.runSettings (settings env) $ mkApp env {envLoggerFilePath = Just "server.log"}
     where
         unApp env = runExceptT . runHandler' . flip runReaderT env . unServerM
         prepareServer env = unApp env $ do

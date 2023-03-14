@@ -49,10 +49,8 @@ instance IsCardanoServerError NewTxApiError where
     errStatus _ = toEnum 422
     errMsg (UnserialisableCardanoTx tx) = "Cannot serialise balanced tx:" .< tx
 
-newTxHandler :: forall api. 
-    ( Show (TxApiRequestOf api)
-    , IsCardanoServerError (TxApiErrorOf api)
-    ) => (TxApiRequestOf api -> ServerM api (InputWithContext api))
+newTxHandler :: (Show (TxApiRequestOf api), IsCardanoServerError (TxApiErrorOf api)) 
+    => (TxApiRequestOf api -> ServerM api (InputWithContext api))
     -> TxApiRequestOf api
     -> ServerM api (Envelope [TxApiErrorOf api, NewTxApiError, ConnectionError, MkTxError] Text)
 newTxHandler txEndpointsProcessRequest req = toEnvelope $ do

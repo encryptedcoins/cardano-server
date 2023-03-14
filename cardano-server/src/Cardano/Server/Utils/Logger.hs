@@ -29,10 +29,10 @@ instance HasLogger IO where
 
     logMsg = T.putStrLn
 
-logSmth :: forall a m. (HasLogger m, Show a) => a -> m ()
+logSmth :: (HasLogger m, Show a) => a -> m ()
 logSmth a = logMsg $ T.pack $ show a
 
-logPretty :: forall a m. (HasLogger m, Pretty a) => a -> m ()
+logPretty :: (HasLogger m, Pretty a) => a -> m ()
 logPretty a = logMsg $ T.pack $ show $ pretty a
 
 logMsgIO :: Text -> Maybe FilePath -> IO ()

@@ -115,14 +115,13 @@ getQueueRef = asks envQueueRef
 getNetworkId :: ServerM api NetworkId
 getNetworkId = asks $ pNetworkId . envLedgerParams
 
-loadEnv :: forall api.
-       ChainIndex
-    -> ServerM api [Address]
-    -> (InputOf api -> ServerM api [TransactionBuilder ()])
-    -> ServerM api ()
-    -> (TxApiRequestOf api -> ServerM api (InputWithContext api))
-    -> AuxillaryEnvOf api
-    -> IO (Env api)
+loadEnv :: ChainIndex
+        -> ServerM api [Address]
+        -> (InputOf api -> ServerM api [TransactionBuilder ()])
+        -> ServerM api ()
+        -> (TxApiRequestOf api -> ServerM api (InputWithContext api))
+        -> AuxillaryEnvOf api
+        -> IO (Env api)
 loadEnv defaultCI envGetTrackedAddresses envTxEndpointsTxBuilders envServerIdle envProcessRequest envAuxiliary = do
     Config{..}   <- loadConfig
     envQueueRef  <- newIORef empty

@@ -53,7 +53,7 @@ instance IsCardanoServerError SubmitTxApiError where
     errMsg (UnparsableTx tx)          = "Cannot parse CardanoTx from hex:" .< tx
     errMsg (UnparsableWitnesses wtns) = "Cannot parse witnesses from hex:" .< wtns
 
-submitTxHandler :: forall api. IsCardanoServerError (TxApiErrorOf api)
+submitTxHandler :: IsCardanoServerError (TxApiErrorOf api)
     => SubmitTxReqBody 
     -> ServerM api (Envelope '[TxApiErrorOf api, SubmitTxApiError, SubmitTxToLocalNodeError, ConnectionError] NoContent)
 submitTxHandler req@(SubmitTxReqBody tx wtnsText) = toEnvelope $ do
