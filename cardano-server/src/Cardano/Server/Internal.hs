@@ -81,10 +81,18 @@ type Queue api = Seq (InputWithContext api)
 
 type QueueRef api = IORef (Queue api)
 
+data ServerHandle api = ServerHandle
+    { shDefaultCI              :: ChainIndex
+    , shAuxiliaryEnv           :: AuxillaryEnvOf api
+    , shGetTrackedAddresses    :: ServerM api [Address]
+    , shTxEndpointsTxBuilders  :: InputOf api -> ServerM api [TransactionBuilder ()]
+    , shServerIdle             :: ServerM api ()
+    , shProcessRequest         :: TxApiRequestOf api -> ServerM api (InputWithContext api)
+    }
+
 data Env api = Env
     { envQueueRef              :: QueueRef api
     , envWallet                :: Maybe RestoredWallet
-    , envAuxiliary             :: AuxillaryEnvOf api
     , envBfToken               :: BF.BfToken
     , envMinUtxosNumber        :: Int
     , envMaxUtxosNumber        :: Int
@@ -94,20 +102,17 @@ data Env api = Env
     , envChainIndex            :: ChainIndex
     , envInactiveEndpoints     :: InactiveEndpoints
     , envLoggerFilePath        :: Maybe FilePath
-    , envGetTrackedAddresses   :: ServerM api [Address]
-    , envTxEndpointsTxBuilders :: InputOf api -> ServerM api [TransactionBuilder ()]
-    , envServerIdle            :: ServerM api ()
-    , envProcessRequest        :: TxApiRequestOf api -> ServerM api (InputWithContext api)
+    , envServerHandle          :: ServerHandle api
     }
 
 serverTrackedAddresses :: ServerM api [Address]
-serverTrackedAddresses = join $ asks envGetTrackedAddresses
+serverTrackedAddresses = join $ asks $ shGetTrackedAddresses . envServerHandle
 
 txEndpointsTxBuilders :: InputOf api -> ServerM api [TransactionBuilder ()]
-txEndpointsTxBuilders input = asks envTxEndpointsTxBuilders >>= ($ input)
+txEndpointsTxBuilders input = asks (shTxEndpointsTxBuilders . envServerHandle) >>= ($ input)
 
 serverIdle :: ServerM api ()
-serverIdle = join $ asks envServerIdle
+serverIdle = join $ asks $ shServerIdle . envServerHandle
 
 getQueueRef :: ServerM api (QueueRef api)
 getQueueRef = asks envQueueRef
@@ -115,14 +120,9 @@ getQueueRef = asks envQueueRef
 getNetworkId :: ServerM api NetworkId
 getNetworkId = asks $ pNetworkId . envLedgerParams
 
-loadEnv :: ChainIndex
-        -> ServerM api [Address]
-        -> (InputOf api -> ServerM api [TransactionBuilder ()])
-        -> ServerM api ()
-        -> (TxApiRequestOf api -> ServerM api (InputWithContext api))
-        -> AuxillaryEnvOf api
+loadEnv :: ServerHandle api
         -> IO (Env api)
-loadEnv defaultCI envGetTrackedAddresses envTxEndpointsTxBuilders envServerIdle envProcessRequest envAuxiliary = do
+loadEnv ServerHandle{..} = do
     Config{..}   <- loadConfig
     envQueueRef  <- newIORef empty
     envWallet    <- sequence $ decodeOrErrorFromFile <$> cWalletFile
@@ -133,9 +133,10 @@ loadEnv defaultCI envGetTrackedAddresses envTxEndpointsTxBuilders envServerIdle 
         envInactiveEndpoints = cInactiveEndpoints
         envCollateral        = cCollateral
         envNodeFilePath      = cNodeFilePath
-        envChainIndex        = fromMaybe defaultCI cChainIndex
+        envChainIndex        = fromMaybe shDefaultCI cChainIndex
         envBfToken           = cBfToken
         envLoggerFilePath    = Nothing
+        envServerHandle      = ServerHandle shDefaultCI shAuxiliaryEnv shGetTrackedAddresses shTxEndpointsTxBuilders shServerIdle shProcessRequest 
     print cBfToken
     pure Env{..}
 

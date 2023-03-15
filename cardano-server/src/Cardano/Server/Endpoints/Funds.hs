@@ -35,7 +35,7 @@ data FundsReqBody = FundsReqBody
         fundsReqAddress :: Text,
         fundsReqCS      :: Text
     }
-    deriving (Show, Generic, ToJSON, FromJSON)
+    deriving (Show, Read, Generic, ToJSON, FromJSON)
 
 type FundsApi = "funds"
     :> Throws FundsError

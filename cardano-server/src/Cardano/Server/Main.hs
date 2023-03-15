@@ -21,29 +21,23 @@ import           Cardano.Server.Endpoints.Tx.Server   (ServerTxApi, processQueue
 import           Cardano.Server.Endpoints.Tx.Submit   (SubmitTxApi, submitTxHandler)
 import           Cardano.Server.Error.Class           (IsCardanoServerError)
 import           Cardano.Server.Error.CommonErrors    (ConnectionError (..))
-import           Cardano.Server.Internal              (AuxillaryEnvOf, Env (envProcessRequest), InputOf, InputWithContext,
-                                                       ServerM (..), TxApiRequestOf, envLoggerFilePath, loadEnv)
+import           Cardano.Server.Internal              (Env (..), InputOf, InputWithContext, ServerHandle (..), ServerM (..),
+                                                       TxApiRequestOf, envLoggerFilePath, loadEnv, runServerM)
 import           Cardano.Server.Tx                    (checkForCleanUtxos)
 import           Cardano.Server.Utils.Logger          (HasLogger (..), logMsg, (.<))
 import           Control.Concurrent                   (forkIO)
 import           Control.Exception                    (Handler (Handler), catches)
-import           Control.Monad                        (void)
-import           Control.Monad.Except                 (runExceptT)
 import           Control.Monad.Reader                 (ReaderT (runReaderT))
 import qualified Data.Text.Encoding                   as T
 import qualified Data.Text.IO                         as T
-import           Ledger                               (Address)
 import           Network.HTTP.Client                  (path)
 import qualified Network.Wai                          as Wai
 import qualified Network.Wai.Handler.Warp             as Warp
 import           Network.Wai.Middleware.Cors          (CorsResourcePolicy (..), cors, simpleCorsResourcePolicy)
-import           PlutusAppsExtra.IO.ChainIndex        (ChainIndex)
 import           PlutusAppsExtra.IO.ChainIndex.Kupo   (pattern KupoConnectionError)
 import           PlutusAppsExtra.IO.ChainIndex.Plutus (pattern PlutusChainIndexConnectionError)
 import           PlutusAppsExtra.IO.Wallet            (pattern WalletApiConnectionError)
-import           PlutusAppsExtra.Types.Tx             (TransactionBuilder)
-import           Servant                              (Application, Proxy (..), ServerT, hoistServer, runHandler', serve,
-                                                       type (:<|>) (..))
+import           Servant                              (Application, Proxy (..), ServerT, hoistServer, serve, type (:<|>) (..))
 import qualified Servant
 import           System.IO                            (BufferMode (LineBuffering), hSetBuffering, stdout)
 
@@ -81,32 +75,25 @@ port :: Int
 port = 3000
 
 runServer :: ServerConstraints api
-    => AuxillaryEnvOf api
-    -> ChainIndex
-    -> ServerM api [Address]
-    -> (InputOf api -> ServerM api [TransactionBuilder ()])
-    -> ServerM api ()
-    -> (TxApiRequestOf api -> ServerM api (InputWithContext api))
+    => ServerHandle api
     -> IO ()
-runServer auxEnv defaultCI getTrackedAddresses txEndpointsTxBuilders serverIdle processRequest
-    = (`catches` errorHanlders) $ do
-        env <- loadEnv defaultCI getTrackedAddresses txEndpointsTxBuilders serverIdle processRequest auxEnv
+runServer sh = (`catches` errorHanlders) $ do
+        env <- loadEnv sh
         hSetBuffering stdout LineBuffering
         forkIO $ processQueue env
         prepareServer env
         Warp.runSettings (settings env) $ mkApp env {envLoggerFilePath = Just "server.log"}
     where
-        unApp env = runExceptT . runHandler' . flip runReaderT env . unServerM
-        prepareServer env = unApp env $ do
+        prepareServer env = runServerM env $ do
             logMsg "Starting server..."
             checkForCleanUtxos
         settings env = Warp.setLogger (logReceivedRequest env)
                      $ Warp.setOnException (const $ logException env)
                      $ Warp.setPort port
                        Warp.defaultSettings
-        logReceivedRequest env req status _ = void . unApp env $
+        logReceivedRequest env req status _ = runServerM env $
             logMsg $ "Received request:\n" .< req <> "\nStatus:\n" .< status
-        logException env e = void . unApp env $
+        logException env e = runServerM env $
             logMsg $ "Unhandled exception:\n" .< e
         errorHanlders = [Handler connectionErroH]
         connectionErroH e = T.putStrLn $ (<> " is unavailable.") $ case e of
@@ -121,4 +108,4 @@ corsWithContentType = cors (const $ Just policy)
 
 mkApp :: forall api. ServerConstraints api => Env api -> Application
 mkApp env = corsWithContentType $ serve (serverAPI @api) $
-    hoistServer (serverAPI @api) ((`runReaderT` env) . unServerM) $ server (envProcessRequest env)
+    hoistServer (serverAPI @api) ((`runReaderT` env) . unServerM) $ server (shProcessRequest $ envServerHandle env)

@@ -71,6 +71,11 @@ data ClientEnvelope a
     = ClientErrEnvelope Servant.ServerError 
     | ClientSuccEnvelope a
 
+clientEnvelopeToEither :: ClientEnvelope a -> Either Servant.ServerError a
+clientEnvelopeToEither = \case
+    ClientSuccEnvelope a  -> Right a
+    ClientErrEnvelope err -> Left err    
+
 instance FromJSON a => FromJSON (ClientEnvelope a) where
     parseJSON v = ClientErrEnvelope <$> cardanoServerErrorParser v
               <|> ClientSuccEnvelope <$> parseJSON @a v

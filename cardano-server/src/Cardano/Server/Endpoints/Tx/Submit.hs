@@ -33,7 +33,7 @@ data SubmitTxReqBody = SubmitTxReqBody
         submitReqTx         :: Text,
         submitReqWitnesses  :: [(Text, Text)]
     }
-    deriving (Show, Generic, ToJSON, FromJSON)
+    deriving (Show, Read, Generic, ToJSON, FromJSON)
 
 type SubmitTxApi err = "submitTx"
     :> Throws err
