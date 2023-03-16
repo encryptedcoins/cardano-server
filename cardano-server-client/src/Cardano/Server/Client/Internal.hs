@@ -15,8 +15,7 @@
 
 module Cardano.Server.Client.Internal where
 
-import           Cardano.Node.Emulator.Generators     (genSomeCardanoApiTx)
-import           Cardano.Server.Endpoints.Funds       (Funds, FundsApi, FundsReqBody (FundsReqBody))
+import           Cardano.Server.Endpoints.Funds       (Funds, FundsApi, FundsReqBody)
 import           Cardano.Server.Endpoints.Ping        (PingApi)
 import           Cardano.Server.Endpoints.Tx.Internal (TxApiErrorOf)
 import           Cardano.Server.Endpoints.Tx.New      (NewTxApi)
@@ -24,17 +23,10 @@ import           Cardano.Server.Endpoints.Tx.Server   (ServerTxApi)
 import           Cardano.Server.Endpoints.Tx.Submit   (SubmitTxApi, SubmitTxReqBody (..))
 import           Cardano.Server.Error.Servant         (clientEnvelopeToEither)
 import           Cardano.Server.Internal              (TxApiRequestOf)
-import           Control.Monad.IO.Class               (MonadIO (..))
-import           Data.Bifunctor                       (Bifunctor (bimap))
 import           Data.Kind                            (Type)
 import           Data.Text                            (Text)
-import qualified Data.Text                            as T
-import           Hedgehog.Gen                         (sample)
-import           Ledger                               (Address, CardanoTx (CardanoApiTx), CurrencySymbol, PubKey, Signature)
-import           Plutus.PAB.Arbitrary                 ()
 import           Servant                              (JSON, MimeRender, NoContent, Proxy (Proxy), ServerError)
 import           Servant.Client                       (ClientM, client)
-import           Test.QuickCheck                      (Arbitrary (..), generate)
 
 ping :: ClientM NoContent
 ping = client (Proxy @PingApi)
@@ -111,16 +103,3 @@ data Mode
     = Auto   Interval
     | Manual Text
     deriving Show
-
-randomFundsReqBody :: MonadIO m => m (EndpointArg 'FundsE api)
-randomFundsReqBody = liftIO $ generate $ FundsReqBody
-    <$> (T.pack . show <$> (arbitrary @Address))
-    <*> (T.pack . show <$> (arbitrary @CurrencySymbol))
-
-randomSubmitTxBody :: MonadIO m => m (EndpointArg 'SubmitTxE api)
-randomSubmitTxBody = liftIO $ SubmitTxReqBody
-    <$> (T.pack . show <$> randomCardanoTx)
-    <*> (fmap (bimap (T.pack . show) (T.pack . show)) <$> liftIO (generate $ arbitrary @[(PubKey, Signature)]))
-
-randomCardanoTx :: IO CardanoTx
-randomCardanoTx = sample $ CardanoApiTx <$> genSomeCardanoApiTx

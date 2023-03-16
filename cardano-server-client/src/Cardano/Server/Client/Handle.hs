@@ -11,8 +11,8 @@
 
 module Cardano.Server.Client.Handle where
 
-import           Cardano.Server.Client.Internal (ClientEndpoint (..), Interval, Mode (..), ServerEndpoint (..),
-                                                 randomFundsReqBody, randomSubmitTxBody)
+import           Cardano.Server.Client.Gen      (randomFundsReqBody, randomSubmitTxBody)
+import           Cardano.Server.Client.Internal (ClientEndpoint (..), Interval, Mode (..), ServerEndpoint (..))
 import           Cardano.Server.Internal        (ServerM)
 import           Cardano.Server.Utils.Logger    (HasLogger (..), logSmth)
 import           Cardano.Server.Utils.Wait      (waitTime)
