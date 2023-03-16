@@ -59,10 +59,6 @@ runServerM env = fmap (either throw id) . Servant.runHandler . (`runReaderT` env
 instance HasLogger (ServerM api) where
     loggerFilePath = asks envLoggerFilePath
 
-instance BF.HasBlockfrost (ServerM api) where
-    getBfToken = asks envBfToken
-    getNetworkId = getNetworkId
-
 instance HasWallet (ServerM api) where
     getRestoredWallet = asks envWallet <&> fromMaybe (throw NoWalletProvided)
 
