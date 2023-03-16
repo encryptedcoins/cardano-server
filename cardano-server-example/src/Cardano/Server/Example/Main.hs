@@ -10,12 +10,13 @@
 module Cardano.Server.Example.Main
     ( ExampleApi
     , runExampleServer
+    , exampleHandle
     ) where
 
 import           Cardano.Server.Error.Class      (IsCardanoServerError (..))
 import           Cardano.Server.Example.OffChain (testMintTx)
 import           Cardano.Server.Input            (InputContext)
-import           Cardano.Server.Internal         (AuxillaryEnvOf, InputOf)
+import           Cardano.Server.Internal         (AuxillaryEnvOf, InputOf, ServerHandle (ServerHandle))
 import           Cardano.Server.Main             (ServerApi, runServer)
 import           Control.Monad                   (when)
 import           Control.Monad.Catch             (Exception, MonadThrow (throwM))
@@ -36,11 +37,10 @@ instance IsCardanoServerError ExampleApiError where
     errStatus _ = toEnum 422
     errMsg _ = "The request contains duplicate tokens and will not be processed."
 
-runExampleServer :: IO ()
-runExampleServer = runServer
-        @ExampleApi
-        ()
+exampleHandle :: ServerHandle ExampleApi
+exampleHandle = ServerHandle
         Kupo
+        ()
         ((:[]) <$> getWalletAddr)
         (\bbs -> pure [testMintTx bbs])
         (pure ())
@@ -50,3 +50,7 @@ runExampleServer = runServer
             let hasDuplicates = length bbs /= length (nub bbs)
             when hasDuplicates $ throwM HasDuplicates
             return req
+
+runExampleServer :: IO ()
+runExampleServer = runServer exampleHandle
+    

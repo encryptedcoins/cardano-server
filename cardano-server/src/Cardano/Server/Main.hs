@@ -97,7 +97,7 @@ runServer sh = (`catches` errorHanlders) $ do
             logMsg $ "Unhandled exception:\n" .< e
         errorHanlders = [Handler connectionErroH]
         connectionErroH e = T.putStrLn $ (<> " is unavailable.") $ case e of
-            PlutusChainIndexConnectionError{} -> "Caradno chain index"
+            PlutusChainIndexConnectionError{} -> "Cardano chain index"
             KupoConnectionError{}             -> "Kupo chain index"
             WalletApiConnectionError{}        -> "Cardano wallet"
             ConnectionError req _             -> T.decodeUtf8 $ path req

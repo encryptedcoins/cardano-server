@@ -21,7 +21,7 @@ import           Cardano.Server.Main            (port)
 import           Cardano.Server.Utils.Logger    (HasLogger (..), logSmth, (.<))
 import           Cardano.Server.Utils.Wait      (waitTime)
 import           Control.Exception              (handle)
-import           Control.Monad.Reader           (MonadIO (..), forever)
+import           Control.Monad.Reader           (MonadIO (..), forever, (<=<), (>=>))
 import           Data.Aeson                     (FromJSON, eitherDecode)
 import qualified Data.ByteString.Lazy           as LBS
 import           Data.Text                      (Text)
@@ -64,10 +64,10 @@ runClient sh ClientHandle{..} = handle notImplementedMethods $ do
 defaultHandle :: ClientHandle api
 defaultHandle = ClientHandle
     -- Auto
-    { autoPing     = autoWithGenerator @'PingE (pure ())
-    , autoFunds    = autoWithGenerator @'FundsE randomFundsReqBody
+    { autoPing     = autoWith @'PingE (pure ())
+    , autoFunds    = autoWith @'FundsE randomFundsReqBody
     , autoNewTx    = throwAutoNotImplemented NewTxE
-    , autoSumbitTx = autoWithGenerator @'SubmitTxE randomSubmitTxBody
+    , autoSumbitTx = autoWith @'SubmitTxE randomSubmitTxBody
     , autoServerTx = throwAutoNotImplemented ServerTxE
     -- Manual
     , manualPing     = const $ sendRequest @'PingE ()
@@ -77,11 +77,11 @@ defaultHandle = ClientHandle
     , manualServerTx = throwManualNotImplemented ServerTxE
     }
 
-autoWithGenerator :: forall (e :: ServerEndpoint) api.
+autoWith :: forall (e :: ServerEndpoint) api.
     ( HasServantClientEnv
     , ClientEndpoint e api
     ) => ServerM api (EndpointArg e api) -> Interval -> ServerM api ()
-autoWithGenerator gen averageInterval = forever $ do
+autoWith gen averageInterval = forever $ do
     reqBody <- gen
     sendRequest @e reqBody
     waitTime =<< randomRIO (1, averageInterval * 2)
@@ -91,7 +91,13 @@ autoWithRandom :: forall (e :: ServerEndpoint) api.
     , ClientEndpoint e api
     , Random (EndpointArg e api)
     ) => Interval -> ServerM api ()
-autoWithRandom = autoWithGenerator @e (liftIO randomIO)
+autoWithRandom = autoWith @e (liftIO randomIO)
+
+manualWith :: forall (e :: ServerEndpoint) api.
+    ( HasServantClientEnv
+    , ClientEndpoint e api
+    ) => (Text -> ServerM api (EndpointArg e api)) -> Text -> ServerM api ()
+manualWith = (>=> sendRequest @e)
 
 manualWithRead :: forall (e :: ServerEndpoint) api.
     ( HasServantClientEnv
