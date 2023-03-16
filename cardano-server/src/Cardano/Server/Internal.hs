@@ -91,7 +91,8 @@ data ServerHandle api = ServerHandle
     }
 
 data Env api = Env
-    { envQueueRef              :: QueueRef api
+    { envPort                  :: Int
+    , envQueueRef              :: QueueRef api
     , envWallet                :: Maybe RestoredWallet
     , envBfToken               :: BF.BfToken
     , envMinUtxosNumber        :: Int
@@ -127,7 +128,8 @@ loadEnv ServerHandle{..} = do
     envQueueRef  <- newIORef empty
     envWallet    <- sequence $ decodeOrErrorFromFile <$> cWalletFile
     pp           <- decodeOrErrorFromFile "protocol-parameters.json"
-    let envMinUtxosNumber    = cMinUtxosNumber
+    let envPort              = cPort
+        envMinUtxosNumber    = cMinUtxosNumber
         envMaxUtxosNumber    = cMaxUtxosNumber
         envLedgerParams      = Params def (pParamsFromProtocolParams pp) cNetworkId
         envInactiveEndpoints = cInactiveEndpoints
@@ -137,7 +139,6 @@ loadEnv ServerHandle{..} = do
         envBfToken           = cBfToken
         envLoggerFilePath    = Nothing
         envServerHandle      = ServerHandle shDefaultCI shAuxiliaryEnv shGetTrackedAddresses shTxEndpointsTxBuilders shServerIdle shProcessRequest 
-    print cBfToken
     pure Env{..}
 
 checkEndpointAvailability :: (InactiveEndpoints -> Bool) -> ServerM api ()

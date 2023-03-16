@@ -71,9 +71,6 @@ server processRequest
 serverAPI :: forall api. Proxy (ServerApi' api)
 serverAPI = Proxy @(ServerApi' api)
 
-port :: Int
-port = 3000
-
 runServer :: ServerConstraints api
     => ServerHandle api
     -> IO ()
@@ -89,7 +86,7 @@ runServer sh = (`catches` errorHanlders) $ do
             checkForCleanUtxos
         settings env = Warp.setLogger (logReceivedRequest env)
                      $ Warp.setOnException (const $ logException env)
-                     $ Warp.setPort port
+                     $ Warp.setPort (envPort env)
                        Warp.defaultSettings
         logReceivedRequest env req status _ = runServerM env $
             logMsg $ "Received request:\n" .< req <> "\nStatus:\n" .< status

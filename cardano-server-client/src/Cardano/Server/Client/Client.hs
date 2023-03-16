@@ -14,10 +14,10 @@ import           Cardano.Server.Client.Internal (Mode (Auto, Manual), ServerEndp
 import           Cardano.Server.Client.Opts     (Options (..), runWithOpts)
 import           Cardano.Server.Config          (Config (..), loadConfig)
 import           Cardano.Server.Internal        (ServerHandle, loadEnv, runServerM)
-import           Cardano.Server.Main            (port)
 import           Cardano.Server.Utils.Logger    (HasLogger (..), (.<))
 import           Control.Exception              (handle)
-import           Control.Monad.Reader           (void)
+import           Control.Monad.Reader           (void, MonadIO (liftIO))
+import qualified Data.Text                      as T
 import           Network.HTTP.Client            (defaultManagerSettings, newManager)
 import           Servant.Client                 (BaseUrl (BaseUrl), ClientEnv (..), Scheme (Http), defaultMakeClientRequest)
 
@@ -29,7 +29,7 @@ runClient sh ClientHandle{..} = handleNotImplementedMethods $ do
     manager     <- newManager defaultManagerSettings
     let ?servantClientEnv = ClientEnv
             manager
-            (BaseUrl Http "localhost" {- (T.unpack cServerAddress) -} port ""{- (show optsEndpoint) -})
+            (BaseUrl Http (T.unpack cHost) cPort "")
             Nothing
             defaultMakeClientRequest
     runServerM env $ withGreetings $ case (optsMode, optsEndpoint) of

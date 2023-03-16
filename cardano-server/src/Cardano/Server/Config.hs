@@ -15,7 +15,8 @@ import           PlutusAppsExtra.IO.Blockfrost (BfToken)
 import           PlutusAppsExtra.IO.ChainIndex (ChainIndex)
 
 data Config = Config
-    { cServerAddress     :: Text
+    { cHost              :: Text
+    , cPort              :: Int
     , cMinUtxosNumber    :: Int
     , cMaxUtxosNumber    :: Int
     , cAuxiliaryEnvFile  :: FilePath

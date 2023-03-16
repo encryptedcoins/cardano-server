@@ -13,12 +13,12 @@ module Cardano.Server.Client.Handle where
 
 import           Cardano.Server.Client.Gen      (randomFundsReqBody, randomSubmitTxBody)
 import           Cardano.Server.Client.Internal (ClientEndpoint (..), Interval, Mode (..), ServerEndpoint (..))
-import           Cardano.Server.Internal        (ServerM)
+import           Cardano.Server.Internal        (ServerM, getNetworkId)
 import           Cardano.Server.Utils.Logger    (HasLogger (..), logSmth)
 import           Cardano.Server.Utils.Wait      (waitTime)
 import           Control.Monad.Catch            (Exception, MonadThrow (throwM))
 import           Control.Monad.IO.Class         (MonadIO (..))
-import           Control.Monad.Reader           (forever, (>=>))
+import           Control.Monad.Reader           (forever, (>=>), asks)
 import           Data.Aeson                     (FromJSON, eitherDecode)
 import qualified Data.ByteString.Lazy           as LBS
 import           Data.Default                   (Default (..))
@@ -49,13 +49,11 @@ data ClientHandle api = ClientHandle
 
 instance Default (ClientHandle api) where
     def = ClientHandle
-        -- Auto
-        { autoPing     = autoWith (pure ())
-        , autoFunds    = autoWith randomFundsReqBody
-        , autoNewTx    = throwAutoNotImplemented NewTxE
-        , autoSumbitTx = autoWith randomSubmitTxBody
-        , autoServerTx = throwAutoNotImplemented ServerTxE
-        -- -- Manual
+        { autoPing       = autoWith (pure ())
+        , autoFunds      = \i -> getNetworkId >>= (`autoWith` i) . randomFundsReqBody
+        , autoNewTx      = throwAutoNotImplemented NewTxE
+        , autoSumbitTx   = autoWith randomSubmitTxBody
+        , autoServerTx   = throwAutoNotImplemented ServerTxE
         , manualPing     = const $ sendRequest ()
         , manualFunds    = manualWithRead
         , manualNewTx    = throwManualNotImplemented NewTxE
