@@ -101,7 +101,7 @@ instance MimeRender JSON (TxApiRequestOf api) => ClientEndpoint 'NewTxE api wher
 instance ClientEndpoint 'SubmitTxE api where
     type EndpointArg 'SubmitTxE api = SubmitTxReqBody
     type EndpointRes 'SubmitTxE     = NoContent
-    endpointClient                  = submitTx @api
+    endpointClient                  = submitTx
 
 instance MimeRender JSON (TxApiRequestOf api) => ClientEndpoint 'ServerTxE api where
     type EndpointArg 'ServerTxE api = TxApiRequestOf api
@@ -117,28 +117,29 @@ data Mode
 
 type HasServantClientEnv = ?servantClientEnv :: ClientEnv
 
+-- Proxy here is necessary to save the user from writing explicit type applications
 data ClientHandle api = ClientHandle
     -- Auto
-    { autoPing       :: HasServantClientEnv => Interval -> ServerM api ()
-    , autoFunds      :: HasServantClientEnv => Interval -> ServerM api ()
-    , autoNewTx      :: HasServantClientEnv => Interval -> ServerM api ()
-    , autoSumbitTx   :: HasServantClientEnv => Interval -> ServerM api ()
-    , autoServerTx   :: HasServantClientEnv => Interval -> ServerM api ()
-    -- Manual
-    , manualPing     :: HasServantClientEnv => Text -> ServerM api ()
-    , manualFunds    :: HasServantClientEnv => Text -> ServerM api ()
-    , manualNewTx    :: HasServantClientEnv => Text -> ServerM api ()
-    , manualSubmitTx :: HasServantClientEnv => Text -> ServerM api ()
-    , manualServerTx :: HasServantClientEnv => Text -> ServerM api ()
+    { autoPing       :: HasServantClientEnv => Interval -> ServerM api (Proxy 'PingE)
+    , autoFunds      :: HasServantClientEnv => Interval -> ServerM api (Proxy 'FundsE)
+    , autoNewTx      :: HasServantClientEnv => Interval -> ServerM api (Proxy 'NewTxE)
+    , autoSumbitTx   :: HasServantClientEnv => Interval -> ServerM api (Proxy 'SubmitTxE)
+    , autoServerTx   :: HasServantClientEnv => Interval -> ServerM api (Proxy 'ServerTxE)
+    -- -- Manual
+    , manualPing     :: HasServantClientEnv => Text -> ServerM api (Proxy 'PingE)
+    , manualFunds    :: HasServantClientEnv => Text -> ServerM api (Proxy 'FundsE)
+    , manualNewTx    :: HasServantClientEnv => Text -> ServerM api (Proxy 'NewTxE)
+    , manualSubmitTx :: HasServantClientEnv => Text -> ServerM api (Proxy 'SubmitTxE)
+    , manualServerTx :: HasServantClientEnv => Text -> ServerM api (Proxy 'ServerTxE)
     }
 
 data NotImplementedMethodError = NotImplementedMethodError Mode ServerEndpoint
     deriving (Show, Exception)
 
-throwAutoNotImplemented :: ServerEndpoint -> Interval -> ServerM api ()
+throwAutoNotImplemented :: ServerEndpoint -> Interval -> ServerM api a
 throwAutoNotImplemented e i = throwM $ NotImplementedMethodError (Auto i) e
 
-throwManualNotImplemented :: ServerEndpoint -> Text -> ServerM api ()
+throwManualNotImplemented :: ServerEndpoint -> Text -> ServerM api a
 throwManualNotImplemented e t = throwM $ NotImplementedMethodError (Manual t) e
 
 randomFundsReqBody :: MonadIO m => m (EndpointArg 'FundsE api)

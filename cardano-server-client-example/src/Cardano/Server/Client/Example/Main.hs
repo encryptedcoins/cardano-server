@@ -1,38 +1,33 @@
+{-# LANGUAGE DataKinds            #-}
+{-# LANGUAGE TupleSections        #-}
 {-# LANGUAGE TypeApplications     #-}
 {-# LANGUAGE TypeFamilies         #-}
 {-# LANGUAGE UndecidableInstances #-}
-
-{-# OPTIONS_GHC -Wno-orphans  #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE TupleSections #-}
 
 module Cardano.Server.Client.Example.Main
     ( runExampleClient
     ) where
 
--- import           Cardano.Server.Class         (HasServer (..))
--- import           Cardano.Server.Client.Class  (HasClient (..))
--- import           Cardano.Server.Client.Client (startClient)
-import           Cardano.Server.Example.Main  (ExampleApi, exampleHandle)
-import Cardano.Server.Client.Client -- (runClient, autoWith)
-import Cardano.Server.Internal
-import Cardano.Server.Client.Internal
-import PlutusTx.Builtins (BuiltinByteString)
-import qualified Cardano.Server.Client.Client as Client
-import Cardano.Server.Input (InputContext)
-import Data.Default
-import System.Random
-import PlutusTx.Builtins.Class (stringToBuiltinByteString)
-import Control.Monad
-import Data.Text (Text)
-import qualified Data.Text as T
+import           Cardano.Server.Client.Client   (autoWith, manualWith, runClient)
+import qualified Cardano.Server.Client.Client   as Client
+import           Cardano.Server.Client.Internal (ClientHandle (autoNewTx, autoServerTx, manualNewTx, manualServerTx))
+import           Cardano.Server.Example.Main    (ExampleApi, exampleHandle)
+import           Cardano.Server.Input           (InputContext)
+import           Cardano.Server.Internal        (ServerM)
+import           Control.Monad                  (replicateM)
+import           Data.Default                   (Default (def))
+import           Data.Text                      (Text)
+import qualified Data.Text                      as T
+import           PlutusTx.Builtins              (BuiltinByteString)
+import           PlutusTx.Builtins.Class        (stringToBuiltinByteString)
+import           System.Random                  (randomIO, randomRIO)
 
 runExampleClient :: IO ()
-runExampleClient = runClient @ExampleApi exampleHandle $ Client.defaultHandle
-    { autoNewTx      = autoWith   @'NewTxE    genInput
-    , autoServerTx   = autoWith   @'ServerTxE genInput
-    , manualNewTx    = manualWith @'NewTxE    readInput
-    , manualServerTx = manualWith @'ServerTxE readInput
+runExampleClient = runClient exampleHandle $ Client.defaultHandle
+    { autoNewTx      = autoWith   genInput
+    , autoServerTx   = autoWith   genInput
+    , manualNewTx    = manualWith readInput
+    , manualServerTx = manualWith readInput
     }
 
 genInput :: ServerM ExampleApi ([BuiltinByteString], InputContext)

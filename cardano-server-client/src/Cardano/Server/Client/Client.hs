@@ -7,6 +7,8 @@
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications    #-}
+{-# LANGUAGE PolyKinds    #-}
+{-# LANGUAGE TupleSections #-}
 
 module Cardano.Server.Client.Client where
 
@@ -21,7 +23,7 @@ import           Cardano.Server.Main            (port)
 import           Cardano.Server.Utils.Logger    (HasLogger (..), logSmth, (.<))
 import           Cardano.Server.Utils.Wait      (waitTime)
 import           Control.Exception              (handle)
-import           Control.Monad.Reader           (MonadIO (..), forever, (<=<), (>=>))
+import           Control.Monad.Reader           (MonadIO (..), forever, (>=>), void)
 import           Data.Aeson                     (FromJSON, eitherDecode)
 import qualified Data.ByteString.Lazy           as LBS
 import           Data.Text                      (Text)
@@ -31,32 +33,33 @@ import           Servant.Client                 (BaseUrl (BaseUrl), ClientEnv (.
                                                  runClientM)
 import           System.Random                  (Random, randomIO, randomRIO)
 import           Text.Read                      (readEither)
+import Data.Proxy
 
 runClient :: ServerHandle api -> ClientHandle api -> IO ()
-runClient sh ClientHandle{..} = handle notImplementedMethods $ do
+runClient sh ClientHandle{..} = handleNotImplementedMethods $ do
     Options{..} <- runWithOpts
     Config{..}  <- loadConfig
     env         <- loadEnv sh
     manager     <- newManager defaultManagerSettings
     let ?servantClientEnv = ClientEnv
             manager
-            (BaseUrl Http (T.unpack cServerAddress) port (show optsEndpoint))
+            (BaseUrl Http "localhost" {- (T.unpack cServerAddress) -} port ""{- (show optsEndpoint) -})
             Nothing
             defaultMakeClientRequest
     runServerM env $ withGreetings $ case (optsMode, optsEndpoint) of
-        (Auto     i, PingE    ) -> autoPing         i
-        (Auto     i, FundsE   ) -> autoFunds        i
-        (Auto     i, NewTxE   ) -> autoNewTx        i
-        (Auto     i, SubmitTxE) -> autoSumbitTx     i
-        (Auto     i, ServerTxE) -> autoServerTx     i
-        (Manual txt, PingE    ) -> manualPing     txt
-        (Manual txt, FundsE   ) -> manualFunds    txt
-        (Manual txt, NewTxE   ) -> manualNewTx    txt
-        (Manual txt, SubmitTxE) -> manualSubmitTx txt
-        (Manual txt, ServerTxE) -> manualServerTx txt
+        (Auto     i, PingE    ) -> void $ autoPing         i
+        (Auto     i, FundsE   ) -> void $ autoFunds        i
+        (Auto     i, NewTxE   ) -> void $ autoNewTx        i
+        (Auto     i, SubmitTxE) -> void $ autoSumbitTx     i
+        (Auto     i, ServerTxE) -> void $ autoServerTx     i
+        (Manual txt, PingE    ) -> void $ manualPing     txt
+        (Manual txt, FundsE   ) -> void $ manualFunds    txt
+        (Manual txt, NewTxE   ) -> void $ manualNewTx    txt
+        (Manual txt, SubmitTxE) -> void $ manualSubmitTx txt
+        (Manual txt, ServerTxE) -> void $ manualServerTx txt
     where
         withGreetings = (logMsg "Starting client..." >>)
-        notImplementedMethods (NotImplementedMethodError mode endpoint) = 
+        handleNotImplementedMethods = handle $ \(NotImplementedMethodError mode endpoint) ->
             let mode' = case mode of {Auto _ -> "auto"; Manual _ -> "manual"}
             in logMsg $ "You are about to use a function from client handle for which you did not provide an implementation:\n"
                 <> mode' .< endpoint
@@ -64,23 +67,23 @@ runClient sh ClientHandle{..} = handle notImplementedMethods $ do
 defaultHandle :: ClientHandle api
 defaultHandle = ClientHandle
     -- Auto
-    { autoPing     = autoWith @'PingE (pure ())
-    , autoFunds    = autoWith @'FundsE randomFundsReqBody
+    { autoPing     = autoWith (pure ())
+    , autoFunds    = autoWith randomFundsReqBody
     , autoNewTx    = throwAutoNotImplemented NewTxE
-    , autoSumbitTx = autoWith @'SubmitTxE randomSubmitTxBody
+    , autoSumbitTx = autoWith randomSubmitTxBody
     , autoServerTx = throwAutoNotImplemented ServerTxE
-    -- Manual
-    , manualPing     = const $ sendRequest @'PingE ()
-    , manualFunds    = manualWithRead @'FundsE
+    -- -- Manual
+    , manualPing     = const $ sendRequest ()
+    , manualFunds    = manualWithRead
     , manualNewTx    = throwManualNotImplemented NewTxE
-    , manualSubmitTx = manualWithRead @'SubmitTxE
+    , manualSubmitTx = manualWithRead
     , manualServerTx = throwManualNotImplemented ServerTxE
     }
 
 autoWith :: forall (e :: ServerEndpoint) api.
     ( HasServantClientEnv
     , ClientEndpoint e api
-    ) => ServerM api (EndpointArg e api) -> Interval -> ServerM api ()
+    ) => ServerM api (EndpointArg e api) -> Interval -> ServerM api (Proxy e)
 autoWith gen averageInterval = forever $ do
     reqBody <- gen
     sendRequest @e reqBody
@@ -90,31 +93,31 @@ autoWithRandom :: forall (e :: ServerEndpoint) api.
     ( HasServantClientEnv
     , ClientEndpoint e api
     , Random (EndpointArg e api)
-    ) => Interval -> ServerM api ()
-autoWithRandom = autoWith @e (liftIO randomIO)
+    ) => Interval -> ServerM api (Proxy e)
+autoWithRandom = autoWith (liftIO randomIO)
 
 manualWith :: forall (e :: ServerEndpoint) api.
     ( HasServantClientEnv
     , ClientEndpoint e api
-    ) => (Text -> ServerM api (EndpointArg e api)) -> Text -> ServerM api ()
+    ) => (Text -> ServerM api (EndpointArg e api)) -> Text -> ServerM api (Proxy e)
 manualWith = (>=> sendRequest @e)
 
 manualWithRead :: forall (e :: ServerEndpoint) api.
     ( HasServantClientEnv
     , ClientEndpoint e api
     , Read (EndpointArg e api)
-    ) => Text -> ServerM api ()
-manualWithRead = either logSmth (sendRequest @e) . readEither . T.unpack
+    ) => Text -> ServerM api (Proxy e)
+manualWithRead = either ((Proxy <$) . logSmth) (sendRequest @e) . readEither . T.unpack
 
 manualWithJsonFile :: forall (e :: ServerEndpoint) api.
     ( HasServantClientEnv
     , ClientEndpoint e api
     , FromJSON (EndpointArg e api)
-    ) => Text -> ServerM api ()
-manualWithJsonFile filePath 
-    = liftIO (LBS.readFile $ T.unpack filePath) >>= either logSmth (sendRequest @e) . eitherDecode
+    ) => Text -> ServerM api (Proxy e)
+manualWithJsonFile filePath
+    = liftIO (LBS.readFile $ T.unpack filePath) >>= either ((Proxy <$) . logSmth) (sendRequest @e) . eitherDecode
 
-sendRequest :: forall e api. (HasServantClientEnv, ClientEndpoint e api) => EndpointArg e api -> ServerM api ()
-sendRequest reqBody = do
+sendRequest :: forall e api. (HasServantClientEnv, ClientEndpoint e api) => EndpointArg e api -> ServerM api (Proxy e)
+sendRequest reqBody = Proxy <$ do
     res <- liftIO (flip runClientM ?servantClientEnv $ endpointClient @e @api reqBody)
     logMsg $ "Received response:\n" <> either (T.pack . show) (T.pack . show) res
