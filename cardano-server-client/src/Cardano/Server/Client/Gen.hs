@@ -1,5 +1,7 @@
 {-# LANGUAGE DataKinds        #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE BlockArguments #-}
 
 module Cardano.Server.Client.Gen where
 
@@ -11,14 +13,22 @@ import           Control.Monad.IO.Class             (MonadIO (..))
 import           Data.Bifunctor                     (Bifunctor (bimap))
 import qualified Data.Text                          as T
 import           Hedgehog.Gen                       (sample)
-import           Ledger                             (Address, CardanoTx (CardanoApiTx), CurrencySymbol, PubKey, Signature)
+import           Ledger                             (Address, CardanoTx (CardanoApiTx), CurrencySymbol, PubKey, Signature, NetworkId)
 import           Plutus.PAB.Arbitrary               ()
 import           Test.QuickCheck                    (Arbitrary (..), generate)
+import PlutusAppsExtra.Utils.Address (addressToBech32)
+import Data.Text ( Text )
 
-randomFundsReqBody :: MonadIO m => m (EndpointArg 'FundsE api)
-randomFundsReqBody = liftIO $ generate $ FundsReqBody
-    <$> (T.pack . show <$> (arbitrary @Address))
-    <*> (T.pack . show <$> (arbitrary @CurrencySymbol))
+randomFundsReqBody :: MonadIO m => NetworkId -> m (EndpointArg 'FundsE api)
+randomFundsReqBody network = liftIO $ FundsReqBody
+    <$> randomAddressBech32 network
+    <*> generate (T.pack . show <$> (arbitrary @CurrencySymbol))
+
+randomAddressBech32 :: NetworkId -> IO Text
+randomAddressBech32 network = do
+    generate arbitrary >>= (. addressToBech32 network) \case
+        Just res -> pure res
+        Nothing  -> randomAddressBech32 network
 
 randomSubmitTxBody :: MonadIO m => m (EndpointArg 'SubmitTxE api)
 randomSubmitTxBody = liftIO $ SubmitTxReqBody
