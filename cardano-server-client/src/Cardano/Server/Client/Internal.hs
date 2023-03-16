@@ -67,7 +67,7 @@ instance Show ServerEndpoint where
         SubmitTxE -> "submitTx"
         ServerTxE -> "serverTx"
 
-class Show (EndpointRes e) => ClientEndpoint (e :: ServerEndpoint) api where
+class (Show (EndpointArg e api), Show (EndpointRes e)) => ClientEndpoint (e :: ServerEndpoint) api where
     type EndpointArg e api :: Type
     type EndpointRes e     :: Type
     endpointClient         :: EndpointArg e api -> ClientM (Either ServerError (EndpointRes e))
@@ -82,7 +82,7 @@ instance ClientEndpoint 'FundsE api where
     type EndpointRes 'FundsE   = Funds
     endpointClient             = funds
 
-instance MimeRender JSON (TxApiRequestOf api) => ClientEndpoint 'NewTxE api where
+instance (Show (TxApiRequestOf api), MimeRender JSON (TxApiRequestOf api)) => ClientEndpoint 'NewTxE api where
     type EndpointArg 'NewTxE api = TxApiRequestOf api
     type EndpointRes 'NewTxE     = Text
     endpointClient               = newTx @api
@@ -92,7 +92,7 @@ instance ClientEndpoint 'SubmitTxE api where
     type EndpointRes 'SubmitTxE     = NoContent
     endpointClient                  = submitTx
 
-instance MimeRender JSON (TxApiRequestOf api) => ClientEndpoint 'ServerTxE api where
+instance (Show (TxApiRequestOf api), MimeRender JSON (TxApiRequestOf api)) => ClientEndpoint 'ServerTxE api where
     type EndpointArg 'ServerTxE api = TxApiRequestOf api
     type EndpointRes 'ServerTxE     = NoContent
     endpointClient                  = serverTx @api

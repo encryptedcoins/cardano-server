@@ -14,7 +14,7 @@ module Cardano.Server.Client.Handle where
 import           Cardano.Server.Client.Gen      (randomFundsReqBody, randomSubmitTxBody)
 import           Cardano.Server.Client.Internal (ClientEndpoint (..), Interval, Mode (..), ServerEndpoint (..))
 import           Cardano.Server.Internal        (ServerM, getNetworkId)
-import           Cardano.Server.Utils.Logger    (HasLogger (..), logSmth)
+import           Cardano.Server.Utils.Logger    (HasLogger (..), logSmth, (.<))
 import           Cardano.Server.Utils.Wait      (waitTime)
 import           Control.Monad                  (forever, (>=>))
 import           Control.Monad.Catch            (Exception, MonadThrow (throwM))
@@ -107,7 +107,11 @@ manualWithJsonFile :: forall (e :: ServerEndpoint) api.
 manualWithJsonFile filePath
     = liftIO (LBS.readFile $ T.unpack filePath) >>= either ((Proxy <$) . logSmth) (sendRequest @e) . eitherDecode
 
-sendRequest :: forall e api. (HasServantClientEnv, ClientEndpoint e api) => EndpointArg e api -> ServerM api (Proxy e)
+sendRequest :: forall e api. 
+    ( HasServantClientEnv
+    , ClientEndpoint e api
+    ) => EndpointArg e api -> ServerM api (Proxy e)
 sendRequest reqBody = Proxy <$ do
+    logMsg $ "Sending request with:\n" .< reqBody 
     res <- liftIO (flip runClientM ?servantClientEnv $ endpointClient @e @api reqBody)
     logMsg $ "Received response:\n" <> either (T.pack . show) (T.pack . show) res
