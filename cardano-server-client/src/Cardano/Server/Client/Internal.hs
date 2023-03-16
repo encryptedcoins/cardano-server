@@ -1,10 +1,8 @@
 {-# LANGUAGE AllowAmbiguousTypes    #-}
 {-# LANGUAGE ConstraintKinds        #-}
 {-# LANGUAGE DataKinds              #-}
-{-# LANGUAGE DeriveAnyClass         #-}
 {-# LANGUAGE FlexibleContexts       #-}
 {-# LANGUAGE FlexibleInstances      #-}
-{-# LANGUAGE ImplicitParams         #-}
 {-# LANGUAGE LambdaCase             #-}
 {-# LANGUAGE MultiParamTypeClasses  #-}
 {-# LANGUAGE OverloadedStrings      #-}
@@ -25,8 +23,7 @@ import           Cardano.Server.Endpoints.Tx.New      (NewTxApi)
 import           Cardano.Server.Endpoints.Tx.Server   (ServerTxApi)
 import           Cardano.Server.Endpoints.Tx.Submit   (SubmitTxApi, SubmitTxReqBody (..))
 import           Cardano.Server.Error.Servant         (clientEnvelopeToEither)
-import           Cardano.Server.Internal              (ServerM, TxApiRequestOf)
-import           Control.Monad.Catch                  (Exception, MonadThrow (throwM))
+import           Cardano.Server.Internal              (TxApiRequestOf)
 import           Control.Monad.IO.Class               (MonadIO (..))
 import           Data.Bifunctor                       (Bifunctor (bimap))
 import           Data.Kind                            (Type)
@@ -36,7 +33,7 @@ import           Hedgehog.Gen                         (sample)
 import           Ledger                               (Address, CardanoTx (CardanoApiTx), CurrencySymbol, PubKey, Signature)
 import           Plutus.PAB.Arbitrary                 ()
 import           Servant                              (JSON, MimeRender, NoContent, Proxy (Proxy), ServerError)
-import           Servant.Client                       (ClientEnv, ClientM, client)
+import           Servant.Client                       (ClientM, client)
 import           Test.QuickCheck                      (Arbitrary (..), generate)
 
 ping :: ClientM NoContent
@@ -114,33 +111,6 @@ data Mode
     = Auto   Interval
     | Manual Text
     deriving Show
-
-type HasServantClientEnv = ?servantClientEnv :: ClientEnv
-
--- Proxy here is necessary to save the user from writing explicit type applications
-data ClientHandle api = ClientHandle
-    -- Auto
-    { autoPing       :: HasServantClientEnv => Interval -> ServerM api (Proxy 'PingE)
-    , autoFunds      :: HasServantClientEnv => Interval -> ServerM api (Proxy 'FundsE)
-    , autoNewTx      :: HasServantClientEnv => Interval -> ServerM api (Proxy 'NewTxE)
-    , autoSumbitTx   :: HasServantClientEnv => Interval -> ServerM api (Proxy 'SubmitTxE)
-    , autoServerTx   :: HasServantClientEnv => Interval -> ServerM api (Proxy 'ServerTxE)
-    -- -- Manual
-    , manualPing     :: HasServantClientEnv => Text -> ServerM api (Proxy 'PingE)
-    , manualFunds    :: HasServantClientEnv => Text -> ServerM api (Proxy 'FundsE)
-    , manualNewTx    :: HasServantClientEnv => Text -> ServerM api (Proxy 'NewTxE)
-    , manualSubmitTx :: HasServantClientEnv => Text -> ServerM api (Proxy 'SubmitTxE)
-    , manualServerTx :: HasServantClientEnv => Text -> ServerM api (Proxy 'ServerTxE)
-    }
-
-data NotImplementedMethodError = NotImplementedMethodError Mode ServerEndpoint
-    deriving (Show, Exception)
-
-throwAutoNotImplemented :: ServerEndpoint -> Interval -> ServerM api a
-throwAutoNotImplemented e i = throwM $ NotImplementedMethodError (Auto i) e
-
-throwManualNotImplemented :: ServerEndpoint -> Text -> ServerM api a
-throwManualNotImplemented e t = throwM $ NotImplementedMethodError (Manual t) e
 
 randomFundsReqBody :: MonadIO m => m (EndpointArg 'FundsE api)
 randomFundsReqBody = liftIO $ generate $ FundsReqBody
