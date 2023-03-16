@@ -27,7 +27,7 @@ import           Text.Hex                           (encodeHex)
 
 randomFundsReqBody :: MonadIO m => NetworkId -> m (EndpointArg 'FundsE api)
 randomFundsReqBody network = liftIO $ FundsReqBody
-    <$> randomAddressBech32 network
+    <$> randomAddressBech32Text network
     <*> randomCSText
 
 randomSubmitTxBody :: MonadIO m => m (EndpointArg 'SubmitTxE api)
@@ -35,9 +35,9 @@ randomSubmitTxBody = liftIO $ SubmitTxReqBody
     <$> randomCardanoTxText
     <*> (randomRIO (1,10) >>= (`replicateM` ((,) <$> randomPubKeyText <*> randomSignatureText)))
 
-randomAddressBech32 :: NetworkId -> IO Text
-randomAddressBech32 network = do
-    generate arbitrary >>= maybe (randomAddressBech32 network) pure . addressToBech32 network
+randomAddressBech32Text :: NetworkId -> IO Text
+randomAddressBech32Text network = do
+    generate arbitrary >>= maybe (randomAddressBech32Text network) pure . addressToBech32 network
 
 randomCardanoTxText :: IO Text
 randomCardanoTxText = randomBabbageEraTx <&> encodeByteString . serialiseToCBOR
