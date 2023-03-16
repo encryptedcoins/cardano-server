@@ -64,4 +64,6 @@ library
 
       cardano-node-emulator -any,
       hedgehog -any,
+      plutus-ledger-api -any,
+      hex-text                               -any,
     hs-source-dirs: src

@@ -16,9 +16,9 @@ import           Cardano.Server.Client.Internal (ClientEndpoint (..), Interval, 
 import           Cardano.Server.Internal        (ServerM, getNetworkId)
 import           Cardano.Server.Utils.Logger    (HasLogger (..), logSmth)
 import           Cardano.Server.Utils.Wait      (waitTime)
+import           Control.Monad                  (forever, (>=>))
 import           Control.Monad.Catch            (Exception, MonadThrow (throwM))
 import           Control.Monad.IO.Class         (MonadIO (..))
-import           Control.Monad.Reader           (forever, (>=>), asks)
 import           Data.Aeson                     (FromJSON, eitherDecode)
 import qualified Data.ByteString.Lazy           as LBS
 import           Data.Default                   (Default (..))
