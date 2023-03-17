@@ -1,16 +1,15 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE DataKinds           #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE TypeFamilies #-}
-
+{-# LANGUAGE TypeFamilies        #-}
 
 module Cardano.Server.Client.Opts where
 
-import           Control.Applicative ((<|>))
-import           Options.Applicative (Parser, argument, auto, execParser, flag', fullDesc, help, helper, info, long, metavar,
-                                      option, short, strOption, value, (<**>))
-import Cardano.Server.Client.Internal ( ServerEndpoint (..), Mode (..), Interval )
+import           Cardano.Server.Client.Internal (Interval, Mode (..), ServerEndpoint (..))
+import           Control.Applicative            ((<|>))
+import           Options.Applicative            (Parser, argument, auto, execParser, flag', fullDesc, help, helper, info, long,
+                                                 metavar, option, short, strOption, value, (<**>))
 
 runWithOpts :: IO Options
 runWithOpts = execParser $ info (optionsParser <**> helper) fullDesc
@@ -48,4 +47,4 @@ intervalParser = option auto
 
 manualModeParser :: Parser Mode
 manualModeParser = flag' Manual (long "manual" <> help "Input of manual mode.") 
-                  <*> strOption (help "Text representation of client argument" <> value "" <> metavar "TEXT")
+                  <*> strOption (short 'i' <> help "Text representation of client argument" <> value "" <> metavar "TEXT")

@@ -4,9 +4,8 @@
 module Cardano.Server.Error.Class where
 
 import           Control.Monad.Catch       (Exception)
-import           Data.Aeson                (KeyValue ((.=)), (.:))
+import           Data.Aeson                (KeyValue ((.=)))
 import qualified Data.Aeson                as J
-import qualified Data.Aeson.Types          as J
 import qualified Data.ByteString.Lazy      as LBS
 import           Data.Text                 (Text)
 import qualified Data.Text                 as T
@@ -34,12 +33,6 @@ cardanoServerErrorToJSON e = J.object
     [ "errCode" .= fromEnum (errStatus e)
     , "errMsg" .= errMsg e
     ]
-
-cardanoServerErrorParser :: J.Value -> J.Parser Servant.ServerError
-cardanoServerErrorParser = J.withObject "Cardano server error" $ \o -> do
-    errHTTPCode     <- o .: "errCode"
-    errReasonPhrase <- o .: "errMsg"
-    pure $ Servant.ServerError errHTTPCode errReasonPhrase "" []
  
 toServantError :: forall e. IsCardanoServerError e => e -> Servant.ServerError
 toServantError e = Servant.ServerError 

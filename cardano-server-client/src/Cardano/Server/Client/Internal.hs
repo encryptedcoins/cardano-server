@@ -21,27 +21,26 @@ import           Cardano.Server.Endpoints.Tx.Internal (TxApiErrorOf)
 import           Cardano.Server.Endpoints.Tx.New      (NewTxApi)
 import           Cardano.Server.Endpoints.Tx.Server   (ServerTxApi)
 import           Cardano.Server.Endpoints.Tx.Submit   (SubmitTxApi, SubmitTxReqBody (..))
-import           Cardano.Server.Error.Servant         (clientEnvelopeToEither)
 import           Cardano.Server.Internal              (TxApiRequestOf)
 import           Data.Kind                            (Type)
 import           Data.Text                            (Text)
-import           Servant                              (JSON, MimeRender, NoContent, Proxy (Proxy), ServerError)
+import           Servant                              (JSON, MimeRender, NoContent, Proxy (Proxy))
 import           Servant.Client                       (ClientM, client)
 
 ping :: ClientM NoContent
 ping = client (Proxy @PingApi)
 
-funds :: FundsReqBody -> ClientM (Either ServerError Funds)
-funds body = clientEnvelopeToEither <$> client (Proxy @FundsApi) body
+funds :: FundsReqBody -> ClientM Funds
+funds = client (Proxy @FundsApi)
 
-newTx :: forall api. MimeRender JSON (TxApiRequestOf api) => TxApiRequestOf api -> ClientM (Either ServerError Text)
-newTx body = clientEnvelopeToEither <$> client (Proxy @(NewTxApi (TxApiRequestOf api) (TxApiErrorOf api))) body
+newTx :: forall api. MimeRender JSON (TxApiRequestOf api) => TxApiRequestOf api -> ClientM Text
+newTx = client (Proxy @(NewTxApi (TxApiRequestOf api) (TxApiErrorOf api)))
 
-submitTx :: forall api. SubmitTxReqBody -> ClientM (Either ServerError NoContent)
-submitTx body = clientEnvelopeToEither <$> client (Proxy @(SubmitTxApi (TxApiErrorOf api))) body
+submitTx :: forall api. SubmitTxReqBody -> ClientM NoContent
+submitTx = client (Proxy @(SubmitTxApi (TxApiErrorOf api)))
 
-serverTx :: forall api. MimeRender JSON (TxApiRequestOf api) => TxApiRequestOf api -> ClientM (Either ServerError NoContent)
-serverTx body = clientEnvelopeToEither <$> client (Proxy @(ServerTxApi (TxApiRequestOf api) (TxApiErrorOf api))) body
+serverTx :: forall api. MimeRender JSON (TxApiRequestOf api) => TxApiRequestOf api -> ClientM NoContent
+serverTx = client (Proxy @(ServerTxApi (TxApiRequestOf api) (TxApiErrorOf api)))
 
 data ServerEndpoint
     = PingE
@@ -70,12 +69,12 @@ instance Show ServerEndpoint where
 class (Show (EndpointArg e api), Show (EndpointRes e)) => ClientEndpoint (e :: ServerEndpoint) api where
     type EndpointArg e api :: Type
     type EndpointRes e     :: Type
-    endpointClient         :: EndpointArg e api -> ClientM (Either ServerError (EndpointRes e))
+    endpointClient         :: EndpointArg e api -> ClientM (EndpointRes e)
 
 instance ClientEndpoint 'PingE api where
     type EndpointArg 'PingE _ = ()
     type EndpointRes 'PingE   = NoContent
-    endpointClient            = fmap Right <$> const ping
+    endpointClient            = const ping
 
 instance ClientEndpoint 'FundsE api where
     type EndpointArg 'FundsE _ = FundsReqBody
