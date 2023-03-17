@@ -47,13 +47,13 @@ randomCSText = do
     CurrencySymbol cs <- generate arbitrary
     pure $ encodeHex $ fromBuiltin cs
 
-randomPubKeyText :: IO Text
-randomPubKeyText = do
+randomSignatureText :: IO Text
+randomSignatureText = do
     Signature bs <- generate arbitrary
     pure $ encodeHex $ fromBuiltin bs
 
-randomSignatureText :: IO Text
-randomSignatureText = do
+randomPubKeyText :: IO Text
+randomPubKeyText = do
     PubKey bs <- generate arbitrary
     pure $ encodeHex $ bytes bs
 
