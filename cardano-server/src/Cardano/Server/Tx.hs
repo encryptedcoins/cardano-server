@@ -12,7 +12,7 @@ module Cardano.Server.Tx where
 import           Cardano.Server.Error                 (MkTxError (..), throwMaybe)
 import           Cardano.Server.Input                 (InputContext (..))
 import           Cardano.Server.Internal              (Env (..), ServerM)
-import           Cardano.Server.Utils.Logger          (HasLogger (..), logPretty, logSmth)
+import           Cardano.Server.Utils.Logger          (logMsg, logPretty, logSmth)
 import           Control.Lens                         ((^?))
 import           Control.Monad.Catch                  (Handler (..), MonadThrow (..), catches)
 import           Control.Monad.Extra                  (guard, mconcatMapM, void, when)

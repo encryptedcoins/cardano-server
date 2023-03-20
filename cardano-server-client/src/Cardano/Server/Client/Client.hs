@@ -13,26 +13,32 @@ import           Cardano.Server.Client.Handle   (ClientHandle (..), NotImplement
 import           Cardano.Server.Client.Internal (Mode (Auto, Manual), ServerEndpoint (..))
 import           Cardano.Server.Client.Opts     (Options (..), runWithOpts)
 import           Cardano.Server.Config          (Config (..), loadConfig)
-import           Cardano.Server.Internal        (ServerHandle, loadEnv, runServerM)
-import           Cardano.Server.Utils.Logger    (HasLogger (..), (.<))
+import           Cardano.Server.Internal        (ServerHandle, loadEnv, runServerM, setLoggerFilePath)
+import           Cardano.Server.Utils.Logger    (logMsg, (.<))
 import           Control.Exception              (handle)
+import           Control.Monad.IO.Class         (MonadIO (..))
 import           Control.Monad.Reader           (void)
 import qualified Data.Text                      as T
 import           Network.HTTP.Client            (defaultManagerSettings, newManager)
 import           Servant.Client                 (BaseUrl (BaseUrl), ClientEnv (..), Scheme (Http), defaultMakeClientRequest)
 
+createServantClientEnv :: IO ClientEnv
+createServantClientEnv = do
+    Config{..}  <- loadConfig
+    manager     <- newManager defaultManagerSettings
+    pure $ ClientEnv
+        manager
+        (BaseUrl Http (T.unpack cHost) cPort "")
+        Nothing
+        defaultMakeClientRequest
+
 runClient :: ServerHandle api -> ClientHandle api -> IO ()
 runClient sh ClientHandle{..} = handleNotImplementedMethods $ do
     Options{..} <- runWithOpts
-    Config{..}  <- loadConfig
     env         <- loadEnv sh
-    manager     <- newManager defaultManagerSettings
-    let ?servantClientEnv = ClientEnv
-            manager
-            (BaseUrl Http (T.unpack cHost) cPort "")
-            Nothing
-            defaultMakeClientRequest
-    runServerM env $ withGreetings $ case (optsMode, optsEndpoint) of
+    sce         <- liftIO createServantClientEnv
+    let ?servantClientEnv = sce
+    runServerM env $ setLoggerFilePath "client.log" $ withGreetings $ case (optsMode, optsEndpoint) of
         (Auto     i, PingE    ) -> void $ autoPing         i
         (Auto     i, FundsE   ) -> void $ autoFunds        i
         (Auto     i, NewTxE   ) -> void $ autoNewTx        i

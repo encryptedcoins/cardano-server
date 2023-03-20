@@ -1,7 +1,6 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications    #-}
 
 module Cardano.Server.Utils.Logger where
 
@@ -16,18 +15,25 @@ import           Prettyprinter          (Pretty(..))
 import           System.Directory       (createDirectoryIfMissing)
 import           System.FilePath.Posix  (takeDirectory)
 
+type Logger m = (Text -> m ())
+
 class MonadIO m => HasLogger m where
+    getLogger :: m (Logger m)
 
-    loggerFilePath :: m (Maybe FilePath)
-
-    logMsg :: Text -> m ()
-    logMsg msg = loggerFilePath @m >>= liftIO . logMsgIO msg
+    getLoggerFilePath :: m (Maybe FilePath)
+    getLoggerFilePath = pure Nothing 
 
 instance HasLogger IO where
+    getLogger = pure T.putStrLn
 
-    loggerFilePath = pure Nothing
+logger :: HasLogger m => Logger m
+logger msg = getLoggerFilePath >>= liftIO . logMsgIO msg
 
-    logMsg = T.putStrLn
+mutedLogger :: Monad m => (Logger m)
+mutedLogger = const $ pure ()
+
+logMsg :: HasLogger m => Text -> m ()
+logMsg msg = getLogger >>= ($ msg)
 
 logSmth :: (HasLogger m, Show a) => a -> m ()
 logSmth a = logMsg $ T.pack $ show a

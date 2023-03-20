@@ -34,26 +34,25 @@ test-suite cardano-server-test
   Hs-Source-Dirs:       test
   Ghc-Options:          -rtsopts
                         -fplugin-opt PlutusTx.Plugin:defer-errors
+                        -Wall
   Main-Is:              Main.hs
-  Other-Modules:        DefaultClient
-                        Internal
-                        Reference
-                        ExampleServer
+  Other-Modules:        
+                        Cardano.Server.Endpoints.FundsSpec
+                        Cardano.Server.Endpoints.PingSpec
+                        Cardano.Server.Endpoints.Tx.ServerSpec
+                        Cardano.Server.Endpoints.Tx.SubmitSpec
+                        Test.Gen
+                        Test.Internal
   Build-Depends:
     base                          >= 4.9 && < 5,
     cardano-server                         -any,
     cardano-server-example                 -any,
     cardano-server-client                  -any,
     cardano-server-client-example          -any,
-    aeson                                  -any,
-    bytestring                             -any,
-    containers                             -any,
-    data-default                           -any,
-    directory                              -any,
-    mtl                                    -any,
-    plutus-apps-extra                      -any,
-    plutus-tx                              -any,
-    plutus-ledger                          -any,
-    plutus-ledger-constraints              -any,
-    text                                   -any,
-    time                                   -any
+    exceptions                             -any,
+    hspec                                  -any,   
+    hspec-wai                              -any,
+    http-types                             -any,
+    servant-client                         -any,
+    QuickCheck                             -any,    
+    warp                                   -any,

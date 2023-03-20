@@ -5,6 +5,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase                 #-}
 {-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE RecordWildCards            #-}
 {-# LANGUAGE TypeOperators              #-}
 {-# LANGUAGE UndecidableInstances       #-}
 
@@ -15,10 +16,11 @@ import           Cardano.Server.Error          (ConnectionError, Envelope, IsCar
                                                 toEnvelope)
 import           Cardano.Server.Internal       (ServerM, checkEndpointAvailability)
 import           Cardano.Server.Utils.Logger   (logMsg)
-import           Control.Exception             (Exception (..), throw)
+import           Control.Exception             (Exception (..))
+import           Control.Monad.Catch           (MonadThrow (throwM))
 import           Data.Aeson                    (FromJSON, ToJSON)
+import           Data.Either.Extra             (maybeToEither)
 import qualified Data.Map                      as Map
-import           Data.Maybe                    (fromMaybe)
 import           Data.Text                     (Text)
 import           GHC.Generics                  (Generic)
 import           Ledger                        (DecoratedTxOut (..))
@@ -44,7 +46,7 @@ type FundsApi = "funds"
     :> Get '[JSON] Funds
 
 newtype Funds = Funds [(TokenName, TxOutRef)]
-    deriving (Show, Generic)
+    deriving (Show, Eq, Generic)
     deriving newtype (ToJSON, FromJSON)
     deriving HasStatus via WithStatus 200 Funds
 
@@ -59,13 +61,17 @@ instance IsCardanoServerError FundsError where
         UnparsableAddress        -> "Incorrect wallet address."
         UnparsableCurrencySymbol -> "Incorrect currency symbol."
 
-fundsHandler :: FundsReqBody -> ServerM s (Envelope '[FundsError, ConnectionError] Funds)
-fundsHandler (FundsReqBody addrBech32 csHex) = toEnvelope $ do
+fundsHandler :: FundsReqBody -> ServerM api (Envelope '[FundsError, ConnectionError] Funds)
+fundsHandler frb@(FundsReqBody addrBech32 _) = toEnvelope $ do
     logMsg $ "New funds request received:\n" <> addrBech32
     checkEndpointAvailability isInactiveFunds
-    let cs   = maybe (throw UnparsableCurrencySymbol) (CurrencySymbol . toBuiltin) $ decodeHex csHex
-        addr = fromMaybe (throw UnparsableAddress) $ bech32ToAddress addrBech32
-    getFunds cs addr
+    either throwM (uncurry getFunds) $ parseFundsReqBody frb
+
+parseFundsReqBody :: FundsReqBody -> Either FundsError (CurrencySymbol, Address)
+parseFundsReqBody FundsReqBody{..} = do
+    cs   <- maybeToEither UnparsableCurrencySymbol $ decodeHex fundsReqCS
+    addr <- maybeToEither UnparsableAddress $ bech32ToAddress fundsReqAddress
+    pure (CurrencySymbol $ toBuiltin cs, addr)
 
 getFunds :: HasChainIndex m => CurrencySymbol -> Address -> m Funds
 getFunds cs addr = do

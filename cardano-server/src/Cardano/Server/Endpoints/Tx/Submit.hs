@@ -5,6 +5,7 @@
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators       #-}
 
@@ -16,13 +17,15 @@ import           Cardano.Server.Endpoints.Tx.Internal (TxApiErrorOf)
 import           Cardano.Server.Error                 (ConnectionError, Envelope, IsCardanoServerError (..),
                                                        SubmitTxToLocalNodeError, Throws, toEnvelope)
 import           Cardano.Server.Internal              (Env (..), ServerM, checkEndpointAvailability)
-import           Cardano.Server.Utils.Logger          (HasLogger (..), (.<))
+import           Cardano.Server.Utils.Logger          (logMsg, (.<))
 import           Control.Monad.Catch                  (Exception, MonadThrow (throwM))
 import           Control.Monad.IO.Class               (MonadIO (..))
 import           Control.Monad.Reader                 (asks)
 import           Data.Aeson                           (FromJSON, ToJSON)
+import           Data.Either.Extra                    (maybeToEither)
 import           Data.Text                            (Text)
 import           GHC.Generics                         (Generic)
+import           Ledger                               (CardanoTx)
 import           Ledger.Crypto                        (PubKey, Signature)
 import           PlutusAppsExtra.IO.Node              (sumbitTxToNodeLocal)
 import           PlutusAppsExtra.Utils.Tx             (addCardanoTxSignature, textToCardanoTx, textToPubkey, textToSignature)
@@ -56,18 +59,22 @@ instance IsCardanoServerError SubmitTxApiError where
 submitTxHandler :: IsCardanoServerError (TxApiErrorOf api)
     => SubmitTxReqBody 
     -> ServerM api (Envelope '[TxApiErrorOf api, SubmitTxApiError, SubmitTxToLocalNodeError, ConnectionError] NoContent)
-submitTxHandler req@(SubmitTxReqBody tx wtnsText) = toEnvelope $ do
+submitTxHandler req = toEnvelope $ do
         logMsg $ "New submitTx request received:\n" .< req
         checkEndpointAvailability isInactiveSubmitTx
-        ctx  <- maybe (throwM $ UnparsableTx tx)              pure $ textToCardanoTx tx
-        wtns <- maybe (throwM $ UnparsableWitnesses wtnsText) pure $ mapM parseWitness wtnsText
+        (ctx, wtns) <- either throwM pure $ parseSubmitTxReqBody req
         let ctx' = foldr (uncurry addCardanoTxSignature) ctx wtns
         networkId <- asks $ pNetworkId . envLedgerParams
         node      <- asks envNodeFilePath
         liftIO (sumbitTxToNodeLocal node networkId ctx')
         pure NoContent
+
+parseSubmitTxReqBody :: SubmitTxReqBody -> Either SubmitTxApiError (CardanoTx, [(PubKey, Signature)])
+parseSubmitTxReqBody SubmitTxReqBody{..} = do
+        ctx  <- maybeToEither (UnparsableTx submitReqTx) $ textToCardanoTx submitReqTx
+        wtns <- maybeToEither (UnparsableWitnesses submitReqWitnesses) $ mapM parseWitness submitReqWitnesses
+        pure (ctx, wtns)
     where
-        parseWitness :: (Text, Text) -> Maybe (PubKey, Signature)
         parseWitness (pkText, sigText) = do
             pk  <- textToPubkey pkText
             sig <- textToSignature sigText

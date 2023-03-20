@@ -19,7 +19,7 @@ import           Cardano.Server.Internal         (AuxillaryEnvOf, InputOf, Serve
 import           Cardano.Server.Main             (ServerApi, runServer)
 import           Control.Monad                   (when)
 import           Control.Monad.Catch             (Exception, MonadThrow (throwM))
-import           Data.List                       (nub)
+import           Data.List                       (nub, sort)
 import           Plutus.V2.Ledger.Api            (BuiltinByteString)
 import           PlutusAppsExtra.IO.ChainIndex   (ChainIndex (..))
 import           PlutusAppsExtra.IO.Wallet       (getWalletAddr)
@@ -45,10 +45,10 @@ exampleHandle = ServerHandle
         (pure ())
         processRequest
     where
-        processRequest req@(bbs, _) = do
+        processRequest (bbs, ctx) = do
             let hasDuplicates = length bbs /= length (nub bbs)
             when hasDuplicates $ throwM HasDuplicates
-            return req
+            return (sort bbs, ctx)
 
 runExampleServer :: IO ()
 runExampleServer = runServer exampleHandle

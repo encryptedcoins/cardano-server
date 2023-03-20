@@ -15,11 +15,11 @@ module Cardano.Server.Endpoints.Tx.Server where
 import           Cardano.Server.Config                (isInactiveServerTx)
 import           Cardano.Server.Endpoints.Tx.Internal (TxApiErrorOf)
 import           Cardano.Server.Error                 (ConnectionError, Envelope, IsCardanoServerError, Throws, toEnvelope)
-import           Cardano.Server.Internal              (Env (envLoggerFilePath, envQueueRef), InputOf, InputWithContext, Queue,
+import           Cardano.Server.Internal              (Env (envQueueRef), InputOf, InputWithContext, Queue,
                                                        QueueRef, ServerM, TxApiRequestOf, checkEndpointAvailability, getQueueRef,
-                                                       runServerM, serverIdle, serverTrackedAddresses, txEndpointsTxBuilders)
+                                                       runServerM, serverIdle, serverTrackedAddresses, txEndpointsTxBuilders, setLoggerFilePath)
 import           Cardano.Server.Tx                    (checkForCleanUtxos, mkTx)
-import           Cardano.Server.Utils.Logger          (HasLogger (..), logSmth, (.<))
+import           Cardano.Server.Utils.Logger          (logSmth, (.<), logMsg)
 import           Cardano.Server.Utils.Wait            (waitTime)
 import           Control.Monad                        (join, liftM3, void, when)
 import           Control.Monad.Catch                  (SomeException, catch)
@@ -50,7 +50,7 @@ serverTxHandler txEndpointsProcessRequest req = toEnvelope $ do
     pure NoContent
 
 processQueue ::  (Show (InputOf api)) => Env api -> IO ()
-processQueue env = runServerM env {envLoggerFilePath = Just "queue.log"} $ do
+processQueue env = runServerM env $ setLoggerFilePath "queue.log" $ do
         logMsg "Starting queue handler..."
         catch go $ \(err :: SomeException) -> do
             logSmth err

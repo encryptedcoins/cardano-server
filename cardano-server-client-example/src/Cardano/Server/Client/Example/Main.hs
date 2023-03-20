@@ -3,9 +3,7 @@
 {-# LANGUAGE TypeFamilies         #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Cardano.Server.Client.Example.Main
-    ( runExampleClient
-    ) where
+module Cardano.Server.Client.Example.Main where
 
 import           Cardano.Server.Client.Client (runClient)
 import           Cardano.Server.Client.Handle (ClientHandle (..), autoWith, manualWith)
@@ -13,7 +11,9 @@ import           Cardano.Server.Example.Main  (ExampleApi, exampleHandle)
 import           Cardano.Server.Input         (InputContext)
 import           Cardano.Server.Internal      (ServerM)
 import           Control.Monad                (replicateM)
+import           Control.Monad.IO.Class       (MonadIO (liftIO))
 import           Data.Default                 (Default (def))
+import           Data.List                    (nub)
 import           Data.Text                    (Text)
 import qualified Data.Text                    as T
 import           PlutusTx.Builtins            (BuiltinByteString)
@@ -28,8 +28,8 @@ runExampleClient = runClient exampleHandle $ def
     , manualServerTx = manualWith readInput
     }
 
-genInput :: ServerM ExampleApi ([BuiltinByteString], InputContext)
-genInput = (,def) <$> do
+genInput :: MonadIO m => m ([BuiltinByteString], InputContext)
+genInput = fmap ((,def) . nub) $ liftIO $ do
     inputLength <- randomRIO (1, 15)
     let genBbs = stringToBuiltinByteString <$> (randomRIO (2, 8) >>= (`replicateM` randomIO))
     replicateM inputLength genBbs

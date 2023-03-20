@@ -20,13 +20,13 @@ import           Cardano.Node.Emulator             (Params (..), pParamsFromProt
 import           Cardano.Server.Config             (Config (..), InactiveEndpoints, decodeOrErrorFromFile, loadConfig)
 import           Cardano.Server.Error.CommonErrors (InternalServerError (NoWalletProvided))
 import           Cardano.Server.Input              (InputContext)
-import           Cardano.Server.Utils.Logger       (HasLogger (..))
+import           Cardano.Server.Utils.Logger       
 import           Control.Exception                 (throw)
 import           Control.Monad.Catch               (MonadCatch, MonadThrow (..))
 import           Control.Monad.Except              (MonadError)
 import           Control.Monad.Extra               (join, whenM)
 import           Control.Monad.IO.Class            (MonadIO)
-import           Control.Monad.Reader              (MonadReader, ReaderT (ReaderT, runReaderT), asks)
+import           Control.Monad.Reader              (MonadReader, ReaderT (ReaderT, runReaderT), asks, local)
 import           Data.Default                      (Default (..))
 import           Data.Functor                      ((<&>))
 import           Data.IORef                        (IORef, newIORef)
@@ -57,7 +57,8 @@ runServerM :: Env api -> ServerM api a -> IO a
 runServerM env = fmap (either throw id) . Servant.runHandler . (`runReaderT` env) . unServerM
 
 instance HasLogger (ServerM api) where
-    loggerFilePath = asks envLoggerFilePath
+    getLogger = asks envLogger
+    getLoggerFilePath = asks envLoggerFilePath
 
 instance HasWallet (ServerM api) where
     getRestoredWallet = asks envWallet <&> fromMaybe (throw NoWalletProvided)
@@ -98,6 +99,7 @@ data Env api = Env
     , envNodeFilePath          :: FilePath
     , envChainIndex            :: ChainIndex
     , envInactiveEndpoints     :: InactiveEndpoints
+    , envLogger                :: Logger (ServerM api)
     , envLoggerFilePath        :: Maybe FilePath
     , envServerHandle          :: ServerHandle api
     }
@@ -133,9 +135,13 @@ loadEnv ServerHandle{..} = do
         envNodeFilePath      = cNodeFilePath
         envChainIndex        = fromMaybe shDefaultCI cChainIndex
         envBfToken           = cBfToken
+        envLogger            = logger
         envLoggerFilePath    = Nothing
-        envServerHandle      = ServerHandle shDefaultCI shAuxiliaryEnv shGetTrackedAddresses shTxEndpointsTxBuilders shServerIdle shProcessRequest 
+        envServerHandle      = ServerHandle shDefaultCI shAuxiliaryEnv shGetTrackedAddresses shTxEndpointsTxBuilders shServerIdle shProcessRequest
     pure Env{..}
+
+setLoggerFilePath :: FilePath -> ServerM api a -> ServerM api a
+setLoggerFilePath fp = local (\Env{..} -> Env{envLoggerFilePath = Just fp, ..})
 
 checkEndpointAvailability :: (InactiveEndpoints -> Bool) -> ServerM api ()
 checkEndpointAvailability endpoint = whenM (asks (endpoint . envInactiveEndpoints)) $ throwM err404

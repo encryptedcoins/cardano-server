@@ -23,7 +23,7 @@ import           Cardano.Server.Error                 (ConnectionError, Envelope
 import           Cardano.Server.Internal              (InputWithContext, ServerM, TxApiRequestOf, checkEndpointAvailability,
                                                        serverTrackedAddresses, txEndpointsTxBuilders)
 import           Cardano.Server.Tx                    (mkBalanceTx)
-import           Cardano.Server.Utils.Logger          (HasLogger (..), (.<))
+import           Cardano.Server.Utils.Logger          ((.<), logMsg)
 import           Control.Monad                        (join, liftM3)
 import           Control.Monad.Catch                  (Exception, MonadThrow (throwM))
 import           Data.Aeson                           (ToJSON)

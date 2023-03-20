@@ -10,6 +10,8 @@
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Redundant bracket" #-}
 
 module Cardano.Server.Main where
 
@@ -24,7 +26,7 @@ import           Cardano.Server.Error.CommonErrors    (ConnectionError (..))
 import           Cardano.Server.Internal              (Env (..), InputOf, InputWithContext, ServerHandle (..), ServerM (..),
                                                        TxApiRequestOf, envLoggerFilePath, loadEnv, runServerM)
 import           Cardano.Server.Tx                    (checkForCleanUtxos)
-import           Cardano.Server.Utils.Logger          (HasLogger (..), logMsg, (.<))
+import           Cardano.Server.Utils.Logger          (logMsg, (.<))
 import           Control.Concurrent                   (forkIO)
 import           Control.Exception                    (Handler (Handler), catches)
 import           Control.Monad.Reader                 (ReaderT (runReaderT))
@@ -76,22 +78,8 @@ runServer :: ServerConstraints api
     -> IO ()
 runServer sh = (`catches` errorHanlders) $ do
         env <- loadEnv sh
-        hSetBuffering stdout LineBuffering
-        forkIO $ processQueue env
-        prepareServer env
-        Warp.runSettings (settings env) $ mkApp env {envLoggerFilePath = Just "server.log"}
+        runServer' env
     where
-        prepareServer env = runServerM env $ do
-            logMsg "Starting server..."
-            checkForCleanUtxos
-        settings env = Warp.setLogger (logReceivedRequest env)
-                     $ Warp.setOnException (const $ logException env)
-                     $ Warp.setPort (envPort env)
-                       Warp.defaultSettings
-        logReceivedRequest env req status _ = runServerM env $
-            logMsg $ "Received request:\n" .< req <> "\nStatus:\n" .< status
-        logException env e = runServerM env $
-            logMsg $ "Unhandled exception:\n" .< e
         errorHanlders = [Handler connectionErroH]
         connectionErroH e = T.putStrLn $ (<> " is unavailable.") $ case e of
             PlutusChainIndexConnectionError{} -> "Cardano chain index"
@@ -99,6 +87,27 @@ runServer sh = (`catches` errorHanlders) $ do
             WalletApiConnectionError{}        -> "Cardano wallet"
             ConnectionError req _             -> T.decodeUtf8 $ path req
 
+runServer' :: ServerConstraints api
+    => Env api
+    -> IO ()
+runServer' env = do
+        hSetBuffering stdout LineBuffering
+        forkIO $ processQueue env
+        prepareServer
+        Warp.runSettings (settings ) $ mkApp env {envLoggerFilePath = Just "server.log"}
+    where
+        prepareServer = runServerM env $ do
+            logMsg "Starting server..."
+            checkForCleanUtxos
+        settings = Warp.setLogger (logReceivedRequest)
+                     $ Warp.setOnException (const logException)
+                     $ Warp.setPort (envPort env)
+                       Warp.defaultSettings
+        logReceivedRequest req status _ = runServerM env $
+            logMsg $ "Received request:\n" .< req <> "\nStatus:\n" .< status
+        logException e = runServerM env $
+            logMsg $ "Unhandled exception:\n" .< e
+        
 corsWithContentType :: Wai.Middleware
 corsWithContentType = cors (const $ Just policy)
     where policy = simpleCorsResourcePolicy { corsRequestHeaders = ["Content-Type"] }
