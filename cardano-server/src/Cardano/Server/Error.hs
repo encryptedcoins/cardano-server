@@ -3,7 +3,9 @@ module Cardano.Server.Error
     ( Throws
     , Envelope
     , toEnvelope
-    , IsCardanoServerError(..)
+
+    -- Error class
+    , IsCardanoServerError (..)
 
     -- Cardano server errors
     , ConnectionError (..)
@@ -12,11 +14,12 @@ module Cardano.Server.Error
     , SubmitTxToLocalNodeError (..)
 
     -- Other helpers functions
+    , parseErrorText
     , throwMaybe
     , throwEither
     ) where
 
-import           Cardano.Server.Error.Class      (IsCardanoServerError (..))
+import           Cardano.Server.Error.Class      (IsCardanoServerError (..), parseErrorText)
 import           Cardano.Server.Error.Servant    (Envelope, Throws)
 import           Cardano.Server.Error.ToEnvelope (toEnvelope)
 import           PlutusAppsExtra.Types.Error     (ConnectionError(..), BalanceExternalTxError(..), SubmitTxToLocalNodeError(..), MkTxError(..),

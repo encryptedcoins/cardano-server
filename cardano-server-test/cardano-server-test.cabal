@@ -39,20 +39,23 @@ test-suite cardano-server-test
   Other-Modules:        
                         Cardano.Server.Endpoints.FundsSpec
                         Cardano.Server.Endpoints.PingSpec
+                        Cardano.Server.Endpoints.StatusSpec
                         Cardano.Server.Endpoints.Tx.ServerSpec
                         Cardano.Server.Endpoints.Tx.SubmitSpec
                         Test.Gen
                         Test.Internal
   Build-Depends:
     base                          >= 4.9 && < 5,
+    aeson                                  -any,
     cardano-server                         -any,
     cardano-server-example                 -any,
     cardano-server-client                  -any,
     cardano-server-client-example          -any,
     exceptions                             -any,
-    hspec                                  -any,   
+    hspec                                  -any,
     hspec-wai                              -any,
     http-types                             -any,
     servant-client                         -any,
-    QuickCheck                             -any,    
+    text                                   -any,
+    QuickCheck                             -any,
     warp                                   -any,

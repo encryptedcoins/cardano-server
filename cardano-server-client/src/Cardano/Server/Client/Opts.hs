@@ -25,7 +25,7 @@ data Options = Options
 serverEndpointParser :: Parser ServerEndpoint
 serverEndpointParser = argument auto
     (  value SubmitTxE
-    <> metavar "Ping | Funds | NewTx | SubmitTx | ServerTx"
+    <> metavar "ping | funds | newTx | submitTx | serverTx | status"
     )
 
 --------------------------------------------- Auto ---------------------------------------------

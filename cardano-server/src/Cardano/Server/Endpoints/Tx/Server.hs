@@ -15,11 +15,12 @@ module Cardano.Server.Endpoints.Tx.Server where
 import           Cardano.Server.Config                (isInactiveServerTx)
 import           Cardano.Server.Endpoints.Tx.Internal (TxApiErrorOf)
 import           Cardano.Server.Error                 (ConnectionError, Envelope, IsCardanoServerError, Throws, toEnvelope)
-import           Cardano.Server.Internal              (Env (envQueueRef), InputOf, InputWithContext, Queue,
-                                                       QueueRef, ServerM, TxApiRequestOf, checkEndpointAvailability, getQueueRef,
-                                                       runServerM, serverIdle, serverTrackedAddresses, txEndpointsTxBuilders, setLoggerFilePath)
+import           Cardano.Server.Internal              (Env (envQueueRef), InputOf, InputWithContext, Queue, QueueRef, ServerM,
+                                                       TxApiRequestOf, checkEndpointAvailability, getQueueRef, runServerM,
+                                                       serverIdle, serverTrackedAddresses, setLoggerFilePath,
+                                                       txEndpointProcessRequest, txEndpointsTxBuilders)
 import           Cardano.Server.Tx                    (checkForCleanUtxos, mkTx)
-import           Cardano.Server.Utils.Logger          (logSmth, (.<), logMsg)
+import           Cardano.Server.Utils.Logger          (logMsg, logSmth, (.<))
 import           Cardano.Server.Utils.Wait            (waitTime)
 import           Control.Monad                        (join, liftM3, void, when)
 import           Control.Monad.Catch                  (SomeException, catch)
@@ -38,13 +39,12 @@ type ServerTxApi reqBody err = "serverTx"
     :> Post '[JSON] NoContent
 
 serverTxHandler :: (Show (TxApiRequestOf api), IsCardanoServerError (TxApiErrorOf api))
-    => (TxApiRequestOf api -> ServerM api (InputWithContext api))
-    -> TxApiRequestOf api
+    => TxApiRequestOf api
     -> ServerM api (Envelope '[TxApiErrorOf api, ConnectionError] NoContent)
-serverTxHandler txEndpointsProcessRequest req = toEnvelope $ do
+serverTxHandler req = toEnvelope $ do
     logMsg $ "New serverTx request received:\n" .< req
     checkEndpointAvailability isInactiveServerTx
-    arg <- txEndpointsProcessRequest req
+    arg <- txEndpointProcessRequest req
     ref <- getQueueRef
     liftIO $ atomicModifyIORef ref ((,()) . (|> arg))
     pure NoContent

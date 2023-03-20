@@ -7,7 +7,7 @@ module Cardano.Server.Endpoints.FundsSpec where
 
 import           Cardano.Server.Client.Gen      (randomFundsReqBody)
 import           Cardano.Server.Client.Handle   (HasServantClientEnv)
-import           Cardano.Server.Client.Internal (funds)
+import           Cardano.Server.Client.Internal (fundsC)
 import           Cardano.Server.Config          (Config (..), loadConfig)
 import           Test.Gen                       (Malformed (..))
 import           Test.Hspec                     (Spec, describe, it)
@@ -20,8 +20,8 @@ spec = describe "/funds" $ do
     it "get funds when all is ok" $ do
         Config{..} <- loadConfig
         fundsReqBody <- randomFundsReqBody cNetworkId
-        shouldBeOk $ funds fundsReqBody
+        shouldBeOk $ fundsC fundsReqBody
 
     it "fails with malformed request body" $ do
         Malformed fundsReqBody <- generate arbitrary
-        funds fundsReqBody `shoudlFailWithStatus` 400
+        fundsC fundsReqBody `shoudlFailWithStatus` 400

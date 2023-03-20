@@ -17,30 +17,37 @@ module Cardano.Server.Client.Internal where
 
 import           Cardano.Server.Endpoints.Funds       (Funds, FundsApi, FundsReqBody)
 import           Cardano.Server.Endpoints.Ping        (PingApi)
+import           Cardano.Server.Endpoints.Status      (StatusApi')
 import           Cardano.Server.Endpoints.Tx.Internal (TxApiErrorOf)
 import           Cardano.Server.Endpoints.Tx.New      (NewTxApi)
 import           Cardano.Server.Endpoints.Tx.Server   (ServerTxApi)
 import           Cardano.Server.Endpoints.Tx.Submit   (SubmitTxApi, SubmitTxReqBody (..))
-import           Cardano.Server.Internal              (TxApiRequestOf)
+import           Cardano.Server.Internal              (HasStatusEndpoint (..), TxApiRequestOf)
 import           Data.Kind                            (Type)
 import           Data.Text                            (Text)
-import           Servant                              (JSON, MimeRender, NoContent, Proxy (Proxy))
-import           Servant.Client                       (ClientM, client)
+import           Servant                              (Get, JSON, MimeRender, NoContent, Proxy (Proxy))
+import           Servant.Client                       (ClientM, HasClient, client)
 
-ping :: ClientM NoContent
-ping = client (Proxy @PingApi)
+pingC :: ClientM NoContent
+pingC = client (Proxy @PingApi)
 
-funds :: FundsReqBody -> ClientM Funds
-funds = client (Proxy @FundsApi)
+fundsC :: FundsReqBody -> ClientM Funds
+fundsC = client (Proxy @FundsApi)
 
-newTx :: forall api. MimeRender JSON (TxApiRequestOf api) => TxApiRequestOf api -> ClientM Text
-newTx = client (Proxy @(NewTxApi (TxApiRequestOf api) (TxApiErrorOf api)))
+newTxC :: forall api. MimeRender JSON (TxApiRequestOf api) => TxApiRequestOf api -> ClientM Text
+newTxC = client (Proxy @(NewTxApi (TxApiRequestOf api) (TxApiErrorOf api)))
 
-submitTx :: forall api. SubmitTxReqBody -> ClientM NoContent
-submitTx = client (Proxy @(SubmitTxApi (TxApiErrorOf api)))
+submitTxC :: forall api. SubmitTxReqBody -> ClientM NoContent
+submitTxC = client (Proxy @(SubmitTxApi (TxApiErrorOf api)))
 
-serverTx :: forall api. MimeRender JSON (TxApiRequestOf api) => TxApiRequestOf api -> ClientM NoContent
-serverTx = client (Proxy @(ServerTxApi (TxApiRequestOf api) (TxApiErrorOf api)))
+serverTxC :: forall api. MimeRender JSON (TxApiRequestOf api) => TxApiRequestOf api -> ClientM NoContent
+serverTxC = client (Proxy @(ServerTxApi (TxApiRequestOf api) (TxApiErrorOf api)))
+
+statusC :: forall api. 
+    ( MimeRender JSON (StatusEndpointReqBodyOf api)
+    , HasClient ClientM (Get '[JSON] (StatusEndpointResOf api))
+    ) => StatusEndpointReqBodyOf api -> ClientM (StatusEndpointResOf api)
+statusC = client (Proxy @(StatusApi' api))
 
 data ServerEndpoint
     = PingE
@@ -48,6 +55,7 @@ data ServerEndpoint
     | NewTxE
     | SubmitTxE
     | ServerTxE
+    | StatusE
 
 instance Read ServerEndpoint where
     readsPrec _ = \case
@@ -56,6 +64,7 @@ instance Read ServerEndpoint where
         "newTx"    -> [(NewTxE   , "")]
         "submitTx" -> [(SubmitTxE, "")]
         "serverTx" -> [(ServerTxE, "")]
+        "status"   -> [(StatusE  , "")]
         _          -> []
 
 instance Show ServerEndpoint where
@@ -65,36 +74,46 @@ instance Show ServerEndpoint where
         NewTxE    -> "newTx"
         SubmitTxE -> "submitTx"
         ServerTxE -> "serverTx"
+        StatusE   -> "status"
 
-class (Show (EndpointArg e api), Show (EndpointRes e)) => ClientEndpoint (e :: ServerEndpoint) api where
+class (Show (EndpointArg e api), Show (EndpointRes e api)) => ClientEndpoint (e :: ServerEndpoint) api where
     type EndpointArg e api :: Type
-    type EndpointRes e     :: Type
-    endpointClient         :: EndpointArg e api -> ClientM (EndpointRes e)
+    type EndpointRes e api :: Type
+    endpointClient         :: EndpointArg e api -> ClientM (EndpointRes e api)
 
 instance ClientEndpoint 'PingE api where
     type EndpointArg 'PingE _ = ()
-    type EndpointRes 'PingE   = NoContent
-    endpointClient            = const ping
+    type EndpointRes 'PingE _ = NoContent
+    endpointClient            = const pingC
 
 instance ClientEndpoint 'FundsE api where
     type EndpointArg 'FundsE _ = FundsReqBody
-    type EndpointRes 'FundsE   = Funds
-    endpointClient             = funds
+    type EndpointRes 'FundsE _ = Funds
+    endpointClient             = fundsC
 
 instance (Show (TxApiRequestOf api), MimeRender JSON (TxApiRequestOf api)) => ClientEndpoint 'NewTxE api where
     type EndpointArg 'NewTxE api = TxApiRequestOf api
-    type EndpointRes 'NewTxE     = Text
-    endpointClient               = newTx @api
+    type EndpointRes 'NewTxE _   = Text
+    endpointClient               = newTxC @api
 
 instance ClientEndpoint 'SubmitTxE api where
     type EndpointArg 'SubmitTxE api = SubmitTxReqBody
-    type EndpointRes 'SubmitTxE     = NoContent
-    endpointClient                  = submitTx
+    type EndpointRes 'SubmitTxE _   = NoContent
+    endpointClient                  = submitTxC
 
 instance (Show (TxApiRequestOf api), MimeRender JSON (TxApiRequestOf api)) => ClientEndpoint 'ServerTxE api where
     type EndpointArg 'ServerTxE api = TxApiRequestOf api
-    type EndpointRes 'ServerTxE     = NoContent
-    endpointClient                  = serverTx @api
+    type EndpointRes 'ServerTxE _   = NoContent
+    endpointClient                  = serverTxC @api
+
+instance ( Show (StatusEndpointReqBodyOf api)
+         , Show (StatusEndpointResOf api)
+         , MimeRender JSON (StatusEndpointReqBodyOf api)
+         , HasClient ClientM (Get '[JSON] (StatusEndpointResOf api))
+         ) => ClientEndpoint 'StatusE api where
+    type EndpointArg 'StatusE api = StatusEndpointReqBodyOf api
+    type EndpointRes 'StatusE api = StatusEndpointResOf api
+    endpointClient                = statusC @api 
 
 type Interval = Int
 

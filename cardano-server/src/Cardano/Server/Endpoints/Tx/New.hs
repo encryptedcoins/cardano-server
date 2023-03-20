@@ -20,10 +20,10 @@ import           Cardano.Server.Config                (isInactiveNewTx)
 import           Cardano.Server.Endpoints.Tx.Internal (TxApiErrorOf)
 import           Cardano.Server.Error                 (ConnectionError, Envelope, IsCardanoServerError (..), MkTxError, Throws,
                                                        toEnvelope)
-import           Cardano.Server.Internal              (InputWithContext, ServerM, TxApiRequestOf, checkEndpointAvailability,
-                                                       serverTrackedAddresses, txEndpointsTxBuilders)
+import           Cardano.Server.Internal              (ServerM, TxApiRequestOf, checkEndpointAvailability, serverTrackedAddresses,
+                                                       txEndpointProcessRequest, txEndpointsTxBuilders)
 import           Cardano.Server.Tx                    (mkBalanceTx)
-import           Cardano.Server.Utils.Logger          ((.<), logMsg)
+import           Cardano.Server.Utils.Logger          (logMsg, (.<))
 import           Control.Monad                        (join, liftM3)
 import           Control.Monad.Catch                  (Exception, MonadThrow (throwM))
 import           Data.Aeson                           (ToJSON)
@@ -49,14 +49,13 @@ instance IsCardanoServerError NewTxApiError where
     errStatus _ = toEnum 422
     errMsg (UnserialisableCardanoTx tx) = "Cannot serialise balanced tx:" .< tx
 
-newTxHandler :: (Show (TxApiRequestOf api), IsCardanoServerError (TxApiErrorOf api)) 
-    => (TxApiRequestOf api -> ServerM api (InputWithContext api))
-    -> TxApiRequestOf api
+newTxHandler :: (Show (TxApiRequestOf api), IsCardanoServerError (TxApiErrorOf api))
+    => TxApiRequestOf api
     -> ServerM api (Envelope [TxApiErrorOf api, NewTxApiError, ConnectionError, MkTxError] Text)
-newTxHandler txEndpointsProcessRequest req = toEnvelope $ do
+newTxHandler req = toEnvelope $ do
     logMsg $ "New newTx request received:\n" .< req
     checkEndpointAvailability isInactiveNewTx
-    (input, context) <- txEndpointsProcessRequest req
+    (input, context) <- txEndpointProcessRequest req
     balancedTx <- join $ liftM3 mkBalanceTx serverTrackedAddresses (pure context) (txEndpointsTxBuilders input)
     case cardanoTxToText balancedTx of
         Just res -> pure res

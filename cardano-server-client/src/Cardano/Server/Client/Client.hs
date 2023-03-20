@@ -44,11 +44,13 @@ runClient sh ClientHandle{..} = handleNotImplementedMethods $ do
         (Auto     i, NewTxE   ) -> void $ autoNewTx        i
         (Auto     i, SubmitTxE) -> void $ autoSumbitTx     i
         (Auto     i, ServerTxE) -> void $ autoServerTx     i
+        (Auto     i, StatusE  ) -> void $ autoStatus       i
         (Manual txt, PingE    ) -> void $ manualPing     txt
         (Manual txt, FundsE   ) -> void $ manualFunds    txt
         (Manual txt, NewTxE   ) -> void $ manualNewTx    txt
         (Manual txt, SubmitTxE) -> void $ manualSubmitTx txt
         (Manual txt, ServerTxE) -> void $ manualServerTx txt
+        (Manual txt, StatusE  ) -> void $ manualStatus   txt
     where
         withGreetings = (logMsg "Starting client..." >>)
         handleNotImplementedMethods = handle $ \(NotImplementedMethodError mode endpoint) ->

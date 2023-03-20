@@ -2,6 +2,7 @@
 {-# LANGUAGE ConstraintKinds       #-}
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE PatternSynonyms       #-}
 {-# LANGUAGE QuantifiedConstraints #-}
@@ -10,26 +11,26 @@
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-{-# HLINT ignore "Redundant bracket" #-}
+{-# OPTIONS_GHC -Wno-orphans       #-}
 
 module Cardano.Server.Main where
 
 import           Cardano.Server.Endpoints.Funds       (FundsApi, fundsHandler)
 import           Cardano.Server.Endpoints.Ping        (PingApi, pingHandler)
+import           Cardano.Server.Endpoints.Status      (StatusApi, commonStatusHandler)
 import           Cardano.Server.Endpoints.Tx.Internal (TxApiErrorOf)
 import           Cardano.Server.Endpoints.Tx.New      (NewTxApi, newTxHandler)
 import           Cardano.Server.Endpoints.Tx.Server   (ServerTxApi, processQueue, serverTxHandler)
 import           Cardano.Server.Endpoints.Tx.Submit   (SubmitTxApi, submitTxHandler)
 import           Cardano.Server.Error.Class           (IsCardanoServerError)
 import           Cardano.Server.Error.CommonErrors    (ConnectionError (..))
-import           Cardano.Server.Internal              (Env (..), InputOf, InputWithContext, ServerHandle (..), ServerM (..),
+import           Cardano.Server.Internal              (Env (..), HasStatusEndpoint (..), InputOf, ServerHandle (..), ServerM (..),
                                                        TxApiRequestOf, envLoggerFilePath, loadEnv, runServerM)
 import           Cardano.Server.Tx                    (checkForCleanUtxos)
 import           Cardano.Server.Utils.Logger          (logMsg, (.<))
 import           Control.Concurrent                   (forkIO)
 import           Control.Exception                    (Handler (Handler), catches)
-import           Control.Monad.Reader                 (ReaderT (runReaderT))
+import           Control.Monad.Reader                 (ReaderT (runReaderT), asks)
 import qualified Data.Text.Encoding                   as T
 import qualified Data.Text.IO                         as T
 import           Network.HTTP.Client                  (path)
@@ -43,39 +44,53 @@ import           Servant                              (Application, Proxy (..), 
 import qualified Servant
 import           System.IO                            (BufferMode (LineBuffering), hSetBuffering, stdout)
 
-type ServerApi reqBody txApiError
+type ServerApi txApiReqBody txApiError statusApiReqBody statusApiErrors statusApiRes
     = PingApi
     :<|> FundsApi
-    :<|> NewTxApi reqBody txApiError
+    :<|> NewTxApi txApiReqBody txApiError
     :<|> SubmitTxApi txApiError
-    :<|> ServerTxApi reqBody txApiError
+    :<|> ServerTxApi txApiReqBody txApiError
+    :<|> StatusApi statusApiErrors statusApiReqBody statusApiRes
 
-type instance TxApiRequestOf (ServerApi reqBody _) = reqBody
-type instance TxApiErrorOf (ServerApi _ txApiError) = txApiError
+type instance TxApiRequestOf (ServerApi reqBody _ _ _ _) = reqBody
+type instance TxApiErrorOf (ServerApi _ txApiError _ _ _) = txApiError
 
-type ServerApi' api = ServerApi (TxApiRequestOf api) (TxApiErrorOf api)
+instance HasStatusEndpoint (ServerApi r e statusReqBody statusErrors statusRes) where
+    type StatusEndpointErrorsOf (ServerApi _ _ _ statusErrors _) = statusErrors
+    type StatusEndpointReqBodyOf (ServerApi _ _ statusReqBody _ _) = statusReqBody
+    type StatusEndpointResOf (ServerApi _ _ _ _ statusRes) = statusRes
+    statusHandler reqBody = asks (shStatusHandler . envServerHandle) >>= ($ reqBody)
+
+type ServerApi' api
+    = ServerApi
+    (TxApiRequestOf api)
+    (TxApiErrorOf api)
+    (StatusEndpointReqBodyOf api)
+    (StatusEndpointErrorsOf api)
+    (StatusEndpointResOf api)
 
 type ServerConstraints api =
     ( Servant.HasServer (ServerApi' api) '[]
     , IsCardanoServerError (TxApiErrorOf api)
     , Show (InputOf api)
     , Show (TxApiRequestOf api)
+    , Show (StatusEndpointReqBodyOf api)
     )
 
-server :: ServerConstraints api => (TxApiRequestOf api -> ServerM api (InputWithContext api)) -> ServerT (ServerApi' api) (ServerM api)
-server processRequest
+server :: forall api. ServerConstraints api
+    => ServerT (ServerApi' api) (ServerM api)
+server
     =    pingHandler
     :<|> fundsHandler
-    :<|> newTxHandler processRequest
+    :<|> newTxHandler
     :<|> submitTxHandler
-    :<|> serverTxHandler processRequest
+    :<|> serverTxHandler
+    :<|> commonStatusHandler
 
 serverAPI :: forall api. Proxy (ServerApi' api)
 serverAPI = Proxy @(ServerApi' api)
 
-runServer :: ServerConstraints api
-    => ServerHandle api
-    -> IO ()
+runServer :: ServerConstraints api => ServerHandle api -> IO ()
 runServer sh = (`catches` errorHanlders) $ do
         env <- loadEnv sh
         runServer' env
@@ -87,31 +102,29 @@ runServer sh = (`catches` errorHanlders) $ do
             WalletApiConnectionError{}        -> "Cardano wallet"
             ConnectionError req _             -> T.decodeUtf8 $ path req
 
-runServer' :: ServerConstraints api
-    => Env api
-    -> IO ()
+runServer' :: ServerConstraints api => Env api -> IO ()
 runServer' env = do
         hSetBuffering stdout LineBuffering
         forkIO $ processQueue env
         prepareServer
-        Warp.runSettings (settings ) $ mkApp env {envLoggerFilePath = Just "server.log"}
+        Warp.runSettings settings $ mkApp env {envLoggerFilePath = Just "server.log"}
     where
         prepareServer = runServerM env $ do
             logMsg "Starting server..."
             checkForCleanUtxos
-        settings = Warp.setLogger (logReceivedRequest)
-                     $ Warp.setOnException (const logException)
-                     $ Warp.setPort (envPort env)
-                       Warp.defaultSettings
+        settings = Warp.setLogger logReceivedRequest
+                 $ Warp.setOnException (const logException)
+                 $ Warp.setPort (envPort env)
+                   Warp.defaultSettings
         logReceivedRequest req status _ = runServerM env $
             logMsg $ "Received request:\n" .< req <> "\nStatus:\n" .< status
         logException e = runServerM env $
             logMsg $ "Unhandled exception:\n" .< e
-        
+
 corsWithContentType :: Wai.Middleware
 corsWithContentType = cors (const $ Just policy)
     where policy = simpleCorsResourcePolicy { corsRequestHeaders = ["Content-Type"] }
 
 mkApp :: forall api. ServerConstraints api => Env api -> Application
-mkApp env = corsWithContentType $ serve (serverAPI @api) $
-    hoistServer (serverAPI @api) ((`runReaderT` env) . unServerM) $ server (shProcessRequest $ envServerHandle env)
+mkApp env 
+    = corsWithContentType $ serve (serverAPI @api) $ hoistServer (serverAPI @api) ((`runReaderT` env) . unServerM) server

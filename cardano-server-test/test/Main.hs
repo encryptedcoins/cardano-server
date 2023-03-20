@@ -6,6 +6,7 @@ module Main where
 import           Cardano.Server.Client.Client           (createServantClientEnv)
 import qualified Cardano.Server.Endpoints.FundsSpec     as Funds
 import qualified Cardano.Server.Endpoints.PingSpec      as Ping
+import qualified Cardano.Server.Endpoints.StatusSpec    as Status
 import qualified Cardano.Server.Endpoints.Tx.ServerSpec as ServerTx
 import qualified Cardano.Server.Endpoints.Tx.SubmitSpec as SubmitTx
 import           Cardano.Server.Example.Main            (exampleHandle)
@@ -30,4 +31,5 @@ main =  do
             Funds.spec
             ServerTx.spec
             SubmitTx.spec
+            Status.spec
 

@@ -6,10 +6,9 @@
 module Cardano.Server.Client.Example.Main where
 
 import           Cardano.Server.Client.Client (runClient)
-import           Cardano.Server.Client.Handle (ClientHandle (..), autoWith, manualWith)
-import           Cardano.Server.Example.Main  (ExampleApi, exampleHandle)
+import           Cardano.Server.Client.Handle (ClientHandle (..), autoWith, autoWithRandom, manualWith, manualWithRead)
+import           Cardano.Server.Example.Main  (exampleHandle)
 import           Cardano.Server.Input         (InputContext)
-import           Cardano.Server.Internal      (ServerM)
 import           Control.Monad                (replicateM)
 import           Control.Monad.IO.Class       (MonadIO (liftIO))
 import           Data.Default                 (Default (def))
@@ -24,8 +23,10 @@ runExampleClient :: IO ()
 runExampleClient = runClient exampleHandle $ def
     { autoNewTx      = autoWith   genInput
     , autoServerTx   = autoWith   genInput
+    , autoStatus     = autoWithRandom   
     , manualNewTx    = manualWith readInput
     , manualServerTx = manualWith readInput
+    , manualStatus   = manualWithRead
     }
 
 genInput :: MonadIO m => m ([BuiltinByteString], InputContext)
@@ -34,5 +35,5 @@ genInput = fmap ((,def) . nub) $ liftIO $ do
     let genBbs = stringToBuiltinByteString <$> (randomRIO (2, 8) >>= (`replicateM` randomIO))
     replicateM inputLength genBbs
 
-readInput :: Text -> ServerM ExampleApi ([BuiltinByteString], InputContext)
+readInput :: Monad m => Text -> m ([BuiltinByteString], InputContext)
 readInput = pure . (,def) . map stringToBuiltinByteString . words . T.unpack

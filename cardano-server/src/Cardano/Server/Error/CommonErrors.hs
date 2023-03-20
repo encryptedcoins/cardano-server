@@ -20,9 +20,9 @@ import           PlutusAppsExtra.IO.ChainIndex.Plutus (pattern PlutusChainIndexC
 import           PlutusAppsExtra.IO.Wallet            (pattern WalletApiConnectionError)
 import           PlutusAppsExtra.Types.Error          (BalanceExternalTxError (..), ConnectionError (..), MkTxError (..),
                                                        SubmitTxToLocalNodeError (..))
-                                                       
-data InternalServerError 
-    = NoWalletProvided 
+
+data InternalServerError
+    = NoWalletProvided
     deriving (Show, Exception)
 
 instance IsCardanoServerError ConnectionError where
@@ -41,15 +41,15 @@ instance IsCardanoServerError MkTxError where
 instance IsCardanoServerError BalanceExternalTxError where
     errStatus _ = toEnum 422
     errMsg e = "The requested transaction could not be built. Reason: " <> case e of
-        MakeUnbalancedTxError          
+        MakeUnbalancedTxError
             -> "Unable to build an UnbalancedTx."
-        MakeBuildTxFromEmulatorTxError 
+        MakeBuildTxFromEmulatorTxError
             -> "Unable to extract CardanoBuildTx from EmulatorTx."
-        NonBabbageEraChangeAddress     
+        NonBabbageEraChangeAddress
             -> "Change address is not from Babbage era."
-        MakeUtxoProviderError err         
+        MakeUtxoProviderError err
             -> "Unable to extract an utxoProvider from wallet outputs:\n" .< err
-        MakeAutoBalancedTxError        
+        MakeAutoBalancedTxError
             -> "Unable to build an auto balanced tx."
 
 instance IsCardanoServerError SubmitTxToLocalNodeError where

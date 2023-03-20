@@ -3,9 +3,11 @@
 
 module Cardano.Server.Error.Class where
 
+import           Control.Lens              ((^?))
 import           Control.Monad.Catch       (Exception)
 import           Data.Aeson                (KeyValue ((.=)))
 import qualified Data.Aeson                as J
+import           Data.Aeson.Lens           (_String, key)
 import qualified Data.ByteString.Lazy      as LBS
 import           Data.Text                 (Text)
 import qualified Data.Text                 as T
@@ -34,6 +36,9 @@ cardanoServerErrorToJSON e = J.object
     , "errMsg" .= errMsg e
     ]
  
+parseErrorText :: J.Value -> Maybe Text
+parseErrorText = (^? key "errMsg" . _String)
+
 toServantError :: forall e. IsCardanoServerError e => e -> Servant.ServerError
 toServantError e = Servant.ServerError 
     (fromEnum $ errStatus e) 

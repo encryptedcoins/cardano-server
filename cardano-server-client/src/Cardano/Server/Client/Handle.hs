@@ -39,12 +39,14 @@ data ClientHandle api = ClientHandle
     , autoNewTx      :: HasServantClientEnv => Interval -> ServerM api (Proxy 'NewTxE)
     , autoSumbitTx   :: HasServantClientEnv => Interval -> ServerM api (Proxy 'SubmitTxE)
     , autoServerTx   :: HasServantClientEnv => Interval -> ServerM api (Proxy 'ServerTxE)
-    -- -- Manual
+    , autoStatus     :: HasServantClientEnv => Interval -> ServerM api (Proxy 'StatusE)
+    -- Manual
     , manualPing     :: HasServantClientEnv => Text -> ServerM api (Proxy 'PingE)
     , manualFunds    :: HasServantClientEnv => Text -> ServerM api (Proxy 'FundsE)
     , manualNewTx    :: HasServantClientEnv => Text -> ServerM api (Proxy 'NewTxE)
     , manualSubmitTx :: HasServantClientEnv => Text -> ServerM api (Proxy 'SubmitTxE)
     , manualServerTx :: HasServantClientEnv => Text -> ServerM api (Proxy 'ServerTxE)
+    , manualStatus   :: HasServantClientEnv => Text -> ServerM api (Proxy 'StatusE)
     }
 
 instance Default (ClientHandle api) where
@@ -54,11 +56,13 @@ instance Default (ClientHandle api) where
         , autoNewTx      = throwAutoNotImplemented NewTxE
         , autoSumbitTx   = autoWith randomSubmitTxBody
         , autoServerTx   = throwAutoNotImplemented ServerTxE
+        , autoStatus     = throwAutoNotImplemented StatusE
         , manualPing     = const $ sendRequest ()
         , manualFunds    = manualWithRead
         , manualNewTx    = throwManualNotImplemented NewTxE
         , manualSubmitTx = manualWithRead
         , manualServerTx = throwManualNotImplemented ServerTxE
+        , manualStatus   = throwManualNotImplemented StatusE
         }
 
 data NotImplementedMethodError = NotImplementedMethodError Mode ServerEndpoint

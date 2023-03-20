@@ -5,7 +5,6 @@
 module Cardano.Server.Config where
 
 import           Cardano.Api                   (NetworkId (..))
-import           Cardano.Node.Emulator         ()
 import           Data.Aeson                    (FromJSON (..), eitherDecodeFileStrict, genericParseJSON)
 import           Data.Aeson.Casing             (aesonDrop, aesonPrefix, snakeCase)
 import           Data.Text                     (Text)
@@ -36,6 +35,7 @@ data InactiveEndpoints = InactiveEndpoints
     , isInactiveSubmitTx     :: Bool
     , isInactiveServerTx     :: Bool
     , isInactiveNewTx        :: Bool
+    , isInactiveStatus       :: Bool
     } deriving (Show, Generic)
 
 configFile :: FilePath

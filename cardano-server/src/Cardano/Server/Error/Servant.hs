@@ -84,9 +84,9 @@ instance HasServer (Throwing '[e] :> api) ctx => HasServer (Throws e :> api) ctx
     route _ = route (Proxy :: Proxy (Throwing '[e] :> api))
 
 instance (RunClient m, HasClient m (Throwing '[e] :> api)) => HasClient m (Throws e :> api) where
-    
+
     type Client m (Throws e :> api) = Client m (Throwing '[e] :> api)
-    
+
     clientWithRoute p Proxy = clientWithRoute p (Proxy @(Throwing '[e] :> api))
 
     hoistClientMonad pm _ = hoistClientMonad pm (Proxy @(Throwing '[e] :> api))
@@ -144,14 +144,14 @@ instance (RunClient m, HasClient m (ThrowingNonterminal (Throwing es :> api :> a
         hoistClientMonad pm (Proxy @(ThrowingNonterminal (Throwing es :> api :> apis)))
 
 -- VerbWithErrors:
-instance 
+instance
     ( KnownNat status
     , ReflectMethod method
     , AllCTRender ctypes (Envelope es a)
     ) => HasServer (VerbWithErrors es method status ctypes a) ctx where
 
-    type ServerT (VerbWithErrors es method status ctypes a) m 
-        = m (Envelope es a) 
+    type ServerT (VerbWithErrors es method status ctypes a) m
+        = m (Envelope es a)
 
     hoistServerWithContext _ _ nt = nt
 
@@ -166,7 +166,7 @@ instance (RunClient m, HasClient m (Verb method status ctypes a))
     type Client m (VerbWithErrors es method status ctypes a) =
         Client m (Verb method status ctypes a)
 
-    clientWithRoute p _ = clientWithRoute p 
+    clientWithRoute p _ = clientWithRoute p
         (Proxy :: Proxy (Verb method status ctypes a))
 
     hoistClientMonad pm _ =
@@ -199,7 +199,7 @@ methodRouter method successStatus proxy action = leafRouter route'
             processMethodRouter handleA status method Nothing request
         methodCheck request
             | allowedMethod method request = return ()
-            | otherwise                     = delayedFail err405
+            | otherwise                    = delayedFail err405
         acceptCheck accH
             | canHandleAcceptH proxy (AcceptHeader accH) = return ()
             | otherwise                                  = delayedFail err406

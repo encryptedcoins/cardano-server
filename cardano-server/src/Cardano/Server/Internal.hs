@@ -18,9 +18,10 @@ module Cardano.Server.Internal where
 
 import           Cardano.Node.Emulator             (Params (..), pParamsFromProtocolParams)
 import           Cardano.Server.Config             (Config (..), InactiveEndpoints, decodeOrErrorFromFile, loadConfig)
+import           Cardano.Server.Error              (Envelope)
 import           Cardano.Server.Error.CommonErrors (InternalServerError (NoWalletProvided))
 import           Cardano.Server.Input              (InputContext)
-import           Cardano.Server.Utils.Logger       
+import           Cardano.Server.Utils.Logger       (HasLogger (..), Logger, logger)
 import           Control.Exception                 (throw)
 import           Control.Monad.Catch               (MonadCatch, MonadThrow (..))
 import           Control.Monad.Except              (MonadError)
@@ -78,6 +79,14 @@ type Queue api = Seq (InputWithContext api)
 
 type QueueRef api = IORef (Queue api)
 
+class HasStatusEndpoint api where
+    type StatusEndpointErrorsOf  api :: [Type]
+    type StatusEndpointReqBodyOf api :: Type
+    type StatusEndpointResOf     api :: Type
+    statusHandler :: StatusHandler api
+
+type StatusHandler api = StatusEndpointReqBodyOf api -> ServerM api (Envelope (StatusEndpointErrorsOf api) (StatusEndpointResOf api))
+
 data ServerHandle api = ServerHandle
     { shDefaultCI              :: ChainIndex
     , shAuxiliaryEnv           :: AuxillaryEnvOf api
@@ -85,6 +94,7 @@ data ServerHandle api = ServerHandle
     , shTxEndpointsTxBuilders  :: InputOf api -> ServerM api [TransactionBuilder ()]
     , shServerIdle             :: ServerM api ()
     , shProcessRequest         :: TxApiRequestOf api -> ServerM api (InputWithContext api)
+    , shStatusHandler          :: StatusHandler api
     }
 
 data Env api = Env
@@ -113,14 +123,16 @@ txEndpointsTxBuilders input = asks (shTxEndpointsTxBuilders . envServerHandle) >
 serverIdle :: ServerM api ()
 serverIdle = join $ asks $ shServerIdle . envServerHandle
 
+txEndpointProcessRequest :: TxApiRequestOf api -> ServerM api (InputWithContext api)
+txEndpointProcessRequest req = asks (shProcessRequest . envServerHandle) >>= ($ req)
+
 getQueueRef :: ServerM api (QueueRef api)
 getQueueRef = asks envQueueRef
 
 getNetworkId :: ServerM api NetworkId
 getNetworkId = asks $ pNetworkId . envLedgerParams
 
-loadEnv :: ServerHandle api
-        -> IO (Env api)
+loadEnv :: ServerHandle api -> IO (Env api)
 loadEnv ServerHandle{..} = do
     Config{..}   <- loadConfig
     envQueueRef  <- newIORef empty
@@ -137,7 +149,14 @@ loadEnv ServerHandle{..} = do
         envBfToken           = cBfToken
         envLogger            = logger
         envLoggerFilePath    = Nothing
-        envServerHandle      = ServerHandle shDefaultCI shAuxiliaryEnv shGetTrackedAddresses shTxEndpointsTxBuilders shServerIdle shProcessRequest
+        envServerHandle      = ServerHandle 
+            shDefaultCI
+            shAuxiliaryEnv
+            shGetTrackedAddresses
+            shTxEndpointsTxBuilders
+            shServerIdle
+            shProcessRequest
+            shStatusHandler
     pure Env{..}
 
 setLoggerFilePath :: FilePath -> ServerM api a -> ServerM api a

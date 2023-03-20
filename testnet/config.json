@@ -15,5 +15,6 @@
     , "submit_tx"     : false
     , "new_tx"        : false
     , "server_tx"     : false
+    , "status"        : false
     }
 }
