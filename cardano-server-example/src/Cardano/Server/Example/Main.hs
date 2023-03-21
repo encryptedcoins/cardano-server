@@ -9,8 +9,7 @@
 
 module Cardano.Server.Example.Main where
 
-import           Cardano.Server.Error            (Envelope, toEnvelope)
-import           Cardano.Server.Error.Class      (IsCardanoServerError (..))
+import           Cardano.Server.Error            (Envelope, toEnvelope, IsCardanoServerError (..))
 import           Cardano.Server.Example.OffChain (testMintTx)
 import           Cardano.Server.Input            (InputContext)
 import           Cardano.Server.Internal         (AuxillaryEnvOf, InputOf, ServerHandle (ServerHandle), ServerM)
