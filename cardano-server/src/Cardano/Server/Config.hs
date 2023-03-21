@@ -31,7 +31,6 @@ data Config = Config
 data InactiveEndpoints = InactiveEndpoints
     { isInactivePing         :: Bool
     , isInactiveFunds        :: Bool
-    , isInactiveAddSignature :: Bool
     , isInactiveSubmitTx     :: Bool
     , isInactiveServerTx     :: Bool
     , isInactiveNewTx        :: Bool
