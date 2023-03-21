@@ -60,14 +60,14 @@ submitTxHandler :: IsCardanoServerError (TxApiErrorOf api)
     => SubmitTxReqBody 
     -> ServerM api (Envelope '[TxApiErrorOf api, SubmitTxApiError, SubmitTxToLocalNodeError, ConnectionError] NoContent)
 submitTxHandler req = toEnvelope $ do
-        logMsg $ "New submitTx request received:\n" .< req
-        checkEndpointAvailability isInactiveSubmitTx
-        (ctx, wtns) <- either throwM pure $ parseSubmitTxReqBody req
-        let ctx' = foldr (uncurry addCardanoTxSignature) ctx wtns
-        networkId <- asks $ pNetworkId . envLedgerParams
-        node      <- asks envNodeFilePath
-        liftIO (sumbitTxToNodeLocal node networkId ctx')
-        pure NoContent
+    logMsg $ "New submitTx request received:\n" .< req
+    checkEndpointAvailability isInactiveSubmitTx
+    (ctx, wtns) <- either throwM pure $ parseSubmitTxReqBody req
+    let ctx' = foldr (uncurry addCardanoTxSignature) ctx wtns
+    networkId <- asks $ pNetworkId . envLedgerParams
+    node      <- asks envNodeFilePath
+    liftIO (sumbitTxToNodeLocal node networkId ctx')
+    pure NoContent
 
 parseSubmitTxReqBody :: SubmitTxReqBody -> Either SubmitTxApiError (CardanoTx, [(PubKey, Signature)])
 parseSubmitTxReqBody SubmitTxReqBody{..} = do
