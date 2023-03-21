@@ -19,7 +19,7 @@ module Cardano.Server.Endpoints.Tx.New where
 import           Cardano.Server.Config                (isInactiveNewTx)
 import           Cardano.Server.Endpoints.Tx.Internal (TxApiErrorOf)
 import           Cardano.Server.Error                 (ConnectionError, Envelope, IsCardanoServerError (..), MkTxError, Throws,
-                                                       toEnvelope)
+                                                       toEnvelope, BalanceExternalTxError)
 import           Cardano.Server.Internal              (ServerM, TxApiRequestOf, checkEndpointAvailability, serverTrackedAddresses,
                                                        txEndpointProcessRequest, txEndpointsTxBuilders)
 import           Cardano.Server.Tx                    (mkBalanceTx)
@@ -38,6 +38,7 @@ type NewTxApi reqBody err = "newTx"
     :> Throws NewTxApiError
     :> Throws ConnectionError
     :> Throws MkTxError
+    :> Throws BalanceExternalTxError
     :> ReqBody '[JSON] reqBody
     :> Post '[JSON] Text
 
@@ -51,7 +52,9 @@ instance IsCardanoServerError NewTxApiError where
 
 newTxHandler :: (Show (TxApiRequestOf api), IsCardanoServerError (TxApiErrorOf api))
     => TxApiRequestOf api
-    -> ServerM api (Envelope [TxApiErrorOf api, NewTxApiError, ConnectionError, MkTxError] Text)
+    -> ServerM api (Envelope 
+        [TxApiErrorOf api, NewTxApiError, ConnectionError, MkTxError, BalanceExternalTxError] 
+        Text)
 newTxHandler req = toEnvelope $ do
     logMsg $ "New newTx request received:\n" .< req
     checkEndpointAvailability isInactiveNewTx
