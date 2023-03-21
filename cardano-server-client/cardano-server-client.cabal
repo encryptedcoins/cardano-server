@@ -42,6 +42,8 @@ library
     build-depends:
       base                          >= 4.9 && < 5,
       cardano-server                         -any,
+      cardano-crypto-class                   -any,
+      cardano-crypto-tests                   -any,
       aeson                                  -any,
       bytestring                             -any,
       data-default                           -any,

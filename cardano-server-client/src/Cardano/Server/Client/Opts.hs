@@ -20,7 +20,7 @@ optionsParser = Options <$> serverEndpointParser <*> (autoModeParser <|> manualM
 data Options = Options
     { optsEndpoint :: ServerEndpoint
     , optsMode     :: Mode
-    } deriving Show
+    } deriving (Show, Eq)
 
 serverEndpointParser :: Parser ServerEndpoint
 serverEndpointParser = argument auto

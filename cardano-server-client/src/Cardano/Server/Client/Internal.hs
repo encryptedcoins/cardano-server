@@ -56,6 +56,7 @@ data ServerEndpoint
     | SubmitTxE
     | ServerTxE
     | StatusE
+    deriving Eq
 
 instance Read ServerEndpoint where
     readsPrec _ = \case
@@ -120,4 +121,4 @@ type Interval = Int
 data Mode
     = Auto   Interval
     | Manual Text
-    deriving Show
+    deriving (Show, Eq)

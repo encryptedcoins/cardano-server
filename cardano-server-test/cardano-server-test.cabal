@@ -37,6 +37,7 @@ test-suite cardano-server-test
                         -Wall
   Main-Is:              Main.hs
   Other-Modules:        
+                        Cardano.Server.Client.OptsSpec
                         Cardano.Server.Endpoints.FundsSpec
                         Cardano.Server.Endpoints.PingSpec
                         Cardano.Server.Endpoints.StatusSpec

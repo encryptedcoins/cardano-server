@@ -41,15 +41,15 @@ instance IsCardanoServerError ExampleApiError where
     errStatus _ = toEnum 422
     errMsg _ = "The request contains duplicate tokens and will not be processed."
 
-exampleHandle :: ServerHandle ExampleApi
-exampleHandle = ServerHandle
-        Kupo
-        ()
-        ((:[]) <$> getWalletAddr)
-        (\bbs -> pure [testMintTx bbs])
-        (pure ())
-        processRequest
-        statusEndpointHandler
+exampleServerHandle :: ServerHandle ExampleApi
+exampleServerHandle = ServerHandle
+        Kupo                            -- Default chain index
+        ()                              -- Server auxillary env
+        ((:[]) <$> getWalletAddr)       -- How to get server tracked addresses
+        (\bbs -> pure [testMintTx bbs]) -- How to build tx that will handle server input
+        (pure ())                       -- What should the server do when there are no requests
+        processRequest                  -- How to extract input from request in tx endpoints
+        statusEndpointHandler           -- Handler of status endpoint
     where
         processRequest (bbs, ctx) = do
             let hasDuplicates = length bbs /= length (nub bbs)
@@ -57,7 +57,7 @@ exampleHandle = ServerHandle
             return (sort bbs, ctx)
 
 runExampleServer :: IO ()
-runExampleServer = runServer exampleHandle
+runExampleServer = runServer exampleServerHandle
     
 data ExampleStatusEndpointError = ExampleStatusEndpointError
     deriving (Show, Exception)

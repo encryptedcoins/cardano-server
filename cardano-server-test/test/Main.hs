@@ -4,12 +4,13 @@
 module Main where
 
 import           Cardano.Server.Client.Client           (createServantClientEnv)
+import qualified Cardano.Server.Client.OptsSpec         as ClientOpts
 import qualified Cardano.Server.Endpoints.FundsSpec     as Funds
 import qualified Cardano.Server.Endpoints.PingSpec      as Ping
 import qualified Cardano.Server.Endpoints.StatusSpec    as Status
 import qualified Cardano.Server.Endpoints.Tx.ServerSpec as ServerTx
 import qualified Cardano.Server.Endpoints.Tx.SubmitSpec as SubmitTx
-import           Cardano.Server.Example.Main            (exampleHandle)
+import           Cardano.Server.Example.Main            (exampleServerHandle)
 import           Cardano.Server.Internal                (envLogger, loadEnv)
 import           Cardano.Server.Main                    (runServer')
 import           Cardano.Server.Utils.Logger            (mutedLogger)
@@ -21,10 +22,11 @@ import           Test.Hspec                             (hspec)
 
 main :: IO ()
 main =  do
-    env <- loadEnv exampleHandle
+    env <- loadEnv exampleServerHandle
     sce <- createServantClientEnv
     let ?servantClientEnv = sce
-    bracket (liftIO $ C.forkIO $ runServer' env{envLogger = mutedLogger}) 
+    bracket 
+        (liftIO $ C.forkIO $ runServer' env{envLogger = mutedLogger}) 
         C.killThread $ 
         const $ (waitTime 5 >>) $ hspec $ do
             Ping.spec
@@ -32,4 +34,4 @@ main =  do
             ServerTx.spec
             SubmitTx.spec
             Status.spec
-
+            ClientOpts.spec
