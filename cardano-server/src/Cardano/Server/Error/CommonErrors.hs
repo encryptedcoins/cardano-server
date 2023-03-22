@@ -53,7 +53,10 @@ instance IsCardanoServerError BalanceExternalTxError where
             -> "Unable to build an auto balanced tx."
 
 instance IsCardanoServerError SubmitTxToLocalNodeError where
-    errStatus _ = toEnum 422
+    errStatus = \case
+        NoConnectionToLocalNode -> toEnum 503
+        _                       -> toEnum 422
     errMsg = \case
-        CantSubmitEmulatorTx{} -> "Can not sumbit emulator tx to local node."
-        FailedSumbit err -> "An error occurred while sending tx to local node. Reason: " .< err
+        NoConnectionToLocalNode -> "Server local node is currently unavailable."
+        CantSubmitEmulatorTx{}  -> "Can not sumbit emulator tx to local node."
+        FailedSumbit err        -> "An error occurred while sending tx to local node. Reason: " .< err
