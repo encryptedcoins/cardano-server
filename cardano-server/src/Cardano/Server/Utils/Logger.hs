@@ -21,7 +21,7 @@ class MonadIO m => HasLogger m where
     getLogger :: m (Logger m)
 
     getLoggerFilePath :: m (Maybe FilePath)
-    getLoggerFilePath = pure Nothing 
+    getLoggerFilePath = pure Nothing
 
 instance HasLogger IO where
     getLogger = pure T.putStrLn

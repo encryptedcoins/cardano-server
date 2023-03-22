@@ -53,7 +53,7 @@ instance IsCardanoServerError NewTxApiError where
 newTxHandler :: (Show (TxApiRequestOf api), IsCardanoServerError (TxApiErrorOf api))
     => TxApiRequestOf api
     -> ServerM api (Envelope 
-        [TxApiErrorOf api, NewTxApiError, ConnectionError, MkTxError, BalanceExternalTxError] 
+        [TxApiErrorOf api, NewTxApiError, ConnectionError, MkTxError, BalanceExternalTxError]
         Text)
 newTxHandler req = toEnvelope $ do
     logMsg $ "New newTx request received:\n" .< req

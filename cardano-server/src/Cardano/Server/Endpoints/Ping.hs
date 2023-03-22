@@ -12,5 +12,5 @@ import           Servant                     (type (:>), NoContent(..), JSON, Ge
 type PingApi = "ping" :> Get '[JSON] NoContent
 
 pingHandler :: ServerM api NoContent
-pingHandler = checkEndpointAvailability isInactivePing 
+pingHandler = checkEndpointAvailability isInactivePing
     >> NoContent <$ logMsg "Received ping request."
