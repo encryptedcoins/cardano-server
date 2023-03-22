@@ -16,23 +16,26 @@
 
 module Cardano.Server.Error.ToEnvelope where
 
+import           Cardano.Server.Error.Class   (IsCardanoServerError, toServantError)
 import           Cardano.Server.Error.Servant (Envelope (..))
 import           Cardano.Server.Error.Utils   (All)
+import           Cardano.Server.Utils.Logger  (HasLogger, logSmth)
 import           Control.Monad.Catch          (MonadCatch, handle)
 import           Control.Monad.Except         (MonadError)
 import           Data.Kind                    (Type)
 import           Servant                      (ServerError, throwError)
-import           Cardano.Server.Error.Class   (IsCardanoServerError, IsCardanoServerError, toServantError)
 
 toEnvelope :: forall es m a.
-    (MonadCatch m, MonadError ServerError m, WithErrorHandlers es) => m a -> m (Envelope es a)
+    (MonadCatch m,  HasLogger m, MonadError ServerError m, WithErrorHandlers es) => m a -> m (Envelope es a)
 toEnvelope = withErrorHandlers @es . fmap SuccEnvelope
 
 class All IsCardanoServerError es => WithErrorHandlers (es :: [Type]) where
-    withErrorHandlers :: (MonadCatch m, MonadError ServerError m) => m (Envelope es' a) -> m (Envelope es' a)
+    withErrorHandlers :: (MonadCatch m,  HasLogger m, MonadError ServerError m) => m (Envelope es' a) -> m (Envelope es' a)
 
 instance WithErrorHandlers '[] where
     withErrorHandlers = id
 
 instance (All IsCardanoServerError (e ': es), WithErrorHandlers es) => WithErrorHandlers (e ': es) where
-    withErrorHandlers = handle (throwError . toServantError @e) . withErrorHandlers @es
+    withErrorHandlers = handle reThrow . withErrorHandlers @es
+        where
+            reThrow e = logSmth e >> throwError (toServantError @e e)
