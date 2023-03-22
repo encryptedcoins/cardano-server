@@ -34,7 +34,7 @@ pingC = client (Proxy @PingApi)
 fundsC :: FundsReqBody -> ClientM Funds
 fundsC = client (Proxy @FundsApi)
 
-newTxC :: forall api. MimeRender JSON (TxApiRequestOf api) => TxApiRequestOf api -> ClientM Text
+newTxC :: forall api. MimeRender JSON (TxApiRequestOf api) => TxApiRequestOf api -> ClientM (Text, Text)
 newTxC = client (Proxy @(NewTxApi (TxApiRequestOf api) (TxApiErrorOf api)))
 
 submitTxC :: forall api. SubmitTxReqBody -> ClientM NoContent
@@ -94,7 +94,7 @@ instance ClientEndpoint 'FundsE api where
 
 instance (Show (TxApiRequestOf api), MimeRender JSON (TxApiRequestOf api)) => ClientEndpoint 'NewTxE api where
     type EndpointArg 'NewTxE api = TxApiRequestOf api
-    type EndpointRes 'NewTxE _   = Text
+    type EndpointRes 'NewTxE _   = (Text, Text)
     endpointClient               = newTxC @api
 
 instance ClientEndpoint 'SubmitTxE api where
