@@ -5,37 +5,39 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase                 #-}
 {-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE RecordWildCards            #-}
 {-# LANGUAGE TypeOperators              #-}
 {-# LANGUAGE UndecidableInstances       #-}
 
 module Cardano.Server.Endpoints.Funds where
 
-import           Cardano.Server.Config           (isInactiveFunds)
-import           Cardano.Server.Error            (ConnectionError, Envelope, ExceptionDeriving (..), IsCardanoServerError (..),
-                                                  Throws, toEnvelope)
-import           Cardano.Server.Internal         (NetworkM, checkEndpointAvailability)
-import           Cardano.Server.Utils.Logger     (logMsg)
-import           Control.Exception               (Exception (..), throw)
-import           Data.Aeson                      (FromJSON, ToJSON)
-import qualified Data.Map                        as Map
-import           Data.Maybe                      (fromMaybe)
-import           Data.Text                       (Text)
-import           GHC.Generics                    (Generic)
-import           Ledger                          (DecoratedTxOut (..))
-import           Plutus.V2.Ledger.Api            (Address, CurrencySymbol (CurrencySymbol), TokenName, TxOutRef, Value (..))
-import           PlutusAppsExtra.IO.ChainIndex   (HasChainIndex, getUtxosAt)
-import           PlutusAppsExtra.Utils.Address   (bech32ToAddress)
-import qualified PlutusTx.AssocMap               as PAM
-import           PlutusTx.Builtins               (toBuiltin)
-import           Servant                         (Get, HasStatus, JSON, ReqBody, WithStatus, (:>))
-import           Text.Hex                        (decodeHex)
+import           Cardano.Server.Config         (isInactiveFunds)
+import           Cardano.Server.Error          (ConnectionError, Envelope, IsCardanoServerError (errMsg, errStatus), Throws,
+                                                toEnvelope)
+import           Cardano.Server.Internal       (ServerM, checkEndpointAvailability)
+import           Cardano.Server.Utils.Logger   (logMsg)
+import           Control.Exception             (Exception (..))
+import           Control.Monad.Catch           (MonadThrow (throwM))
+import           Data.Aeson                    (FromJSON, ToJSON)
+import           Data.Either.Extra             (maybeToEither)
+import qualified Data.Map                      as Map
+import           Data.Text                     (Text)
+import           GHC.Generics                  (Generic)
+import           Ledger                        (DecoratedTxOut (..))
+import           Plutus.V2.Ledger.Api          (Address, CurrencySymbol (CurrencySymbol), TokenName, TxOutRef, Value (..))
+import           PlutusAppsExtra.IO.ChainIndex (HasChainIndex, getUtxosAt)
+import           PlutusAppsExtra.Utils.Address (bech32ToAddress)
+import qualified PlutusTx.AssocMap             as PAM
+import           PlutusTx.Builtins             (toBuiltin)
+import           Servant                       (Get, HasStatus, JSON, ReqBody, WithStatus, (:>))
+import           Text.Hex                      (decodeHex)
 
 data FundsReqBody = FundsReqBody
     {
         fundsReqAddress :: Text,
         fundsReqCS      :: Text
     }
-    deriving (Show, Generic, ToJSON, FromJSON)
+    deriving (Show, Read, Generic, ToJSON, FromJSON)
 
 type FundsApi = "funds"
     :> Throws FundsError
@@ -44,14 +46,14 @@ type FundsApi = "funds"
     :> Get '[JSON] Funds
 
 newtype Funds = Funds [(TokenName, TxOutRef)]
-    deriving (Show, Generic)
-    deriving newtype ToJSON
+    deriving (Show, Eq, Generic)
+    deriving newtype (ToJSON, FromJSON)
     deriving HasStatus via WithStatus 200 Funds
 
 data FundsError
     = UnparsableAddress | UnparsableCurrencySymbol
     deriving (Show, Generic, ToJSON)
-    deriving Exception via (ExceptionDeriving FundsError)
+    deriving Exception
 
 instance IsCardanoServerError FundsError where
     errStatus _ = toEnum 400
@@ -59,13 +61,17 @@ instance IsCardanoServerError FundsError where
         UnparsableAddress        -> "Incorrect wallet address."
         UnparsableCurrencySymbol -> "Incorrect currency symbol."
 
-fundsHandler :: FundsReqBody -> NetworkM s (Envelope '[FundsError, ConnectionError] Funds)
-fundsHandler (FundsReqBody addrBech32 csHex) = toEnvelope $ do
+fundsHandler :: FundsReqBody -> ServerM api (Envelope '[FundsError, ConnectionError] Funds)
+fundsHandler frb@(FundsReqBody addrBech32 _) = toEnvelope $ do
     logMsg $ "New funds request received:\n" <> addrBech32
     checkEndpointAvailability isInactiveFunds
-    let cs   =  maybe (throw UnparsableCurrencySymbol) (CurrencySymbol . toBuiltin) $ decodeHex csHex
-        addr =  fromMaybe (throw UnparsableAddress) $ bech32ToAddress addrBech32
-    getFunds cs addr
+    either throwM (uncurry getFunds) $ parseFundsReqBody frb
+
+parseFundsReqBody :: FundsReqBody -> Either FundsError (CurrencySymbol, Address)
+parseFundsReqBody FundsReqBody{..} = do
+    cs   <- maybeToEither UnparsableCurrencySymbol $ decodeHex fundsReqCS
+    addr <- maybeToEither UnparsableAddress $ bech32ToAddress fundsReqAddress
+    pure (CurrencySymbol $ toBuiltin cs, addr)
 
 getFunds :: HasChainIndex m => CurrencySymbol -> Address -> m Funds
 getFunds cs addr = do

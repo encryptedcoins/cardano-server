@@ -31,15 +31,20 @@ common lang
 library
     import: lang
     exposed-modules: 
-      Cardano.Server.Class
       Cardano.Server.Config
       Cardano.Server.Endpoints.Funds 
       Cardano.Server.Endpoints.Ping
-      Cardano.Server.Endpoints.Tx.Class
+      Cardano.Server.Endpoints.Status
+      Cardano.Server.Endpoints.Tx.Internal
       Cardano.Server.Endpoints.Tx.New
       Cardano.Server.Endpoints.Tx.Server
       Cardano.Server.Endpoints.Tx.Submit
       Cardano.Server.Error
+      Cardano.Server.Error.Class
+      Cardano.Server.Error.CommonErrors
+      Cardano.Server.Error.Servant
+      Cardano.Server.Error.ToEnvelope
+      Cardano.Server.Error.Utils
       Cardano.Server.Input
       Cardano.Server.Internal
       Cardano.Server.Main
@@ -72,8 +77,8 @@ library
       plutus-tx                              -any,
       prettyprinter                          -any,
       servant                                -any,
-      servant-checked-exceptions             -any,
       servant-client                         -any,
+      servant-client-core                    -any,
       servant-server                         -any,
       text                                   -any,
       time                                   -any,

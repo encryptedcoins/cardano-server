@@ -38,10 +38,12 @@ library
       cardano-server                         -any,
       cardano-server-client                  -any,
       cardano-server-example                 -any,
-      split                                  -any,
+      data-default                           -any,
       optparse-applicative                   -any,
       plutus-tx                              -any,
       random                                 -any,
+      split                                  -any,
+      text                                   -any,
     hs-source-dirs: src
 
 executable cardano-server-client-example

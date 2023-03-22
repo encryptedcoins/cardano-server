@@ -1,64 +1,35 @@
-{-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE LambdaCase          #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneDeriving  #-}
-{-# LANGUAGE TypeApplications    #-}
+{-# LANGUAGE OverloadedStrings   #-}
 
 module Cardano.Server.Client.Opts where
 
-import           Cardano.Server.Client.Class   (HasClient(..))
-import           Control.Applicative           ((<|>))
-import           Options.Applicative           (Parser, (<**>), auto, fullDesc, help, info, long, option, short, value,
-                                                execParser, helper, flag', metavar, argument)
+import           Cardano.Server.Client.Internal (Mode (..), ServerEndpoint (..))
+import           Control.Applicative            ((<|>))
+import           Options.Applicative            (Parser, argument, auto, execParser, fullDesc, help, helper, info, long, metavar,
+                                                 option, short, strOption, value, (<**>))
 
-runWithOpts :: HasClient s => IO (Options s)
+runWithOpts :: IO Options
 runWithOpts = execParser $ info (optionsParser <**> helper) fullDesc
 
-optionsParser :: HasClient s => Parser (Options s)
+optionsParser :: Parser Options
 optionsParser = Options <$> serverEndpointParser <*> (autoModeParser <|> manualModeParser)
 
-data Options s = Options
+data Options = Options
     { optsEndpoint :: ServerEndpoint
-    , optsMode     :: Mode s
-    } deriving Show
-
-data ServerEndpoint
-    = Ping
-    | NewTx
-    | SubmitTx
-    | ServerTx
-    deriving (Read)
-
-instance Show ServerEndpoint where
-    show = \case
-        Ping     -> "ping"
-        NewTx    -> "newTx"
-        SubmitTx -> "submitTx"
-        ServerTx -> "serverTx"
+    , optsMode     :: Mode
+    } deriving (Show, Eq)
 
 serverEndpointParser :: Parser ServerEndpoint
-serverEndpointParser = argument auto 
-    (  value SubmitTx
-    <> metavar "Ping | NewTx | SubmitTx | ServerTx" 
+serverEndpointParser = argument auto
+    (  value ServerTxE
+    <> metavar "ping | funds | newTx | submitTx | serverTx | status"
     )
-
-data Mode s
-    = Auto   Interval
-    | Manual (ClientInput s)
-deriving instance HasClient s => Show (Mode s)
 
 --------------------------------------------- Auto ---------------------------------------------
 
-type Interval = Int
-
-autoModeParser :: Parser (Mode s)
-autoModeParser
-    = flag' Auto (long "auto") <*> intervalParser
-
-intervalParser :: Parser Interval
-intervalParser = option auto
-    (  long  "interval"
-    <> short 'i'
+autoModeParser :: Parser Mode
+autoModeParser = Auto <$> option auto
+    (  long  "auto"
+    <> short 'a'
     <> help  "Average client request interval in seconds."
     <> value 30
     <> metavar "SECONDS"
@@ -66,5 +37,11 @@ intervalParser = option auto
 
 -------------------------------------------- Manual --------------------------------------------
 
-manualModeParser :: forall s. HasClient s => Parser (Mode s)
-manualModeParser = flag' Manual (long "manual" <> help "Input of manual mode.") <*> parseClientInput @s
+manualModeParser :: Parser Mode
+manualModeParser = Manual <$> strOption 
+    (  short 'm'
+    <> long "manual" 
+    <> help "Text representation of client argument" 
+    <> value "" 
+    <> metavar "TEXT"
+    )
