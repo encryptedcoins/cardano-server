@@ -138,13 +138,13 @@ exampleClientHandle = def
     , manualStatus   = manualWithRead
     }
 
-genInput :: MonadIO m => m ([BuiltinByteString], InputContext)
+genInput :: ServerM ExampleApi ([BuiltinByteString], InputContext)
 genInput = fmap ((,def) . nub) $ liftIO $ do
     inputLength <- randomRIO (1, 15)
     let genBbs = stringToBuiltinByteString <$> (randomRIO (2, 8) >>= (`replicateM` randomIO))
     replicateM inputLength genBbs
 
-readInput :: Monad m => Text -> m ([BuiltinByteString], InputContext)
+readInput :: Text -> ServerM ExampleApi ([BuiltinByteString], InputContext)
 readInput = pure . (,def) . map (stringToBuiltinByteString . T.unpack) . T.splitOn ","
 ```
 
@@ -168,7 +168,7 @@ $ cabal run cardano-server-client-example -- submitTx --auto 30
 
 3. Run client in manual mode in which it will send request to selected endpoint (the default is `serverTx`) based on text input:</br>
 ```console
-$ cabal run cardano-server-client-example  -- [ping | funds | serverTx | newTx | submitTx | status ] --manual *some_text_input*
+$ cabal run cardano-server-client-example  -- [ping | funds | serverTx | newTx | submitTx | status ] --manual some_text_input
 ```
 &emsp;&emsp;For example, in serverTx endpoint it will send request to mint specified tokens:
 ```console
