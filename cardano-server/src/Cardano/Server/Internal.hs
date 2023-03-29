@@ -132,6 +132,9 @@ getQueueRef = asks envQueueRef
 getNetworkId :: ServerM api NetworkId
 getNetworkId = asks $ pNetworkId . envLedgerParams
 
+getAuxillaryEnv :: ServerM api (AuxillaryEnvOf api)
+getAuxillaryEnv = asks $ shAuxiliaryEnv . envServerHandle
+
 loadEnv :: ServerHandle api -> IO (Env api)
 loadEnv ServerHandle{..} = do
     Config{..}   <- loadConfig
