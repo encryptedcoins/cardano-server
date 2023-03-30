@@ -33,7 +33,7 @@ class All IsCardanoServerError es => WithErrorHandlers (es :: [Type]) where
     withErrorHandlers :: (MonadCatch m,  HasLogger m, MonadError ServerError m) => m (Envelope es' a) -> m (Envelope es' a)
 
 instance WithErrorHandlers '[] where
-    withErrorHandlers = id
+    withErrorHandlers = handle throwError
 
 instance (All IsCardanoServerError (e ': es), WithErrorHandlers es) => WithErrorHandlers (e ': es) where
     withErrorHandlers = handle reThrow . withErrorHandlers @es
