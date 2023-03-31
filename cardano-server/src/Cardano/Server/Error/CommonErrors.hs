@@ -49,8 +49,8 @@ instance IsCardanoServerError BalanceExternalTxError where
             -> "Change address is not from Babbage era."
         MakeUtxoProviderError err
             -> "Unable to extract an utxoProvider from wallet outputs:\n" .< err
-        MakeAutoBalancedTxError
-            -> "Unable to build an auto balanced tx."
+        MakeAutoBalancedTxError err
+            -> "Unable to build an auto balanced tx:\n" .< err
 
 instance IsCardanoServerError SubmitTxToLocalNodeError where
     errStatus = \case
