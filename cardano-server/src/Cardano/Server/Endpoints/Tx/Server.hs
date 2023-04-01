@@ -52,10 +52,11 @@ serverTxHandler req = toEnvelope $ do
 processQueue ::  (Show (InputOf api)) => Env api -> IO ()
 processQueue env = runServerM env $ setLoggerFilePath "queue.log" $ do
         logMsg "Starting queue handler..."
-        catch go $ \(err :: SomeException) -> do
-            logSmth err
-            go
+        neverFall go
     where
+        neverFall ma = catch ma $ \(err :: SomeException) -> do
+            logSmth err
+            neverFall ma
         go = liftIO getCurrentTime >>= checkQueue
         checkQueue t = do
             qRef <- asks envQueueRef
