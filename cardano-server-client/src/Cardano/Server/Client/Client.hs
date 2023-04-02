@@ -1,64 +1,59 @@
-{-# LANGUAGE AllowAmbiguousTypes        #-}
-{-# LANGUAGE NumericUnderscores         #-}
-{-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE RecordWildCards            #-}
-{-# LANGUAGE ScopedTypeVariables        #-}
-{-# LANGUAGE TypeApplications           #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE DataKinds           #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE ImplicitParams      #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE PolyKinds           #-}
+{-# LANGUAGE RecordWildCards     #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Cardano.Server.Client.Client where
 
-import           Cardano.Server.Client.Class (HasClient(..))
-import           Cardano.Server.Client.Opts  (Options(..), runWithOpts, Mode (..))
-import           Cardano.Server.Config       (Config(..), loadConfig)       
-import           Cardano.Server.Internal     (AppM, runAppM)
-import           Cardano.Server.Utils.Logger (HasLogger(..), (.<))
-import           Cardano.Server.Utils.Wait   (waitTime)
-import           Control.Monad.Reader        (MonadIO(..), forever, when)
-import           Data.Aeson                  (encode, ToJSON)
-import           Data.ByteString.Lazy        (ByteString)
-import qualified Data.Text                   as T
-import           Network.HTTP.Client         (httpLbs, defaultManagerSettings, newManager, parseRequest, Manager,
-                                              Request(..), RequestBody(..), responseStatus, responseTimeoutMicro, Response)
-import           Network.HTTP.Types.Header   (hContentType)
-import           Network.HTTP.Types.Status   (status204)
-import           System.Random               (randomRIO)
+import           Cardano.Server.Client.Handle   (ClientHandle (..), NotImplementedMethodError (NotImplementedMethodError))
+import           Cardano.Server.Client.Internal (Mode (Auto, Manual), ServerEndpoint (..))
+import           Cardano.Server.Client.Opts     (Options (..), runWithOpts)
+import           Cardano.Server.Config          (Config (..), loadConfig)
+import           Cardano.Server.Internal        (ServerHandle, loadEnv, runServerM, setLoggerFilePath)
+import           Cardano.Server.Utils.Logger    (logMsg, (.<))
+import           Control.Exception              (handle)
+import           Control.Monad.IO.Class         (MonadIO (..))
+import           Control.Monad.Reader           (void)
+import qualified Data.Text                      as T
+import           Network.HTTP.Client            (defaultManagerSettings, newManager)
+import           Servant.Client                 (BaseUrl (BaseUrl), ClientEnv (..), Scheme (Http), defaultMakeClientRequest)
 
-startClient :: forall s. HasClient s => IO ()
-startClient = do
-    Options{..} <- runWithOpts @s
-    Config{..} <- loadConfig 
-    let fullAddress = concat 
-            ["http://", T.unpack cServerAddress, "/", show optsEndpoint]
-    manager <- newManager defaultManagerSettings
-    let client' = client @s fullAddress manager
-    runAppM $ withGreetings $ case optsMode of
-        Manual clientInput     -> client' clientInput
-        Auto   averageInterval -> forever $ do
-            clientInput <- genClientInput @s
-            client' clientInput
-            waitTime =<< randomRIO (1, averageInterval * 2)
+createServantClientEnv :: IO ClientEnv
+createServantClientEnv = do
+    Config{..}  <- loadConfig
+    manager     <- newManager defaultManagerSettings
+    pure $ ClientEnv
+        manager
+        (BaseUrl Http (T.unpack cHost) cPort "")
+        Nothing
+        defaultMakeClientRequest
+
+runClient :: ServerHandle api -> ClientHandle api -> IO ()
+runClient sh ClientHandle{..} = handleNotImplementedMethods $ do
+    Options{..} <- runWithOpts
+    env         <- loadEnv sh
+    sce         <- liftIO createServantClientEnv
+    let ?servantClientEnv = sce
+    runServerM env $ setLoggerFilePath "client.log" $ withGreetings $ case (optsMode, optsEndpoint) of
+        (Auto     i, PingE    ) -> void $ autoPing         i
+        (Auto     i, FundsE   ) -> void $ autoFunds        i
+        (Auto     i, NewTxE   ) -> void $ autoNewTx        i
+        (Auto     i, SubmitTxE) -> void $ autoSumbitTx     i
+        (Auto     i, ServerTxE) -> void $ autoServerTx     i
+        (Auto     i, StatusE  ) -> void $ autoStatus       i
+        (Manual txt, PingE    ) -> void $ manualPing     txt
+        (Manual txt, FundsE   ) -> void $ manualFunds    txt
+        (Manual txt, NewTxE   ) -> void $ manualNewTx    txt
+        (Manual txt, SubmitTxE) -> void $ manualSubmitTx txt
+        (Manual txt, ServerTxE) -> void $ manualServerTx txt
+        (Manual txt, StatusE  ) -> void $ manualStatus   txt
     where
         withGreetings = (logMsg "Starting client..." >>)
-
-client :: forall s. HasClient s => String -> Manager -> ClientInput s -> AppM s ()
-client fullAddress manager clientInput = do
-        (beforeRequestSend, onSuccessfulResponse) <- extractActionsFromInput clientInput
-        beforeRequestSend
-        resp <- toServerInput clientInput >>= addInputContext >>= mkRequest fullAddress manager
-        when (successful resp) onSuccessfulResponse
-    where
-        successful = (== status204) . responseStatus
-
-mkRequest :: (ToJSON body, Show body) => String -> Manager -> body -> AppM s (Response ByteString)
-mkRequest fullAddress manager body = do
-    logMsg $ "New request to send:\n" .< body
-    nakedRequest <- liftIO $ parseRequest fullAddress
-    let req = nakedRequest
-            { method = "POST"
-            , requestBody = RequestBodyLBS $ encode body
-            , requestHeaders = [(hContentType, "application/json")]
-            , responseTimeout = responseTimeoutMicro (3 * 60 * 1_000_000)
-            }
-    resp <- liftIO $ httpLbs req manager
-    logMsg $ "Received response:" .< resp
-    pure resp
+        handleNotImplementedMethods = handle $ \(NotImplementedMethodError mode endpoint) ->
+            let mode' = case mode of {Auto _ -> "auto"; Manual _ -> "manual"}
+            in logMsg $ "You are about to use a function from client handle for which you did not provide an implementation:\n"
+                <> mode' .< endpoint

@@ -1,38 +1,43 @@
-{-# LANGUAGE TypeApplications     #-}
+{-# LANGUAGE DataKinds            #-}
+{-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE TupleSections        #-}
 {-# LANGUAGE TypeFamilies         #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-{-# OPTIONS_GHC -Wno-orphans  #-}
+module Cardano.Server.Client.Example.Main where
 
-module Cardano.Server.Client.Example.Main
-    ( runExampleClient
-    ) where
-
-import           Cardano.Server.Class         (HasServer (..))
-import           Cardano.Server.Client.Class  (HasClient (..))
-import           Cardano.Server.Client.Client (startClient)
-import           Cardano.Server.Example.Main  (ExampleServer)
-import           Control.Applicative          (Alternative (..))
+import           Cardano.Server.Client.Client (runClient)
+import           Cardano.Server.Client.Handle (ClientHandle (..), autoWith, autoWithRandom, manualWith, manualWithRead)
+import           Cardano.Server.Example.Main  (ExampleApi, exampleServerHandle)
+import           Cardano.Server.Input         (InputContext)
 import           Control.Monad                (replicateM)
-import           Options.Applicative          (help, long, option, short, metavar)
-import           Options.Applicative.Types    (readerAsk)
+import           Control.Monad.IO.Class       (MonadIO (liftIO))
+import           Data.Default                 (Default (def))
+import           Data.List                    (nub)
+import           Data.Text                    (Text)
+import qualified Data.Text                    as T
+import           PlutusTx.Builtins            (BuiltinByteString)
 import           PlutusTx.Builtins.Class      (stringToBuiltinByteString)
 import           System.Random                (randomIO, randomRIO)
 
 runExampleClient :: IO ()
-runExampleClient = startClient @ExampleServer
+runExampleClient = runClient exampleServerHandle exampleClientHandle
 
-instance HasClient ExampleServer where
-    type ClientInput ExampleServer = InputOf ExampleServer
+exampleClientHandle :: ClientHandle ExampleApi
+exampleClientHandle = def
+    { autoNewTx      = autoWith   genInput
+    , autoServerTx   = autoWith   genInput
+    , autoStatus     = autoWithRandom   
+    , manualNewTx    = manualWith readInput
+    , manualServerTx = manualWith readInput
+    , manualStatus   = manualWithRead
+    }
 
-    parseClientInput = some $ stringToBuiltinByteString <$> option readerAsk
-                            (  long  "mint"
-                            <> short 'm'
-                            <> help  "Token to mint."
-                            <> metavar "TOKEN"
-                            )
+genInput :: MonadIO m => m ([BuiltinByteString], InputContext)
+genInput = fmap ((,def) . nub) $ liftIO $ do
+    inputLength <- randomRIO (1, 15)
+    let genBbs = stringToBuiltinByteString <$> (randomRIO (2, 8) >>= (`replicateM` randomIO))
+    replicateM inputLength genBbs
 
-    genClientInput = do
-        inputLength <- randomRIO (1, 15)
-        let genBbs = stringToBuiltinByteString <$> (randomRIO (2, 8) >>= (`replicateM` randomIO))
-        replicateM inputLength genBbs
+readInput :: Monad m => Text -> m ([BuiltinByteString], InputContext)
+readInput = pure . (,def) . map (stringToBuiltinByteString . T.unpack) . T.splitOn ","

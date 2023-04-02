@@ -31,9 +31,10 @@ common lang
 library
     import: lang
     exposed-modules: 
-      Cardano.Server.Client.Class
       Cardano.Server.Client.Client
-      Cardano.Server.Client.Default
+      Cardano.Server.Client.Gen
+      Cardano.Server.Client.Handle
+      Cardano.Server.Client.Internal
       Cardano.Server.Client.Opts
     other-modules:
     default-extensions:
@@ -41,13 +42,28 @@ library
     build-depends:
       base                          >= 4.9 && < 5,
       cardano-server                         -any,
+      cardano-crypto-class                   -any,
+      cardano-crypto-tests                   -any,
       aeson                                  -any,
       bytestring                             -any,
       data-default                           -any,
+      exceptions                             -any,
       http-client                            -any,
       http-types                             -any,
       mtl                                    -any,
       optparse-applicative                   -any,
+      plutus-apps-extra                      -any,
+      plutus-ledger                          -any,
       random                                 -any,
+      servant                                -any,
+      servant-client                         -any,
+      servant-server                         -any,
       text                                   -any,
+      QuickCheck                             -any,
+      plutus-pab                             -any,
+      cardano-api                            -any,
+      cardano-node-emulator                  -any,
+      hedgehog                               -any,
+      plutus-ledger-api                      -any,
+      hex-text                               -any,
     hs-source-dirs: src

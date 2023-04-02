@@ -1,19 +1,19 @@
-{ "server_address"      : "localhost:3000"
-, "min_utxos_number"    : 1
-, "max_utxos_number"    : 1
-, "node_file_path"      : ""
-, "protocol_parameters" : "protocol-parameters.json"
-, "wallet_file"         : "testnet/wallets/wallet.json"
+{ "host"                : "localhost"
+, "port"                : 3000
 , "auxiliary_env_file"  : "testnet/txOutRef.json"
+, "wallet_file"         : "testnet/wallets/wallet.json"
+, "min_utxos_number"    : 1
+, "max_utxos_number"    : 15
 , "network_id"          : {"tag" : "Testnet", "contents" : 2}
 , "collateral"          : {"txOutRefId" : {"getTxId" : ""}, "txOutRefIdx" : 0}
-, "chain_index"         : "Plutus"
+, "node_file_path"      : ""
+, "chain_index"         : "Kupo"
 , "inactive_endpoints"  :
     { "ping"          : false
     , "funds"         : false
-    , "add_signature" : false
     , "submit_tx"     : false
     , "new_tx"        : false
     , "server_tx"     : false
+    , "status"        : false
     }
 }

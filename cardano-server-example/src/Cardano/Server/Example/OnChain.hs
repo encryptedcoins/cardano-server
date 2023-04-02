@@ -19,7 +19,7 @@
 module Cardano.Server.Example.OnChain where
 
 import           Cardano.Ledger.Alonzo.Language       (Language(PlutusV2))
-import           PlutusAppsExtra.Constraints.OnChain                  (tokensMinted)
+import           PlutusAppsExtra.Constraints.OnChain  (tokensMinted)
 import           Ledger                               (Versioned(..), Validator)
 import           Ledger.Typed.Scripts                 (IsScriptContext(..))
 import           Plutus.Script.Utils.V2.Typed.Scripts (ValidatorTypes (..), TypedValidator, mkTypedValidator, validatorScript)

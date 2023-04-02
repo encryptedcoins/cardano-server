@@ -1,80 +1,62 @@
-{-# LANGUAGE DataKinds                  #-}
-{-# LANGUAGE DerivingStrategies         #-}
-{-# LANGUAGE FlexibleContexts           #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE LambdaCase                 #-}
-{-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE RankNTypes                 #-}
-{-# LANGUAGE ScopedTypeVariables        #-}
-{-# LANGUAGE TupleSections              #-}
-{-# LANGUAGE TypeApplications           #-}
-{-# LANGUAGE TypeOperators              #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE DataKinds           #-}
+{-# LANGUAGE DerivingStrategies  #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE LambdaCase          #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections       #-}
+{-# LANGUAGE TypeFamilies        #-}
+{-# LANGUAGE TypeOperators       #-}
 
 module Cardano.Server.Endpoints.Tx.Server where
 
-import           Cardano.Server.Class              (InputWithContext)
-import           Cardano.Server.Config             (isInactiveServerTx)
-import           Cardano.Server.Endpoints.Tx.Class (HasTxEndpoints (..))
-import           Cardano.Server.Error              (ConnectionError, Envelope, Throws, toEnvelope)
-import           Cardano.Server.Internal           (Env (..), HasServer (..), NetworkM, Queue, QueueRef,
-                                                    checkEndpointAvailability, getQueueRef)
-import           Cardano.Server.Tx                 (MkTxConstraints, checkForCleanUtxos, mkTx)
-import           Cardano.Server.Utils.Logger       (HasLogger (..), logSmth, (.<))
-import           Cardano.Server.Utils.Wait         (waitTime)
-import           Control.Monad                     (join, liftM3, void, when)
-import           Control.Monad.Catch               (MonadCatch, MonadThrow, SomeException, catch)
-import           Control.Monad.IO.Class            (MonadIO (..))
-import           Control.Monad.Reader              (MonadReader, ReaderT (..), asks)
-import           Data.IORef                        (atomicModifyIORef, atomicWriteIORef, readIORef)
-import           Data.Sequence                     (Seq (..), (|>))
-import           Data.Time                         (getCurrentTime)
-import qualified Data.Time                         as Time
-import           PlutusAppsExtra.IO.ChainIndex     (HasChainIndex)
-import           PlutusAppsExtra.IO.Wallet         (HasWallet (..))
-import           Servant                           (JSON, NoContent (..), Post, ReqBody, (:>))
+import           Cardano.Server.Config                (isInactiveServerTx)
+import           Cardano.Server.Endpoints.Tx.Internal (TxApiErrorOf)
+import           Cardano.Server.Error                 (ConnectionError, Envelope, IsCardanoServerError, Throws, toEnvelope)
+import           Cardano.Server.Internal              (Env (envQueueRef), InputOf, InputWithContext, Queue, QueueRef, ServerM,
+                                                       TxApiRequestOf, checkEndpointAvailability, getQueueRef, runServerM,
+                                                       serverIdle, serverTrackedAddresses, setLoggerFilePath,
+                                                       txEndpointProcessRequest, txEndpointsTxBuilders)
+import           Cardano.Server.Tx                    (checkForCleanUtxos, mkTx)
+import           Cardano.Server.Utils.Logger          (logMsg, logSmth, (.<))
+import           Cardano.Server.Utils.Wait            (waitTime)
+import           Control.Monad                        (join, liftM3, void, when)
+import           Control.Monad.Catch                  (SomeException, catch)
+import           Control.Monad.IO.Class               (MonadIO (..))
+import           Control.Monad.Reader                 (asks)
+import           Data.IORef                           (atomicModifyIORef, atomicWriteIORef, readIORef)
+import           Data.Sequence                        (Seq (..), (|>))
+import           Data.Time                            (getCurrentTime)
+import qualified Data.Time                            as Time
+import           Servant                              (JSON, NoContent (..), Post, ReqBody, (:>))
 
-type ServerTxApi s = "serverTx"
+type ServerTxApi reqBody err = "serverTx"
+    :> Throws err
     :> Throws ConnectionError
-    :> ReqBody '[JSON] (TxApiRequestOf s)
+    :> ReqBody '[JSON] reqBody
     :> Post '[JSON] NoContent
 
-serverTxHandler :: forall s. HasTxEndpoints s
-    => TxApiRequestOf s
-    -> NetworkM s (Envelope '[ConnectionError] NoContent)
+serverTxHandler :: (Show (TxApiRequestOf api), IsCardanoServerError (TxApiErrorOf api))
+    => TxApiRequestOf api
+    -> ServerM api (Envelope '[TxApiErrorOf api, ConnectionError] NoContent)
 serverTxHandler req = toEnvelope $ do
     logMsg $ "New serverTx request received:\n" .< req
     checkEndpointAvailability isInactiveServerTx
-    arg <- txEndpointsProcessRequest req
+    arg <- txEndpointProcessRequest req
     ref <- getQueueRef
     liftIO $ atomicModifyIORef ref ((,()) . (|> arg))
     pure NoContent
 
-newtype QueueM s a = QueueM { unQueueM :: ReaderT (Env s) IO a }
-    deriving newtype
-        ( Functor
-        , Applicative
-        , Monad
-        , MonadIO
-        , MonadReader (Env s)
-        , MonadThrow
-        , MonadCatch
-        , HasWallet
-        , HasChainIndex
-        )
-
-instance HasLogger (QueueM s) where
-    loggerFilePath = "queue.log"
-
-runQueueM :: Env s -> QueueM s () -> IO ()
-runQueueM env = flip runReaderT env . unQueueM
-
-processQueue :: forall s. HasTxEndpoints s => Env s -> IO ()
-processQueue env = runQueueM env $ do
+processQueue ::  (Show (InputOf api)) => Env api -> IO ()
+processQueue env = runServerM env $ setLoggerFilePath "queue.log" $ do
         logMsg "Starting queue handler..."
-        catch go $ \(err :: SomeException) -> do
-            logSmth err
-            go
+        neverFall go
     where
+        neverFall ma = catch ma $ \(err :: SomeException) -> do
+            logSmth err
+            neverFall ma
         go = liftIO getCurrentTime >>= checkQueue
         checkQueue t = do
             qRef <- asks envQueueRef
@@ -82,7 +64,7 @@ processQueue env = runQueueM env $ do
                 Empty -> idleQueue t >>= checkQueue
                 input :<| inputs -> processQueueElem qRef input inputs >> go
 
-idleQueue :: forall s. HasServer s => Time.UTCTime -> QueueM s Time.UTCTime
+idleQueue :: Time.UTCTime -> ServerM api Time.UTCTime
 idleQueue st = do
     ct <- liftIO getCurrentTime
     let delta = Time.diffUTCTime ct st
@@ -94,16 +76,13 @@ idleQueue st = do
     waitTime 3
     pure $ if enoughTimePassed then ct else st
 
-processQueueElem :: forall s. HasTxEndpoints s => QueueRef s -> InputWithContext s -> Queue s -> QueueM s ()
+processQueueElem :: (Show (InputOf api)) => QueueRef api -> InputWithContext api -> Queue api -> ServerM api ()
 processQueueElem qRef qElem@(input, context) elems = do
     liftIO $ atomicWriteIORef qRef elems
     logMsg $ "New input to process:" .< input <> "\nContext:" .< context
-    processInputs @s qElem
+    processInputs qElem
 
-processInputs :: forall s m.
-    ( HasTxEndpoints s
-    , MkTxConstraints m s
-    ) => InputWithContext s -> m ()
+processInputs :: InputWithContext api -> ServerM api ()
 processInputs (input, context) = do
     checkForCleanUtxos
-    void $ join $ liftM3 mkTx (serverTrackedAddresses @s) (pure context) $ txEndpointsTxBuilders @s input
+    void $ join $ liftM3 mkTx serverTrackedAddresses (pure context) $ txEndpointsTxBuilders input
