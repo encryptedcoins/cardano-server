@@ -51,15 +51,18 @@ library
       Cardano.Server.Tx
       Cardano.Server.Utils.Logger
       Cardano.Server.Utils.Wait
+      Cardano.Server.WalletEncryption
     other-modules:
     build-depends:
       base                          >= 4.9 && < 5,
       aeson                                  -any,
       aeson-casing                           -any,
       bytestring                             -any,
+      cardano-addresses                      -any,
       cardano-api                            -any,
       cardano-node-emulator                  -any,
       containers                             -any,
+      cryptonite                             -any,
       data-default                           -any,
       directory                              -any,
       exceptions                             -any,
@@ -69,6 +72,7 @@ library
       http-types                             -any,
       lens                                   -any,
       lens-aeson                             -any,
+      memory                                 -any,
       mtl                                    -any,
       http-client                            -any,
       plutus-apps-extra                      -any,
@@ -81,8 +85,9 @@ library
       servant-client-core                    -any,
       servant-server                         -any,
       text                                   -any,
+      text-class                             -any,
       time                                   -any,
       wai                                    -any,
       wai-cors                               -any,
-      warp                                   -any
+      warp                                   -any,
     hs-source-dirs: src

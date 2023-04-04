@@ -43,20 +43,29 @@ test-suite cardano-server-test
                         Cardano.Server.Endpoints.StatusSpec
                         Cardano.Server.Endpoints.Tx.ServerSpec
                         Cardano.Server.Endpoints.Tx.SubmitSpec
+                        Cardano.Server.WalletEncryptionSpec
                         Test.Gen
                         Test.Internal
   Build-Depends:
     base                          >= 4.9 && < 5,
+    bytestring                             -any,
     aeson                                  -any,
+    cardano-addresses                      -any,
     cardano-server                         -any,
     cardano-server-example                 -any,
     cardano-server-client                  -any,
     cardano-server-client-example          -any,
+    cardano-wallet-core                    -any,
+    cryptonite                             -any,
     exceptions                             -any,
     hspec                                  -any,
     hspec-wai                              -any,
     http-types                             -any,
+    memory                                 -any,
+    plutus-apps-extra                      -any,
     servant-client                         -any,
     text                                   -any,
-    QuickCheck                             -any,
+    text-class                             -any,
+    quickcheck-text                        -any,
     warp                                   -any,
+    QuickCheck                             -any,
