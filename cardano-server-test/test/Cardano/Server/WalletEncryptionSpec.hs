@@ -1,6 +1,5 @@
 {-# LANGUAGE DataKinds         #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE TypeApplications  #-}
 {-# OPTIONS_GHC -Wno-orphans   #-}
@@ -8,7 +7,6 @@
 module Cardano.Server.WalletEncryptionSpec where
 
 import           Cardano.Mnemonic                    (SomeMnemonic (SomeMnemonic))
-import           Cardano.Server.Config               (Config (..), loadConfig)
 import           Cardano.Server.WalletEncryption     (EncryptedWallet (..), decryptWallet, encryptWallet, genRandomIV,
                                                       mnemonicToBytes)
 import           Cardano.Wallet.Gen                  (genMnemonic)
@@ -16,7 +14,7 @@ import           Cardano.Wallet.Primitive.Passphrase (Passphrase (Passphrase))
 import           Control.Monad                       (join, replicateM)
 import           Crypto.Cipher.AES                   (AES256)
 import           Crypto.Cipher.Types                 (IV)
-import           Data.Aeson                          (ToJSON (..), eitherDecodeFileStrict, fromJSON)
+import           Data.Aeson                          (ToJSON (..), fromJSON)
 import           Data.Bifunctor                      (Bifunctor (..))
 import qualified Data.ByteArray                      as BA
 import qualified Data.ByteString                     as BS
@@ -24,30 +22,17 @@ import           Data.Functor                        ((<&>))
 import qualified Data.Text                           as T
 import           Data.Text.Class                     (ToText (toText))
 import           PlutusAppsExtra.IO.Wallet           (RestoredWallet (..))
-import           Test.Hspec                          (Expectation, Spec, context, describe, it, shouldBe)
+import           Test.Hspec                          (Expectation, Spec, describe, it, shouldBe)
 import           Test.QuickCheck                     (Arbitrary (arbitrary), property)
 import           Test.QuickCheck.Utf8                (genUtf8Character)
 
 spec :: Spec
 spec = describe "Wallet encryption" $ do
     it "fromJSON . toJSON == id" $ property propJSON
-    context "decrypt . encrypt == id holds for" $ do
-        it "server wallet" $ property propServerWallet
-        it "arbitrary wallet" $ property encryptRoundTrip
+    it "decrypt . encrypt == id" $ property encryptRoundTrip
 
 propJSON :: EncryptedWallet -> Expectation
 propJSON ew = fromJSON (toJSON ew) `shouldBe` pure ew
-
-propServerWallet :: Expectation
-propServerWallet = do
-        Config{..} <- loadConfig
-        case cWalletFile of
-            Nothing -> emptyTest
-            Just fp -> eitherDecodeFileStrict fp >>= \case
-                Right rw -> encryptRoundTrip rw
-                Left _ -> emptyTest
-    where
-        emptyTest = True `shouldBe` True
 
 encryptRoundTrip :: RestoredWallet -> Expectation
 encryptRoundTrip w@RestoredWallet{..} = do

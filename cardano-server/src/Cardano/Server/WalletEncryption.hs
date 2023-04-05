@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveAnyClass      #-}
 {-# LANGUAGE DeriveGeneric       #-}
 {-# LANGUAGE GADTs               #-}
+{-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -11,7 +12,11 @@ module Cardano.Server.WalletEncryption where
 
 import           Cardano.Mnemonic          (MkSomeMnemonic (mkSomeMnemonic), MkSomeMnemonicError, SomeMnemonic (..),
                                             mnemonicToText)
-import           Control.Exception         (Exception)
+import           Cardano.Server.Config     (decodeOrErrorFromFile)
+import           Control.Applicative       ((<|>))
+import           Control.Exception         (Exception, SomeException, handle)
+import           Control.Monad             ((>=>))
+import           Control.Monad.Catch       (throwM)
 import           Crypto.Cipher.AES         (AES256)
 import           Crypto.Cipher.Types       (BlockCipher (..), Cipher (cipherInit), IV, makeIV)
 import           Crypto.Error              (CryptoError (..), CryptoFailable (..))
@@ -31,9 +36,31 @@ import           Data.Text                 (Text)
 import qualified Data.Text                 as T
 import           Data.Text.Class           (FromText (fromText), TextDecodingError, ToText (toText))
 import qualified Data.Text.Encoding        as T
+import qualified Data.Text.IO              as T
 import           GHC.Generics              (Generic)
 import           PlutusAppsExtra.IO.Wallet (RestoredWallet (..))
 import qualified Text.Hex                  as T
+
+data ServerWallet
+    = UnEncrypted RestoredWallet
+    | Encrypted EncryptedWallet
+    deriving Show
+
+instance FromJSON ServerWallet where
+    parseJSON v = UnEncrypted <$> parseJSON v
+              <|> Encrypted   <$> parseJSON v
+
+loadWallet :: FilePath -> IO RestoredWallet
+loadWallet = decodeOrErrorFromFile >=> \case
+        UnEncrypted w -> pure w
+        Encrypted w   -> handleDecrypt w $ decrypt w
+    where
+        handleDecrypt w = handle $ \(_ :: SomeException) -> do
+            putStrLn "Invalid passphrase."
+            handleDecrypt w $ decrypt w
+        decrypt w = do
+            putStrLn "Enter passphrase:"
+            T.getLine >>= either throwM pure . decryptWallet w
 
 -- | The passphrase must contain only utf8 characters.
 data EncryptedWallet = EncryptedWallet
@@ -53,10 +80,10 @@ instance FromJSON EncryptedWallet where
     parseJSON = J.withObject "encrypted wallet" $ \o -> do
         let mbFail f = maybe (fail f) pure
         ewName     <- o .: "name"
-        ewIVAES256 <- o .: "IV" 
-            >>= mbFail "decodeHex IV" . T.decodeHex 
+        ewIVAES256 <- o .: "IV"
+            >>= mbFail "decodeHex IV" . T.decodeHex
             >>= mbFail "make IV" . makeIV
-        ewMnemonic <- o .: "mnemonic" 
+        ewMnemonic <- o .: "mnemonic"
             >>= mbFail "decodeHex mnemonic" . T.decodeHex
         pure EncryptedWallet{..}
 
@@ -75,13 +102,13 @@ data Key c a where
 
 encryptWallet :: RestoredWallet -> IO (Either WalletEncryptionError EncryptedWallet)
 encryptWallet RestoredWallet{..} = do
-    eitherInitIV <- maybeToEither IVInitializingError <$> genRandomIV (undefined :: AES256)
+    eitherIV <- maybeToEither IVInitializingError <$> genRandomIV (undefined :: AES256)
     pure $ do
-        initIV <- eitherInitIV
-        let msg = mnemonicToBytes mnemonicSentence
+        iV <- eitherIV
+        let mnemonicBS = mnemonicToBytes mnemonicSentence
             secretKey = passphraseTextToKey $ toText passphrase
-        msgE <- bimap SomeCryptoError (\c -> ctrCombine c initIV msg) $ initCipher secretKey
-        Right $ EncryptedWallet name initIV msgE
+        mnemonicE <- bimap SomeCryptoError (\c -> ctrCombine c iV mnemonicBS) $ initCipher secretKey
+        pure $ EncryptedWallet name iV mnemonicE
 
 decryptWallet :: EncryptedWallet -> Text -> Either WalletEncryptionError RestoredWallet
 decryptWallet EncryptedWallet{..} passphraseText = do

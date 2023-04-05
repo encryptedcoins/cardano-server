@@ -23,8 +23,6 @@ import           Test.Hspec                                 (hspec)
 
 main :: IO ()
 main =  do
-    hspec $ do
-        WalletEncryption.spec
     env <- loadEnv exampleServerHandle
     sce <- createServantClientEnv
     let ?servantClientEnv = sce
@@ -32,6 +30,7 @@ main =  do
         (liftIO $ C.forkIO $ runServer' env{envLogger = mutedLogger}) 
         C.killThread $ 
         const $ (waitTime 5 >>) $ hspec $ do
+            WalletEncryption.spec
             Ping.spec
             Funds.spec
             ServerTx.spec

@@ -1,12 +1,11 @@
-{-# LANGUAGE ConstraintKinds            #-}
 {-# LANGUAGE AllowAmbiguousTypes          #-}
+{-# LANGUAGE ConstraintKinds              #-}
 {-# LANGUAGE DataKinds                    #-}
 {-# LANGUAGE DerivingVia                  #-}
 {-# LANGUAGE ExistentialQuantification    #-}
 {-# LANGUAGE FlexibleContexts             #-}
 {-# LANGUAGE FlexibleInstances            #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving   #-}
-{-# LANGUAGE LambdaCase                   #-}
 {-# LANGUAGE MultiParamTypeClasses        #-}
 {-# LANGUAGE OverloadedStrings            #-}
 {-# LANGUAGE RankNTypes                   #-}
@@ -14,8 +13,6 @@
 {-# LANGUAGE ScopedTypeVariables          #-}
 {-# LANGUAGE TypeFamilies                 #-}
 {-# LANGUAGE UndecidableInstances         #-}
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-{-# HLINT ignore "Redundant <$>"          #-}
 
 module Cardano.Server.Internal where
 
@@ -25,21 +22,19 @@ import           Cardano.Server.Error              (Envelope)
 import           Cardano.Server.Error.CommonErrors (InternalServerError (NoWalletProvided))
 import           Cardano.Server.Input              (InputContext)
 import           Cardano.Server.Utils.Logger       (HasLogger (..), Logger, logger)
-import           Cardano.Server.WalletEncryption   (decryptWallet)
-import           Control.Exception                 (SomeException, handle, throw)
+import           Cardano.Server.WalletEncryption   (loadWallet)
+import           Control.Exception                 (throw)
 import           Control.Monad.Catch               (MonadCatch, MonadThrow (..))
 import           Control.Monad.Except              (MonadError)
 import           Control.Monad.Extra               (join, whenM)
 import           Control.Monad.IO.Class            (MonadIO)
 import           Control.Monad.Reader              (MonadReader, ReaderT (ReaderT, runReaderT), asks, local)
-import           Data.Aeson                        (eitherDecodeFileStrict)
 import           Data.Default                      (Default (..))
 import           Data.Functor                      ((<&>))
 import           Data.IORef                        (IORef, newIORef)
 import           Data.Kind                         (Type)
 import           Data.Maybe                        (fromMaybe)
 import           Data.Sequence                     (Seq, empty)
-import qualified Data.Text.IO                      as T
 import           Ledger                            (Address, NetworkId, TxOutRef)
 import qualified PlutusAppsExtra.IO.Blockfrost     as BF
 import           PlutusAppsExtra.IO.ChainIndex     (ChainIndex, HasChainIndex (..))
@@ -145,7 +140,7 @@ loadEnv :: ServerHandle api -> IO (Env api)
 loadEnv ServerHandle{..} = do
         Config{..}   <- loadConfig
         envQueueRef  <- newIORef empty
-        envWallet    <- sequence $ getWallet <$> cWalletFile
+        envWallet    <- sequence $ loadWallet <$> cWalletFile
         pp <- decodeOrErrorFromFile "protocol-parameters.json"
         let envPort              = cPort
             envMinUtxosNumber    = cMinUtxosNumber
@@ -160,15 +155,6 @@ loadEnv ServerHandle{..} = do
             envLoggerFilePath    = Nothing
             envServerHandle      = ServerHandle{..}
         pure Env{..}
-    where
-        getWallet fp = eitherDecodeFileStrict fp >>= either (decrypt fp) pure
-        decrypt fp parsingErr = do
-            ew <- eitherDecodeFileStrict fp >>= either (const $ error parsingErr) pure
-            putStrLn "Enter passphrase:"
-            handle (\(_ :: SomeException) -> putStrLn "Invalid passphrase." >> decrypt fp parsingErr) $ 
-                decryptWallet ew <$> T.getLine >>= \case
-                    Right rw -> pure rw
-                    Left err -> throwM err
 
 setLoggerFilePath :: FilePath -> ServerM api a -> ServerM api a
 setLoggerFilePath fp = local (\Env{..} -> Env{envLoggerFilePath = Just fp, ..})
