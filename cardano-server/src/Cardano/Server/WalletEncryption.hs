@@ -15,8 +15,8 @@ import           Control.Exception         (Exception)
 import           Crypto.Cipher.AES         (AES256)
 import           Crypto.Cipher.Types       (BlockCipher (..), Cipher (cipherInit), IV, makeIV)
 import           Crypto.Error              (CryptoError (..), CryptoFailable (..))
-import           Crypto.Hash               (SHA1)
 import qualified Crypto.Hash               as Hash
+import           Crypto.Hash.Algorithms    (MD5)
 import qualified Crypto.Random.Types       as CRT
 import           Data.Aeson                (FromJSON (..), KeyValue ((.=)), ToJSON (..), (.:))
 import qualified Data.Aeson                as J
@@ -92,7 +92,7 @@ decryptWallet EncryptedWallet{..} passphraseText = do
     pure $ RestoredWallet ewName mnemonic passphrase
 
 passphraseTextToKey :: Text -> Key AES256 ByteString
-passphraseTextToKey = Key . BS.take 32 . fromString . show . Hash.hash @ByteString @SHA1 . fromString . T.unpack
+passphraseTextToKey = Key . fromString . show . Hash.hash @ByteString @MD5 . fromString . T.unpack
 
 mnemonicToBytes :: SomeMnemonic -> ByteString
 mnemonicToBytes (SomeMnemonic m) = T.encodeUtf8 $ T.unwords $ mnemonicToText m
