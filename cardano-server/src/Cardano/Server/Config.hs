@@ -9,6 +9,7 @@ import           Data.Aeson                    (FromJSON (..), eitherDecodeFileS
 import           Data.Aeson.Casing             (aesonDrop, aesonPrefix, snakeCase)
 import           Data.Text                     (Text)
 import           GHC.Generics                  (Generic)
+import           GHC.Stack                     (HasCallStack)
 import           Ledger                        (TxOutRef)
 import           PlutusAppsExtra.IO.Blockfrost (BfToken)
 import           PlutusAppsExtra.IO.ChainIndex (ChainIndex)
@@ -40,7 +41,7 @@ data InactiveEndpoints = InactiveEndpoints
 configFile :: FilePath
 configFile = "config.json"
 
-loadConfig :: IO Config
+loadConfig :: HasCallStack => IO Config
 loadConfig = decodeOrErrorFromFile configFile
 
 instance FromJSON Config where
@@ -49,5 +50,5 @@ instance FromJSON Config where
 instance FromJSON InactiveEndpoints where
    parseJSON = genericParseJSON $ aesonDrop 10 snakeCase
 
-decodeOrErrorFromFile :: FromJSON a => FilePath -> IO a
+decodeOrErrorFromFile :: (HasCallStack, FromJSON a) => FilePath -> IO a
 decodeOrErrorFromFile = fmap (either error id) . eitherDecodeFileStrict

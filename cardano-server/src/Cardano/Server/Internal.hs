@@ -35,6 +35,7 @@ import           Data.IORef                        (IORef, newIORef)
 import           Data.Kind                         (Type)
 import           Data.Maybe                        (fromMaybe)
 import           Data.Sequence                     (Seq, empty)
+import           GHC.Stack                         (HasCallStack)
 import           Ledger                            (Address, NetworkId, TxOutRef)
 import qualified PlutusAppsExtra.IO.Blockfrost     as BF
 import           PlutusAppsExtra.IO.ChainIndex     (ChainIndex, HasChainIndex (..))
@@ -136,7 +137,7 @@ getNetworkId = asks $ pNetworkId . envLedgerParams
 getAuxillaryEnv :: ServerM api (AuxillaryEnvOf api)
 getAuxillaryEnv = asks $ shAuxiliaryEnv . envServerHandle
 
-loadEnv :: ServerHandle api -> IO (Env api)
+loadEnv :: HasCallStack => ServerHandle api -> IO (Env api)
 loadEnv ServerHandle{..} = do
         Config{..}   <- loadConfig
         envQueueRef  <- newIORef empty
