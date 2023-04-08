@@ -9,12 +9,14 @@
 
 module Cardano.Server.Tx where
 
-import           Cardano.Server.Error                 (MkTxError (..), throwMaybe)
+import           Cardano.Server.Error                 (ConnectionError (ConnectionError),
+                                                       MkTxError (AllConstructorsFailed, CantExtractKeyHashesFromAddress, NotEnoughFunds),
+                                                       throwMaybe)
 import           Cardano.Server.Input                 (InputContext (..))
 import           Cardano.Server.Internal              (Env (..), ServerM)
 import           Cardano.Server.Utils.Logger          (logMsg, logPretty, logSmth)
 import           Control.Lens                         ((^?))
-import           Control.Monad.Catch                  (Handler (..), MonadThrow (..), catches)
+import           Control.Monad.Catch                  (Handler (..), MonadThrow (..), catches, handle)
 import           Control.Monad.Extra                  (guard, mconcatMapM, void, when)
 import           Control.Monad.IO.Class               (MonadIO (..))
 import           Control.Monad.Reader                 (asks)
@@ -32,6 +34,7 @@ import           Ledger                               (Address, CardanoTx (..), 
 import           Ledger.Ada                           (adaOf, lovelaceValueOf, toValue)
 import           Ledger.Tx.CardanoAPI                 as CardanoAPI
 import           Ledger.Value                         (CurrencySymbol (..), TokenName (..), Value (..))
+import           Network.HTTP.Client                  (HttpExceptionContent (..))
 import           PlutusAppsExtra.Constraints.Balance  (balanceExternalTx)
 import           PlutusAppsExtra.Constraints.OffChain (useAsCollateralTx', utxoProducedPublicKeyTx)
 import           PlutusAppsExtra.IO.ChainIndex        (getUtxosAt)
@@ -43,7 +46,7 @@ import           PlutusAppsExtra.Utils.Address        (addressToKeyHashes)
 import           PlutusAppsExtra.Utils.ChainIndex     (filterCleanUtxos)
 import qualified PlutusTx.AssocMap                    as PAM
 import           PlutusTx.Builtins.Class              (ToBuiltin (..))
-import           Servant.Client                       (ClientError (..), ResponseF (..))
+import           Servant.Client                       (ClientError (FailureResponse), ResponseF (..))
 import           Text.Hex                             (decodeHex)
 import           Text.Read                            (readMaybe)
 
@@ -78,15 +81,20 @@ mkTx :: [Address]
      -> [TransactionBuilder ()]
      -> ServerM api CardanoTx
 mkTx addressesTracked ctx txs = mkTxErrorH $ do
-    balancedTx <- mkBalanceTx addressesTracked ctx txs
-    logPretty balancedTx
-    logMsg "Signing..."
-    signedTx <- signTx balancedTx
-    logPretty signedTx
-    logMsg "Submitting..."
-    submitTxConfirmed signedTx
-    logMsg "Submited."
-    return signedTx
+        balancedTx <- mkBalanceTx addressesTracked ctx txs
+        logPretty balancedTx
+        logMsg "Signing..."
+        signedTx <- signTx balancedTx
+        logPretty signedTx
+        logMsg "Submitting..."
+        handle submitH $ submitTxConfirmed signedTx
+        logMsg "Submited."
+        return signedTx
+    where
+        -- | Otherwise we get error on successful submit.
+        submitH = \case
+            ConnectionError _ NoResponseDataReceived -> pure ()
+            err -> throwM err
 
 checkForCleanUtxos :: ServerM api ()
 checkForCleanUtxos = mkTxErrorH $ do
