@@ -9,10 +9,10 @@ import           Cardano.Server.Client.Gen      (randomFundsReqBody)
 import           Cardano.Server.Client.Handle   (HasServantClientEnv)
 import           Cardano.Server.Client.Internal (fundsC)
 import           Cardano.Server.Config          (Config (..), loadConfig)
-import           Test.Gen                       (Malformed (..))
+import           Cardano.Server.Test.Gen        (Malformed (..))
+import           Cardano.Server.Test.Internal   (shoudlFailWithStatus, shouldBeOk)
 import           Test.Hspec                     (Spec, describe, it)
 import           Test.Hspec.Wai.QuickCheck      (Arbitrary (arbitrary), generate)
-import           Test.Internal                  (shoudlFailWithStatus, shouldBeOk)
 
 spec :: HasServantClientEnv => Spec
 spec = describe "/funds" $ do

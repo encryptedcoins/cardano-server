@@ -7,9 +7,9 @@ import           Cardano.Server.Client.Example.Main (genInput)
 import           Cardano.Server.Client.Handle       (HasServantClientEnv)
 import           Cardano.Server.Client.Internal     (serverTxC)
 import           Cardano.Server.Example.Main        (ExampleApi)
+import           Cardano.Server.Test.Internal       (shoudlFailWithStatus, shouldBeOk)
 import           Data.Bifunctor                     (Bifunctor (..))
 import           Test.Hspec                         (Spec, describe, it)
-import           Test.Internal                      (shoudlFailWithStatus, shouldBeOk)
 
 spec :: HasServantClientEnv => Spec
 spec = describe "/serverTx" $ do
