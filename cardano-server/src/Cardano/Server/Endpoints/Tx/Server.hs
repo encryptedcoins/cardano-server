@@ -56,6 +56,7 @@ processQueue env = runServerM env $ setLoggerFilePath "queue.log" $ do
     where
         neverFall ma = catch ma $ \(err :: SomeException) -> do
             logSmth err
+            waitTime 3
             neverFall ma
         go = liftIO getCurrentTime >>= checkQueue
         checkQueue t = do
