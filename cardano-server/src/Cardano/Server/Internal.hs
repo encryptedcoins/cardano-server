@@ -25,7 +25,7 @@ import           Cardano.Server.Utils.Logger       (HasLogger (..), Logger, logg
 import           Cardano.Server.WalletEncryption   (loadWallet)
 import           Control.Exception                 (throw)
 import           Control.Monad.Catch               (MonadCatch, MonadThrow (..))
-import           Control.Monad.Except              (MonadError)
+import           Control.Monad.Except              (MonadError (throwError))
 import           Control.Monad.Extra               (join, whenM)
 import           Control.Monad.IO.Class            (MonadIO)
 import           Control.Monad.Reader              (MonadReader, ReaderT (ReaderT, runReaderT), asks, local)
@@ -161,4 +161,4 @@ setLoggerFilePath :: FilePath -> ServerM api a -> ServerM api a
 setLoggerFilePath fp = local (\Env{..} -> Env{envLoggerFilePath = Just fp, ..})
 
 checkEndpointAvailability :: (InactiveEndpoints -> Bool) -> ServerM api ()
-checkEndpointAvailability endpoint = whenM (asks (endpoint . envInactiveEndpoints)) $ throwM err404
+checkEndpointAvailability endpoint = whenM (asks (endpoint . envInactiveEndpoints)) $ throwError err404
