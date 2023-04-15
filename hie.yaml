@@ -9,7 +9,7 @@ cradle:
     - path: "cardano-server-example/src"
       component: "cardano-server-example:lib:cardano-server-example"
     - path: "cardano-server-example/app"
-      component: "cardano-server-example:app:cardano-server-example"
+      component: "cardano-server-example:exe:cardano-server-example"
 
     #Client
     - path: "cardano-server-client/src"
@@ -19,7 +19,7 @@ cradle:
     - path: "cardano-server-client-example/src"
       component: "cardano-server-client-example:lib:cardano-server-client-example"
     - path: "cardano-server-client-example/app"
-      component: "cardano-server-client-example:app:cardano-server-client-example"
+      component: "cardano-server-client-example:exe:cardano-server-client-example"
 
     #Tests
     - path: "cardano-server-test/test"
