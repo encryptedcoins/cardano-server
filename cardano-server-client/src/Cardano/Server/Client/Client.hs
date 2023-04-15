@@ -11,7 +11,7 @@ module Cardano.Server.Client.Client where
 
 import           Cardano.Server.Client.Handle   (ClientHandle (..), NotImplementedMethodError (NotImplementedMethodError))
 import           Cardano.Server.Client.Internal (Mode (Auto, Manual), ServerEndpoint (..))
-import           Cardano.Server.Client.Opts     (Options (..), runWithOpts)
+import           Cardano.Server.Client.Opts     (CommonOptions (..), runWithOpts)
 import           Cardano.Server.Config          (Config (..), loadConfig)
 import           Cardano.Server.Internal        (ServerHandle, loadEnv, runServerM, setLoggerFilePath)
 import           Cardano.Server.Utils.Logger    (logMsg, (.<))
@@ -32,9 +32,13 @@ createServantClientEnv = do
         Nothing
         defaultMakeClientRequest
 
+-- | When client options ~ CommonOptions
 runClient :: ServerHandle api -> ClientHandle api -> IO ()
-runClient sh ClientHandle{..} = handleNotImplementedMethods $ do
-    Options{..} <- runWithOpts
+runClient sh ch = runWithOpts >>= runClientWithOpts sh ch
+
+-- | For clients with another options type
+runClientWithOpts :: ServerHandle api -> ClientHandle api -> CommonOptions -> IO ()
+runClientWithOpts sh ClientHandle{..} CommonOptions{..} = handleNotImplementedMethods $ do
     env         <- loadEnv sh
     sce         <- liftIO createServantClientEnv
     let ?servantClientEnv = sce

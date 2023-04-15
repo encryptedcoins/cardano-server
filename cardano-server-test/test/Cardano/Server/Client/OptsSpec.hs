@@ -8,7 +8,7 @@
 module Cardano.Server.Client.OptsSpec where
 import           Cardano.Server.Client.Example.Main (readInput)
 import           Cardano.Server.Client.Internal     (Mode (Auto, Manual), ServerEndpoint (ServerTxE, SubmitTxE))
-import           Cardano.Server.Client.Opts         (Options (..), runWithOpts)
+import           Cardano.Server.Client.Opts         (CommonOptions (..), runWithOpts)
 import qualified Data.Text                          as T
 import           System.Environment                 (withArgs)
 import           Test.Hspec                         (Spec, describe, it, shouldBe)
@@ -19,7 +19,7 @@ spec = describe "Parsing client command line arguments" $ do
     it "auto" $ do
 
         withArgs ["submitTx","--auto","30"] runWithOpts >>=
-            (`shouldBe` Options SubmitTxE (Auto 30))
+            (`shouldBe` CommonOptions SubmitTxE (Auto 30))
 
     it "manual" $ do
 
@@ -27,6 +27,6 @@ spec = describe "Parsing client command line arguments" $ do
             inputT = T.pack input
 
         withArgs ["serverTx","--manual",input] runWithOpts >>=
-            (`shouldBe` Options ServerTxE (Manual inputT))
+            (`shouldBe` CommonOptions ServerTxE (Manual inputT))
 
         fst <$> readInput inputT >>= (`shouldBe` ["aaaa","aaaa"])
