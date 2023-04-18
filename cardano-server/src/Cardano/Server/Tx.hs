@@ -29,10 +29,14 @@ import           Data.Default                         (def)
 import           Data.List.Extra                      (chunksOf, dropPrefix)
 import qualified Data.Map                             as Map
 import           Data.Maybe                           (fromJust, isNothing, mapMaybe)
+import qualified Data.Set                             as Set
 import qualified Data.Text                            as T
 import           Ledger                               (Address, CardanoTx (..), TxOutRef, onCardanoTx, unspentOutputsTx)
 import           Ledger.Ada                           (adaOf, lovelaceValueOf, toValue)
+import           Ledger.Constraints                   (TxConstraints (..))
+import           Ledger.Constraints.OffChain          (ScriptLookups (..))
 import           Ledger.Tx.CardanoAPI                 as CardanoAPI
+import           Ledger.Typed.Scripts                 (Any)
 import           Ledger.Value                         (CurrencySymbol (..), TokenName (..), Value (..))
 import           Network.HTTP.Client                  (HttpExceptionContent (..))
 import           PlutusAppsExtra.Constraints.Balance  (balanceExternalTx)
@@ -44,8 +48,10 @@ import           PlutusAppsExtra.Types.Tx             (TransactionBuilder, TxCon
                                                        selectTxConstructor)
 import           PlutusAppsExtra.Utils.Address        (addressToKeyHashes)
 import           PlutusAppsExtra.Utils.ChainIndex     (filterCleanUtxos)
+import           PlutusTx                             (BuiltinData)
 import qualified PlutusTx.AssocMap                    as PAM
 import           PlutusTx.Builtins.Class              (ToBuiltin (..))
+import           Prettyprinter                        (Doc, Pretty (..), hang, vsep)
 import           Servant.Client                       (ClientError (FailureResponse), ResponseF (..))
 import           Text.Hex                             (decodeHex)
 import           Text.Read                            (readMaybe)
@@ -67,9 +73,9 @@ mkBalanceTx addressesTracked context txs = do
     when (isNothing constr) $ throwM $ AllConstructorsFailed $ concatMap txConstructorErrors constrs
     let (lookups, cons) = fromJust $ txConstructorResult $ fromJust constr
     logMsg "\tLookups:"
-    logSmth lookups
+    logSmth $ prettyLookups lookups
     logMsg "\tConstraints:"
-    logSmth cons
+    logSmth $ prettyCons cons
 
     logMsg "Balancing..."
     case context of
@@ -136,3 +142,22 @@ mkTxErrorH = (`catches` [clientErrorH])
                     pure $ Value $ PAM.singleton policy' (PAM.singleton token' quantity')
                 fromTriple _ = Nothing
             pure $ mconcat $ (toValue ada :) $ mapMaybe (fromTriple . map T.unpack) triples
+
+prettyLookups :: ScriptLookups Any -> Doc ann
+prettyLookups ScriptLookups{..} = vsep $ map (hang 2 . vsep)
+    [ "TxOutputs:"           : (pretty <$> Map.toList slTxOutputs)
+    , "OtherScripts:"        : (pretty . show <$> Map.toList slOtherScripts)
+    , "OtherData:"           : (pretty <$> Map.toList slOtherData)
+    , "PaymentPubKeyHashes:" : (pretty <$> Set.toList slPaymentPubKeyHashes)
+    , ["TypedValidator:"      , pretty $ show slTypedValidator]
+    , ["OwnPaymentPubKeyHash:", pretty slOwnPaymentPubKeyHash]
+    , ["OwnStakingCredential:", pretty slOwnStakingCredential]
+    ]
+
+prettyCons :: TxConstraints BuiltinData BuiltinData -> Doc ann
+prettyCons TxConstraints{..} = vsep $ map (hang 2 . vsep)
+    [ "TxConstraints:"  : (pretty <$> txConstraints)
+    , ["TxConstraintFuns", pretty $ show txConstraintFuns]
+    , "TxOwnInputs"     : (pretty <$> txOwnInputs)
+    , "TxOwnOutputs"    : (pretty <$> txOwnOutputs)
+    ]

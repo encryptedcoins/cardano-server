@@ -78,6 +78,7 @@ library
       plutus-apps-extra                      -any,
       plutus-ledger                          -any,
       plutus-ledger-api                      -any,
+      plutus-ledger-constraints              -any,
       plutus-tx                              -any,
       prettyprinter                          -any,
       servant                                -any,
