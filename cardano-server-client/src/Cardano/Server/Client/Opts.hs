@@ -7,13 +7,13 @@ import           Control.Applicative            ((<|>))
 import           Options.Applicative            (Parser, argument, auto, execParser, fullDesc, help, helper, info, long, metavar,
                                                  option, short, strOption, value, (<**>))
 
-runWithOpts :: IO Options
+runWithOpts :: IO CommonOptions
 runWithOpts = execParser $ info (optionsParser <**> helper) fullDesc
 
-optionsParser :: Parser Options
-optionsParser = Options <$> serverEndpointParser <*> (autoModeParser <|> manualModeParser)
+optionsParser :: Parser CommonOptions
+optionsParser = CommonOptions <$> serverEndpointParser <*> (autoModeParser <|> manualModeParser)
 
-data Options = Options
+data CommonOptions = CommonOptions
     { optsEndpoint :: ServerEndpoint
     , optsMode     :: Mode
     } deriving (Show, Eq)

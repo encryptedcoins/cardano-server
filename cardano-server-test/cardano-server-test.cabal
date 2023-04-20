@@ -28,6 +28,22 @@ common lang
       -fobject-code       
       -fplugin-opt PlutusTx.Plugin:defer-errors
 
+library
+  import: lang
+  exposed-modules:
+    Cardano.Server.Test.Utils
+  other-modules:
+    Cardano.Server.Test.Internal
+  build-depends:
+    base                          >= 4.9 && < 5,
+    aeson                                  -any,
+    cardano-server                         -any,
+    cardano-server-client                  -any,
+    hspec                                  -any,
+    servant-client                         -any,
+    text                                   -any,
+  hs-source-dirs: test
+
 test-suite cardano-server-test
   Type:                 exitcode-stdio-1.0
   Default-Language:     Haskell2010
@@ -43,20 +59,29 @@ test-suite cardano-server-test
                         Cardano.Server.Endpoints.StatusSpec
                         Cardano.Server.Endpoints.Tx.ServerSpec
                         Cardano.Server.Endpoints.Tx.SubmitSpec
-                        Test.Gen
-                        Test.Internal
+                        Cardano.Server.WalletEncryptionSpec
+                        Cardano.Server.Test.Gen
+                        Cardano.Server.Test.Internal
   Build-Depends:
     base                          >= 4.9 && < 5,
+    bytestring                             -any,
     aeson                                  -any,
+    cardano-addresses                      -any,
     cardano-server                         -any,
     cardano-server-example                 -any,
     cardano-server-client                  -any,
     cardano-server-client-example          -any,
+    cardano-wallet-core                    -any,
+    cryptonite                             -any,
     exceptions                             -any,
     hspec                                  -any,
     hspec-wai                              -any,
     http-types                             -any,
+    memory                                 -any,
+    plutus-apps-extra                      -any,
     servant-client                         -any,
     text                                   -any,
-    QuickCheck                             -any,
+    text-class                             -any,
+    quickcheck-text                        -any,
     warp                                   -any,
+    QuickCheck                             -any,

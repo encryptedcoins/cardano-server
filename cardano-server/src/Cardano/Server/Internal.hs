@@ -1,18 +1,18 @@
-{-# LANGUAGE AllowAmbiguousTypes        #-}
-{-# LANGUAGE ConstraintKinds            #-}
-{-# LANGUAGE DataKinds                  #-}
-{-# LANGUAGE DerivingVia                #-}
-{-# LANGUAGE ExistentialQuantification  #-}
-{-# LANGUAGE FlexibleContexts           #-}
-{-# LANGUAGE FlexibleInstances          #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE MultiParamTypeClasses      #-}
-{-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE RankNTypes                 #-}
-{-# LANGUAGE RecordWildCards            #-}
-{-# LANGUAGE ScopedTypeVariables        #-}
-{-# LANGUAGE TypeFamilies               #-}
-{-# LANGUAGE UndecidableInstances       #-}
+{-# LANGUAGE AllowAmbiguousTypes          #-}
+{-# LANGUAGE ConstraintKinds              #-}
+{-# LANGUAGE DataKinds                    #-}
+{-# LANGUAGE DerivingVia                  #-}
+{-# LANGUAGE ExistentialQuantification    #-}
+{-# LANGUAGE FlexibleContexts             #-}
+{-# LANGUAGE FlexibleInstances            #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving   #-}
+{-# LANGUAGE MultiParamTypeClasses        #-}
+{-# LANGUAGE OverloadedStrings            #-}
+{-# LANGUAGE RankNTypes                   #-}
+{-# LANGUAGE RecordWildCards              #-}
+{-# LANGUAGE ScopedTypeVariables          #-}
+{-# LANGUAGE TypeFamilies                 #-}
+{-# LANGUAGE UndecidableInstances         #-}
 
 module Cardano.Server.Internal where
 
@@ -22,9 +22,10 @@ import           Cardano.Server.Error              (Envelope)
 import           Cardano.Server.Error.CommonErrors (InternalServerError (NoWalletProvided))
 import           Cardano.Server.Input              (InputContext)
 import           Cardano.Server.Utils.Logger       (HasLogger (..), Logger, logger)
+import           Cardano.Server.WalletEncryption   (loadWallet)
 import           Control.Exception                 (throw)
 import           Control.Monad.Catch               (MonadCatch, MonadThrow (..))
-import           Control.Monad.Except              (MonadError)
+import           Control.Monad.Except              (MonadError (throwError))
 import           Control.Monad.Extra               (join, whenM)
 import           Control.Monad.IO.Class            (MonadIO)
 import           Control.Monad.Reader              (MonadReader, ReaderT (ReaderT, runReaderT), asks, local)
@@ -34,6 +35,7 @@ import           Data.IORef                        (IORef, newIORef)
 import           Data.Kind                         (Type)
 import           Data.Maybe                        (fromMaybe)
 import           Data.Sequence                     (Seq, empty)
+import           GHC.Stack                         (HasCallStack)
 import           Ledger                            (Address, NetworkId, TxOutRef)
 import qualified PlutusAppsExtra.IO.Blockfrost     as BF
 import           PlutusAppsExtra.IO.ChainIndex     (ChainIndex, HasChainIndex (..))
@@ -135,35 +137,28 @@ getNetworkId = asks $ pNetworkId . envLedgerParams
 getAuxillaryEnv :: ServerM api (AuxillaryEnvOf api)
 getAuxillaryEnv = asks $ shAuxiliaryEnv . envServerHandle
 
-loadEnv :: ServerHandle api -> IO (Env api)
+loadEnv :: HasCallStack => ServerHandle api -> IO (Env api)
 loadEnv ServerHandle{..} = do
-    Config{..}   <- loadConfig
-    envQueueRef  <- newIORef empty
-    envWallet    <- sequence $ decodeOrErrorFromFile <$> cWalletFile
-    pp           <- decodeOrErrorFromFile "protocol-parameters.json"
-    let envPort              = cPort
-        envMinUtxosNumber    = cMinUtxosNumber
-        envMaxUtxosNumber    = cMaxUtxosNumber
-        envLedgerParams      = Params def (pParamsFromProtocolParams pp) cNetworkId
-        envInactiveEndpoints = cInactiveEndpoints
-        envCollateral        = cCollateral
-        envNodeFilePath      = cNodeFilePath
-        envChainIndex        = fromMaybe shDefaultCI cChainIndex
-        envBfToken           = cBfToken
-        envLogger            = logger
-        envLoggerFilePath    = Nothing
-        envServerHandle      = ServerHandle 
-            shDefaultCI
-            shAuxiliaryEnv
-            shGetTrackedAddresses
-            shTxEndpointsTxBuilders
-            shServerIdle
-            shProcessRequest
-            shStatusHandler
-    pure Env{..}
+        Config{..}   <- loadConfig
+        envQueueRef  <- newIORef empty
+        envWallet    <- sequence $ loadWallet <$> cWalletFile
+        pp <- decodeOrErrorFromFile "protocol-parameters.json"
+        let envPort              = cPort
+            envMinUtxosNumber    = cMinUtxosNumber
+            envMaxUtxosNumber    = cMaxUtxosNumber
+            envLedgerParams      = Params def (pParamsFromProtocolParams pp) cNetworkId
+            envInactiveEndpoints = cInactiveEndpoints
+            envCollateral        = cCollateral
+            envNodeFilePath      = cNodeFilePath
+            envChainIndex        = fromMaybe shDefaultCI cChainIndex
+            envBfToken           = cBfToken
+            envLogger            = logger
+            envLoggerFilePath    = Nothing
+            envServerHandle      = ServerHandle{..}
+        pure Env{..}
 
 setLoggerFilePath :: FilePath -> ServerM api a -> ServerM api a
 setLoggerFilePath fp = local (\Env{..} -> Env{envLoggerFilePath = Just fp, ..})
 
 checkEndpointAvailability :: (InactiveEndpoints -> Bool) -> ServerM api ()
-checkEndpointAvailability endpoint = whenM (asks (endpoint . envInactiveEndpoints)) $ throwM err404
+checkEndpointAvailability endpoint = whenM (asks (endpoint . envInactiveEndpoints)) $ throwError err404

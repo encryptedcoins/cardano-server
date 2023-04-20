@@ -9,12 +9,14 @@
 
 module Cardano.Server.Tx where
 
-import           Cardano.Server.Error                 (MkTxError (..), throwMaybe)
+import           Cardano.Server.Error                 (ConnectionError (ConnectionError),
+                                                       MkTxError (AllConstructorsFailed, CantExtractKeyHashesFromAddress, NotEnoughFunds),
+                                                       throwMaybe)
 import           Cardano.Server.Input                 (InputContext (..))
 import           Cardano.Server.Internal              (Env (..), ServerM)
 import           Cardano.Server.Utils.Logger          (logMsg, logPretty, logSmth)
 import           Control.Lens                         ((^?))
-import           Control.Monad.Catch                  (Handler (..), MonadThrow (..), catches)
+import           Control.Monad.Catch                  (Handler (..), MonadThrow (..), catches, handle)
 import           Control.Monad.Extra                  (guard, mconcatMapM, void, when)
 import           Control.Monad.IO.Class               (MonadIO (..))
 import           Control.Monad.Reader                 (asks)
@@ -27,11 +29,16 @@ import           Data.Default                         (def)
 import           Data.List.Extra                      (chunksOf, dropPrefix)
 import qualified Data.Map                             as Map
 import           Data.Maybe                           (fromJust, isNothing, mapMaybe)
+import qualified Data.Set                             as Set
 import qualified Data.Text                            as T
 import           Ledger                               (Address, CardanoTx (..), TxOutRef, onCardanoTx, unspentOutputsTx)
 import           Ledger.Ada                           (adaOf, lovelaceValueOf, toValue)
+import           Ledger.Constraints                   (TxConstraints (..))
+import           Ledger.Constraints.OffChain          (ScriptLookups (..))
 import           Ledger.Tx.CardanoAPI                 as CardanoAPI
+import           Ledger.Typed.Scripts                 (Any)
 import           Ledger.Value                         (CurrencySymbol (..), TokenName (..), Value (..))
+import           Network.HTTP.Client                  (HttpExceptionContent (..))
 import           PlutusAppsExtra.Constraints.Balance  (balanceExternalTx)
 import           PlutusAppsExtra.Constraints.OffChain (useAsCollateralTx', utxoProducedPublicKeyTx)
 import           PlutusAppsExtra.IO.ChainIndex        (getUtxosAt)
@@ -41,9 +48,11 @@ import           PlutusAppsExtra.Types.Tx             (TransactionBuilder, TxCon
                                                        selectTxConstructor)
 import           PlutusAppsExtra.Utils.Address        (addressToKeyHashes)
 import           PlutusAppsExtra.Utils.ChainIndex     (filterCleanUtxos)
+import           PlutusTx                             (BuiltinData)
 import qualified PlutusTx.AssocMap                    as PAM
 import           PlutusTx.Builtins.Class              (ToBuiltin (..))
-import           Servant.Client                       (ClientError (..), ResponseF (..))
+import           Prettyprinter                        (Doc, Pretty (..), hang, vsep)
+import           Servant.Client                       (ClientError (FailureResponse), ResponseF (..))
 import           Text.Hex                             (decodeHex)
 import           Text.Read                            (readMaybe)
 
@@ -64,9 +73,9 @@ mkBalanceTx addressesTracked context txs = do
     when (isNothing constr) $ throwM $ AllConstructorsFailed $ concatMap txConstructorErrors constrs
     let (lookups, cons) = fromJust $ txConstructorResult $ fromJust constr
     logMsg "\tLookups:"
-    logSmth lookups
+    logSmth $ prettyLookups lookups
     logMsg "\tConstraints:"
-    logSmth cons
+    logSmth $ prettyCons cons
 
     logMsg "Balancing..."
     case context of
@@ -78,15 +87,20 @@ mkTx :: [Address]
      -> [TransactionBuilder ()]
      -> ServerM api CardanoTx
 mkTx addressesTracked ctx txs = mkTxErrorH $ do
-    balancedTx <- mkBalanceTx addressesTracked ctx txs
-    logPretty balancedTx
-    logMsg "Signing..."
-    signedTx <- signTx balancedTx
-    logPretty signedTx
-    logMsg "Submitting..."
-    submitTxConfirmed signedTx
-    logMsg "Submited."
-    return signedTx
+        balancedTx <- mkBalanceTx addressesTracked ctx txs
+        logPretty balancedTx
+        logMsg "Signing..."
+        signedTx <- signTx balancedTx
+        logPretty signedTx
+        logMsg "Submitting..."
+        handle submitH $ submitTxConfirmed signedTx
+        logMsg "Submited."
+        return signedTx
+    where
+        -- | Otherwise we get error on successful submit.
+        submitH = \case
+            ConnectionError _ NoResponseDataReceived -> pure ()
+            err -> throwM err
 
 checkForCleanUtxos :: ServerM api ()
 checkForCleanUtxos = mkTxErrorH $ do
@@ -128,3 +142,22 @@ mkTxErrorH = (`catches` [clientErrorH])
                     pure $ Value $ PAM.singleton policy' (PAM.singleton token' quantity')
                 fromTriple _ = Nothing
             pure $ mconcat $ (toValue ada :) $ mapMaybe (fromTriple . map T.unpack) triples
+
+prettyLookups :: ScriptLookups Any -> Doc ann
+prettyLookups ScriptLookups{..} = vsep $ map (hang 2 . vsep)
+    [ "TxOutputs:"           : (pretty <$> Map.toList slTxOutputs)
+    , "OtherScripts:"        : (pretty . show <$> Map.toList slOtherScripts)
+    , "OtherData:"           : (pretty <$> Map.toList slOtherData)
+    , "PaymentPubKeyHashes:" : (pretty <$> Set.toList slPaymentPubKeyHashes)
+    , ["TypedValidator:"      , pretty $ show slTypedValidator]
+    , ["OwnPaymentPubKeyHash:", pretty slOwnPaymentPubKeyHash]
+    , ["OwnStakingCredential:", pretty slOwnStakingCredential]
+    ]
+
+prettyCons :: TxConstraints BuiltinData BuiltinData -> Doc ann
+prettyCons TxConstraints{..} = vsep $ map (hang 2 . vsep)
+    [ "TxConstraints:"  : (pretty <$> txConstraints)
+    , ["TxConstraintFuns", pretty $ show txConstraintFuns]
+    , "TxOwnInputs"     : (pretty <$> txOwnInputs)
+    , "TxOwnOutputs"    : (pretty <$> txOwnOutputs)
+    ]

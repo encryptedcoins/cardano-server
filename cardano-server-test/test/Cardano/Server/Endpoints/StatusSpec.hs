@@ -6,8 +6,8 @@ import           Cardano.Server.Client.Handle   (HasServantClientEnv)
 import           Cardano.Server.Client.Internal (statusC)
 import           Cardano.Server.Error           (IsCardanoServerError (..))
 import           Cardano.Server.Example.Main    (ExampleApi, ExampleStatusEndpointError (..))
+import           Cardano.Server.Test.Internal   (shoudlFailWithMessage, shoudlFailWithStatus, shouldBeOk)
 import           Test.Hspec                     (Spec, describe, it)
-import           Test.Internal                  (shoudlFailWithMessage, shoudlFailWithStatus, shouldBeOk)
 
 spec :: HasServantClientEnv => Spec
 spec = describe "/status" $ do

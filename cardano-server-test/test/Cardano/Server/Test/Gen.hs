@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 
-module Test.Gen where
+module Cardano.Server.Test.Gen where
 
 import           Cardano.Server.Client.Handle       ()
 import           Cardano.Server.Endpoints.Funds     (FundsReqBody (..), parseFundsReqBody)
