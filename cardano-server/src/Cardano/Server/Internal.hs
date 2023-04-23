@@ -103,7 +103,7 @@ data Env api = Env
     { envPort                  :: Int
     , envQueueRef              :: QueueRef api
     , envWallet                :: Maybe RestoredWallet
-    , envBfToken               :: BF.BfToken
+    , envBfToken               :: Maybe BF.BfToken
     , envMinUtxosNumber        :: Int
     , envMaxUtxosNumber        :: Int
     , envLedgerParams          :: Params
@@ -142,7 +142,7 @@ loadEnv ServerHandle{..} = do
         Config{..}   <- loadConfig
         envQueueRef  <- newIORef empty
         envWallet    <- sequence $ loadWallet <$> cWalletFile
-        pp <- decodeOrErrorFromFile "protocol-parameters.json"
+        pp <- decodeOrErrorFromFile cProtocolParameters
         let envPort              = cPort
             envMinUtxosNumber    = cMinUtxosNumber
             envMaxUtxosNumber    = cMaxUtxosNumber
