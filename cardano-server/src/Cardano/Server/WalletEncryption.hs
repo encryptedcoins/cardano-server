@@ -47,8 +47,8 @@ data ServerWallet
     deriving Show
 
 instance FromJSON ServerWallet where
-    parseJSON v = UnEncrypted <$> parseJSON v
-              <|> Encrypted   <$> parseJSON v
+    parseJSON v = Encrypted   <$> parseJSON v
+              <|> UnEncrypted <$> parseJSON v
 
 loadWallet :: FilePath -> IO RestoredWallet
 loadWallet = decodeOrErrorFromFile >=> \case
