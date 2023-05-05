@@ -115,7 +115,7 @@ checkForCleanUtxos = mkTxErrorH $ do
 mkWalletTxOutRefs :: Address -> Int -> ServerM api [TxOutRef]
 mkWalletTxOutRefs addr n = do
     (pkh, scr) <- throwMaybe (CantExtractKeyHashesFromAddress addr) $ addressToKeyHashes addr
-    let txBuilder = mapM_ (const $ utxoProducedPublicKeyTx pkh scr (lovelaceValueOf 10_000_000) (Nothing :: Maybe ())) [1..n]
+    let txBuilder = mapM_ (const $ utxoProducedPublicKeyTx pkh scr (lovelaceValueOf 10_000_000) Nothing) [1..n]
     signedTx <- mkTx [] def [txBuilder]
     let refs =  onCardanoTx (Map.keys . Ledger.unspentOutputsTx) (Map.keys . CardanoAPI.unspentOutputsTx) signedTx
     pure refs
