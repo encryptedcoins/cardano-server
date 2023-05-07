@@ -48,6 +48,7 @@ library
       bytestring                             -any,
       data-default                           -any,
       exceptions                             -any,
+      extra                                  -any,
       http-client                            -any,
       http-types                             -any,
       mtl                                    -any,

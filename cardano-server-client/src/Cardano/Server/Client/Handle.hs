@@ -8,26 +8,31 @@
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications    #-}
+{-# LANGUAGE ViewPatterns #-}
+{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
 module Cardano.Server.Client.Handle where
 
-import           Cardano.Server.Client.Gen      (randomFundsReqBody, randomSubmitTxBody)
-import           Cardano.Server.Client.Internal (ClientEndpoint (..), Interval, Mode (..), ServerEndpoint (..))
-import           Cardano.Server.Internal        (ServerM, getNetworkId)
-import           Cardano.Server.Utils.Logger    (logSmth, (.<), logMsg)
-import           Cardano.Server.Utils.Wait      (waitTime)
-import           Control.Monad                  (forever, (>=>))
-import           Control.Monad.Catch            (Exception, MonadThrow (throwM))
-import           Control.Monad.IO.Class         (MonadIO (..))
-import           Data.Aeson                     (FromJSON, eitherDecode)
-import qualified Data.ByteString.Lazy           as LBS
-import           Data.Default                   (Default (..))
-import           Data.Proxy                     (Proxy (..))
-import           Data.Text                      (Text)
-import qualified Data.Text                      as T
-import           Servant.Client                 (ClientEnv, runClientM)
-import           System.Random                  (Random, randomIO, randomRIO)
-import           Text.Read                      (readEither)
+import           Cardano.Server.Client.Gen          (randomFundsReqBody, randomSubmitTxBody)
+import           Cardano.Server.Client.Internal     (ClientEndpoint (..), Interval, Mode (..), ServerEndpoint (..))
+import           Cardano.Server.Endpoints.Tx.Submit (SubmitTxReqBody (..))
+import           Cardano.Server.Internal            (ServerM, getNetworkId)
+import           Cardano.Server.Utils.Logger        (logMsg, logSmth, (.<))
+import           Cardano.Server.Utils.Wait          (waitTime)
+import           Control.Monad                      (forever, (>=>))
+import           Control.Monad.Catch                (Exception, MonadThrow (throwM))
+import           Control.Monad.IO.Class             (MonadIO (..))
+import           Data.Aeson                         (FromJSON, eitherDecode)
+import qualified Data.ByteString.Lazy               as LBS
+import           Data.Default                       (Default (..))
+import           Data.List.Extra                    (chunksOf)
+import           Data.Proxy                         (Proxy (..))
+import           Data.Text                          (Text)
+import qualified Data.Text                          as T
+import           Servant.Client                     (ClientEnv, runClientM)
+import           System.Random                      (Random, randomIO, randomRIO)
+import           Text.Read                          (readEither)
 
 type HasServantClientEnv = ?servantClientEnv :: ClientEnv
 
@@ -60,10 +65,13 @@ instance Default (ClientHandle api) where
         , manualPing     = const $ sendRequest ()
         , manualFunds    = manualWithRead
         , manualNewTx    = throwManualNotImplemented NewTxE
-        , manualSubmitTx = manualWithRead
+        , manualSubmitTx = manualWith readSubmitTxArg
         , manualServerTx = throwManualNotImplemented ServerTxE
         , manualStatus   = throwManualNotImplemented StatusE
         }
+        where
+            readSubmitTxArg (T.splitOn "," -> tx:wits) 
+                = pure $ SubmitTxReqBody tx $ map (\[a,b] -> (a,b)) $ chunksOf 2 wits
 
 data NotImplementedMethodError = NotImplementedMethodError Mode ServerEndpoint
     deriving (Show, Exception)
