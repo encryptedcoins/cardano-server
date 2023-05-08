@@ -23,7 +23,7 @@ data Config = Config
     , cAuxiliaryEnvFile       :: FilePath
     , cNodeFilePath           :: FilePath
     , cWalletFile             :: Maybe FilePath
-    , cBfToken                :: BfToken
+    , cBfToken                :: Maybe BfToken
     , cNetworkId              :: NetworkId
     , cCollateral             :: Maybe TxOutRef
     , cChainIndex             :: Maybe ChainIndex
