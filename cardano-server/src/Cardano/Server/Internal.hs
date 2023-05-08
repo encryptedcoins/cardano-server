@@ -142,7 +142,7 @@ loadEnv ServerHandle{..} = do
         Config{..}   <- loadConfig
         envQueueRef  <- newIORef empty
         envWallet    <- sequence $ loadWallet <$> cWalletFile
-        pp <- decodeOrErrorFromFile "protocol-parameters.json"
+        pp <- decodeOrErrorFromFile cProtocolParametersFile
         let envPort              = cPort
             envMinUtxosNumber    = cMinUtxosNumber
             envMaxUtxosNumber    = cMaxUtxosNumber
