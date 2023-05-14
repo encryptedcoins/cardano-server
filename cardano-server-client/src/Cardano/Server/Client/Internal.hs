@@ -25,7 +25,7 @@ import           Cardano.Server.Endpoints.Tx.Submit   (SubmitTxApi, SubmitTxReqB
 import           Cardano.Server.Internal              (HasStatusEndpoint (..), TxApiRequestOf)
 import           Data.Kind                            (Type)
 import           Data.Text                            (Text)
-import           Servant                              (Get, JSON, MimeRender, NoContent, Proxy (Proxy))
+import           Servant                              (Post, JSON, MimeRender, NoContent, Proxy (Proxy))
 import           Servant.Client                       (ClientM, HasClient, client)
 
 pingC :: ClientM NoContent
@@ -45,7 +45,7 @@ serverTxC = client (Proxy @(ServerTxApi (TxApiRequestOf api) (TxApiErrorOf api))
 
 statusC :: forall api. 
     ( MimeRender JSON (StatusEndpointReqBodyOf api)
-    , HasClient ClientM (Get '[JSON] (StatusEndpointResOf api))
+    , HasClient ClientM (Post '[JSON] (StatusEndpointResOf api))
     ) => StatusEndpointReqBodyOf api -> ClientM (StatusEndpointResOf api)
 statusC = client (Proxy @(StatusApi' api))
 
@@ -110,7 +110,7 @@ instance (Show (TxApiRequestOf api), MimeRender JSON (TxApiRequestOf api)) => Cl
 instance ( Show (StatusEndpointReqBodyOf api)
          , Show (StatusEndpointResOf api)
          , MimeRender JSON (StatusEndpointReqBodyOf api)
-         , HasClient ClientM (Get '[JSON] (StatusEndpointResOf api))
+         , HasClient ClientM (Post '[JSON] (StatusEndpointResOf api))
          ) => ClientEndpoint 'StatusE api where
     type EndpointArg 'StatusE api = StatusEndpointReqBodyOf api
     type EndpointRes 'StatusE api = StatusEndpointResOf api
