@@ -15,19 +15,19 @@ import           PlutusAppsExtra.IO.Blockfrost (BfToken)
 import           PlutusAppsExtra.IO.ChainIndex (ChainIndex)
 
 data Config = Config
-    { cHost               :: Text
-    , cPort               :: Int
-    , cMinUtxosNumber     :: Int
-    , cMaxUtxosNumber     :: Int
-    , cNodeFilePath       :: FilePath
-    , cProtocolParameters :: FilePath
-    , cWalletFile         :: Maybe FilePath
-    , cAuxiliaryEnvFile   :: FilePath
-    , cNetworkId          :: NetworkId
-    , cBfToken            :: Maybe BfToken
-    , cCollateral         :: Maybe TxOutRef
-    , cChainIndex         :: Maybe ChainIndex
-    , cInactiveEndpoints  :: InactiveEndpoints
+    { cHost                   :: Text
+    , cPort                   :: Int
+    , cMinUtxosNumber         :: Int
+    , cMaxUtxosNumber         :: Int
+    , cNodeFilePath           :: FilePath
+    , cProtocolParametersFile :: FilePath
+    , cWalletFile             :: Maybe FilePath
+    , cAuxiliaryEnvFile       :: FilePath
+    , cNetworkId              :: NetworkId
+    , cBfToken                :: Maybe BfToken
+    , cCollateral             :: Maybe TxOutRef
+    , cChainIndex             :: Maybe ChainIndex
+    , cInactiveEndpoints      :: InactiveEndpoints
     } deriving (Show, Generic)
 
 data InactiveEndpoints = InactiveEndpoints
