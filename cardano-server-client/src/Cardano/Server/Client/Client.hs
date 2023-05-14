@@ -9,10 +9,10 @@
 
 module Cardano.Server.Client.Client where
 
-import           Cardano.Server.Client.Handle   (ClientHandle (..), NotImplementedMethodError (NotImplementedMethodError))
-import           Cardano.Server.Client.Internal (Mode (Auto, Manual), ServerEndpoint (..))
+import           Cardano.Server.Client.Handle   (ClientHandle (..), NotImplementedMethodError (..))
+import           Cardano.Server.Client.Internal (Mode (..))
 import           Cardano.Server.Client.Opts     (CommonOptions (..), runWithOpts)
-import           Cardano.Server.Config          (Config (..), loadConfig)
+import           Cardano.Server.Config          (Config (..), ServerEndpoint (..), loadConfig)
 import           Cardano.Server.Internal        (ServerHandle, loadEnv, runServerM, setLoggerFilePath)
 import           Cardano.Server.Utils.Logger    (logMsg, (.<))
 import           Control.Exception              (handle)

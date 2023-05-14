@@ -11,7 +11,7 @@
 
 module Cardano.Server.Endpoints.Funds where
 
-import           Cardano.Server.Config         (isInactiveFunds)
+import           Cardano.Server.Config         (ServerEndpoint (FundsE))
 import           Cardano.Server.Error          (ConnectionError, Envelope, IsCardanoServerError (errMsg, errStatus), Throws,
                                                 toEnvelope)
 import           Cardano.Server.Internal       (ServerM, checkEndpointAvailability)
@@ -64,7 +64,7 @@ instance IsCardanoServerError FundsError where
 fundsHandler :: FundsReqBody -> ServerM api (Envelope '[FundsError, ConnectionError] Funds)
 fundsHandler frb@(FundsReqBody addrBech32 _) = toEnvelope $ do
     logMsg $ "New funds request received:\n" <> addrBech32
-    checkEndpointAvailability isInactiveFunds
+    checkEndpointAvailability FundsE
     either throwM (uncurry getFunds) $ parseFundsReqBody frb
 
 parseFundsReqBody :: FundsReqBody -> Either FundsError (CurrencySymbol, Address)

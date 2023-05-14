@@ -15,6 +15,7 @@
 
 module Cardano.Server.Client.Internal where
 
+import           Cardano.Server.Config                (ServerEndpoint (..))
 import           Cardano.Server.Endpoints.Funds       (Funds, FundsApi, FundsReqBody)
 import           Cardano.Server.Endpoints.Ping        (PingApi)
 import           Cardano.Server.Endpoints.Status      (StatusApi')
@@ -48,34 +49,6 @@ statusC :: forall api.
     , HasClient ClientM (Get '[JSON] (StatusEndpointResOf api))
     ) => StatusEndpointReqBodyOf api -> ClientM (StatusEndpointResOf api)
 statusC = client (Proxy @(StatusApi' api))
-
-data ServerEndpoint
-    = PingE
-    | FundsE
-    | NewTxE
-    | SubmitTxE
-    | ServerTxE
-    | StatusE
-    deriving Eq
-
-instance Read ServerEndpoint where
-    readsPrec _ = \case
-        "ping"     -> [(PingE    , "")]
-        "funds"    -> [(FundsE   , "")]
-        "newTx"    -> [(NewTxE   , "")]
-        "submitTx" -> [(SubmitTxE, "")]
-        "serverTx" -> [(ServerTxE, "")]
-        "status"   -> [(StatusE  , "")]
-        _          -> []
-
-instance Show ServerEndpoint where
-    show = \case
-        PingE     -> "ping"
-        FundsE    -> "funds"
-        NewTxE    -> "newTx"
-        SubmitTxE -> "submitTx"
-        ServerTxE -> "serverTx"
-        StatusE   -> "status"
 
 class (Show (EndpointArg e api), Show (EndpointRes e api)) => ClientEndpoint (e :: ServerEndpoint) api where
     type EndpointArg e api :: Type

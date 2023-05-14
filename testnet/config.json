@@ -9,12 +9,5 @@
 , "node_file_path"           : ""
 , "protocol_parameters_file" : "protocol-parameters.json"
 , "chain_index"              : "Kupo"
-, "inactive_endpoints"       :
-    { "ping"          : false
-    , "funds"         : false
-    , "submit_tx"     : false
-    , "new_tx"        : false
-    , "server_tx"     : false
-    , "status"        : false
-    }
+, "active_endpoints"         : ["ping", "funds", "submitTx", "newTx", "serverTx", "status"]
 }

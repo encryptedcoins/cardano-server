@@ -15,7 +15,8 @@
 module Cardano.Server.Client.Handle where
 
 import           Cardano.Server.Client.Gen          (randomFundsReqBody, randomSubmitTxBody)
-import           Cardano.Server.Client.Internal     (ClientEndpoint (..), Interval, Mode (..), ServerEndpoint (..))
+import           Cardano.Server.Client.Internal     (ClientEndpoint (..), Interval, Mode (..))
+import           Cardano.Server.Config              (ServerEndpoint (..))
 import           Cardano.Server.Endpoints.Tx.Submit (SubmitTxReqBody (..))
 import           Cardano.Server.Internal            (ServerM, getNetworkId)
 import           Cardano.Server.Utils.Logger        (logMsg, logSmth, (.<))

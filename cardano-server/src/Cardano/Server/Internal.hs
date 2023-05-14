@@ -17,7 +17,7 @@
 module Cardano.Server.Internal where
 
 import           Cardano.Node.Emulator             (Params (..), pParamsFromProtocolParams)
-import           Cardano.Server.Config             (Config (..), InactiveEndpoints, decodeOrErrorFromFile, loadConfig)
+import           Cardano.Server.Config             (Config (..), ServerEndpoint, decodeOrErrorFromFile, loadConfig)
 import           Cardano.Server.Error              (Envelope)
 import           Cardano.Server.Error.CommonErrors (InternalServerError (NoWalletProvided))
 import           Cardano.Server.Input              (InputContext)
@@ -110,7 +110,7 @@ data Env api = Env
     , envCollateral            :: Maybe TxOutRef
     , envNodeFilePath          :: FilePath
     , envChainIndex            :: ChainIndex
-    , envInactiveEndpoints     :: InactiveEndpoints
+    , envActiveEndpoints       :: [ServerEndpoint]
     , envLogger                :: Logger (ServerM api)
     , envLoggerFilePath        :: Maybe FilePath
     , envServerHandle          :: ServerHandle api
@@ -147,7 +147,7 @@ loadEnv ServerHandle{..} = do
             envMinUtxosNumber    = cMinUtxosNumber
             envMaxUtxosNumber    = cMaxUtxosNumber
             envLedgerParams      = Params def (pParamsFromProtocolParams pp) cNetworkId
-            envInactiveEndpoints = cInactiveEndpoints
+            envActiveEndpoints   = cActiveEndpoints
             envCollateral        = cCollateral
             envNodeFilePath      = cNodeFilePath
             envChainIndex        = fromMaybe shDefaultCI cChainIndex
@@ -160,5 +160,5 @@ loadEnv ServerHandle{..} = do
 setLoggerFilePath :: FilePath -> ServerM api a -> ServerM api a
 setLoggerFilePath fp = local (\Env{..} -> Env{envLoggerFilePath = Just fp, ..})
 
-checkEndpointAvailability :: (InactiveEndpoints -> Bool) -> ServerM api ()
-checkEndpointAvailability endpoint = whenM (asks (endpoint . envInactiveEndpoints)) $ throwError err404
+checkEndpointAvailability :: ServerEndpoint -> ServerM api ()
+checkEndpointAvailability endpoint = whenM (asks ((endpoint `notElem`) . envActiveEndpoints)) $ throwError err404
