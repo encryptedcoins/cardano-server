@@ -10,6 +10,7 @@ module Cardano.Server.Error.CommonErrors
     , BalanceExternalTxError (..)
     , MkTxError (..)
     , SubmitTxToLocalNodeError (..)
+    , CslError (..)
     ) where
     
 import           Cardano.Server.Error.Class           (IsCardanoServerError (errMsg, errStatus))
@@ -31,7 +32,7 @@ instance IsCardanoServerError ConnectionError where
         PlutusChainIndexConnectionError{} -> toMsg "Caradno chain index API"
         KupoConnectionError{}             -> toMsg "Kupo chain index API"
         WalletApiConnectionError{}        -> toMsg "Cardano wallet API"
-        _                                 -> toMsg "Some external endpoint"
+        _                                 -> toMsg "Some external API"
         where toMsg = (<> " is currently unavailable. Try again later.")
 
 instance IsCardanoServerError MkTxError where
@@ -60,3 +61,12 @@ instance IsCardanoServerError SubmitTxToLocalNodeError where
         NoConnectionToLocalNode -> "Server local node is currently unavailable."
         CantSubmitEmulatorTx{}  -> "Can not sumbit emulator tx to local node."
         FailedSumbit err        -> "An error occurred while sending tx to local node. Reason: " .< err
+
+data CslError 
+    = CslConversionError
+    deriving (Show, Exception)
+
+instance IsCardanoServerError CslError where
+    errStatus _ = toEnum 422
+    errMsg  = \case
+        CslConversionError -> "An error occurred while converting plutus data to csl."

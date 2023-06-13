@@ -15,7 +15,7 @@
 
 module Cardano.Server.Main where
 
-import           Cardano.Server.Endpoints.Funds       (FundsApi, fundsHandler)
+import           Cardano.Server.Endpoints.Utxos       (UtxosApi, utxosHandler)
 import           Cardano.Server.Endpoints.Ping        (PingApi, pingHandler)
 import           Cardano.Server.Endpoints.Status      (StatusApi, commonStatusHandler)
 import           Cardano.Server.Endpoints.Tx.Internal (TxApiErrorOf)
@@ -46,7 +46,7 @@ import           System.IO                            (BufferMode (LineBuffering
 
 type ServerApi txApiReqBody txApiError statusApiReqBody statusApiErrors statusApiRes
     = PingApi
-    :<|> FundsApi
+    :<|> UtxosApi
     :<|> NewTxApi txApiReqBody txApiError
     :<|> SubmitTxApi txApiError
     :<|> ServerTxApi txApiReqBody txApiError
@@ -81,7 +81,7 @@ server :: forall api. ServerConstraints api
     => ServerT (ServerApi' api) (ServerM api)
 server
     =    pingHandler
-    :<|> fundsHandler
+    :<|> utxosHandler
     :<|> newTxHandler
     :<|> submitTxHandler
     :<|> serverTxHandler

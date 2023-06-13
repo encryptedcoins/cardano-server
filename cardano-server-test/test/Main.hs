@@ -1,7 +1,7 @@
 module Main where
 
 import qualified Cardano.Server.Client.OptsSpec         as ClientOpts
-import qualified Cardano.Server.Endpoints.FundsSpec     as Funds
+import qualified Cardano.Server.Endpoints.UtxosSpec     as Utxos
 import qualified Cardano.Server.Endpoints.PingSpec      as Ping
 import qualified Cardano.Server.Endpoints.StatusSpec    as Status
 import qualified Cardano.Server.Endpoints.Tx.ServerSpec as ServerTx
@@ -14,7 +14,7 @@ main :: IO ()
 main = withCardanoServer exampleServerHandle $ do
     WalletEncryption.spec
     Ping.spec
-    Funds.spec
+    Utxos.spec
     ServerTx.spec
     SubmitTx.spec
     Status.spec

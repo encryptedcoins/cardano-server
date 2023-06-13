@@ -159,7 +159,7 @@ $ cabal run cardano-server-example
 
 2. Run client in automatic mode in which it will send request to mint test tokens to selected endpoint (the default is `serverTx`) at an average *interval* seconds :</br>
 ```console
-$ cabal run cardano-server-client-example  -- [ping | funds | serverTx | newTx | submitTx | status ] --auto interval
+$ cabal run cardano-server-client-example  -- [ping | utxos | serverTx | newTx | submitTx | status ] --auto interval
 ```
 &emsp;&emsp;For example:
 ```console
@@ -168,7 +168,7 @@ $ cabal run cardano-server-client-example -- submitTx --auto 30
 
 3. Run client in manual mode in which it will send request to selected endpoint (the default is `serverTx`) based on text input:</br>
 ```console
-$ cabal run cardano-server-client-example  -- [ping | funds | serverTx | newTx | submitTx | status ] --manual some_text_input
+$ cabal run cardano-server-client-example  -- [ping | utxos | serverTx | newTx | submitTx | status ] --manual some_text_input
 ```
 &emsp;&emsp;For example, in serverTx endpoint it will send request to mint specified tokens:
 ```console

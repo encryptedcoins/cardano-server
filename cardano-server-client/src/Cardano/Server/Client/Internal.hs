@@ -1,11 +1,8 @@
 {-# LANGUAGE AllowAmbiguousTypes    #-}
-{-# LANGUAGE ConstraintKinds        #-}
 {-# LANGUAGE DataKinds              #-}
 {-# LANGUAGE FlexibleContexts       #-}
 {-# LANGUAGE FlexibleInstances      #-}
-{-# LANGUAGE LambdaCase             #-}
 {-# LANGUAGE MultiParamTypeClasses  #-}
-{-# LANGUAGE OverloadedStrings      #-}
 {-# LANGUAGE RankNTypes             #-}
 {-# LANGUAGE ScopedTypeVariables    #-}
 {-# LANGUAGE TypeApplications       #-}
@@ -16,7 +13,7 @@
 module Cardano.Server.Client.Internal where
 
 import           Cardano.Server.Config                (ServerEndpoint (..))
-import           Cardano.Server.Endpoints.Funds       (Funds, FundsApi, FundsReqBody)
+import           Cardano.Server.Endpoints.Utxos       (UtxosApi)
 import           Cardano.Server.Endpoints.Ping        (PingApi)
 import           Cardano.Server.Endpoints.Status      (StatusApi')
 import           Cardano.Server.Endpoints.Tx.Internal (TxApiErrorOf)
@@ -24,6 +21,7 @@ import           Cardano.Server.Endpoints.Tx.New      (NewTxApi)
 import           Cardano.Server.Endpoints.Tx.Server   (ServerTxApi)
 import           Cardano.Server.Endpoints.Tx.Submit   (SubmitTxApi, SubmitTxReqBody (..))
 import           Cardano.Server.Internal              (HasStatusEndpoint (..), TxApiRequestOf)
+import qualified CSL
 import           Data.Kind                            (Type)
 import           Data.Text                            (Text)
 import           Servant                              (Get, JSON, MimeRender, NoContent, Proxy (Proxy))
@@ -32,8 +30,8 @@ import           Servant.Client                       (ClientM, HasClient, clien
 pingC :: ClientM NoContent
 pingC = client (Proxy @PingApi)
 
-fundsC :: FundsReqBody -> ClientM Funds
-fundsC = client (Proxy @FundsApi)
+utxosC :: Text -> ClientM CSL.TransactionUnspentOutputs
+utxosC = client (Proxy @UtxosApi)
 
 newTxC :: forall api. MimeRender JSON (TxApiRequestOf api) => TxApiRequestOf api -> ClientM (Text, Text)
 newTxC = client (Proxy @(NewTxApi (TxApiRequestOf api) (TxApiErrorOf api)))
@@ -60,10 +58,10 @@ instance ClientEndpoint 'PingE api where
     type EndpointRes 'PingE _ = NoContent
     endpointClient            = const pingC
 
-instance ClientEndpoint 'FundsE api where
-    type EndpointArg 'FundsE _ = FundsReqBody
-    type EndpointRes 'FundsE _ = Funds
-    endpointClient             = fundsC
+instance ClientEndpoint 'UtxosE api where
+    type EndpointArg 'UtxosE _ = Text
+    type EndpointRes 'UtxosE _ = CSL.TransactionUnspentOutputs
+    endpointClient             = utxosC
 
 instance (Show (TxApiRequestOf api), MimeRender JSON (TxApiRequestOf api)) => ClientEndpoint 'NewTxE api where
     type EndpointArg 'NewTxE api = TxApiRequestOf api

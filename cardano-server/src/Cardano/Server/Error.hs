@@ -12,6 +12,7 @@ module Cardano.Server.Error
     , BalanceExternalTxError (..)
     , MkTxError (..)
     , SubmitTxToLocalNodeError (..)
+    , CslError (..)
 
     -- Other helpers functions
     , parseErrorText
@@ -19,8 +20,9 @@ module Cardano.Server.Error
     , throwEither
     ) where
 
-import           Cardano.Server.Error.Class      (IsCardanoServerError (..), parseErrorText)
-import           Cardano.Server.Error.Servant    (Envelope, Throws)
-import           Cardano.Server.Error.ToEnvelope (toEnvelope)
-import           PlutusAppsExtra.Types.Error     (ConnectionError(..), BalanceExternalTxError(..), SubmitTxToLocalNodeError(..), MkTxError(..),
-                                                  throwMaybe, throwEither)
+import           Cardano.Server.Error.Class        (IsCardanoServerError (..), parseErrorText)
+import           Cardano.Server.Error.CommonErrors (CslError (..))
+import           Cardano.Server.Error.Servant      (Envelope, Throws)
+import           Cardano.Server.Error.ToEnvelope   (toEnvelope)
+import           PlutusAppsExtra.Types.Error       (BalanceExternalTxError (..), ConnectionError (..), MkTxError (..),
+                                                    SubmitTxToLocalNodeError (..), throwEither, throwMaybe)

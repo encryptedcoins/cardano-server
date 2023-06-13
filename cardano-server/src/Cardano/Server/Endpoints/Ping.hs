@@ -13,6 +13,6 @@ type PingApi = "ping" :> Get '[JSON] NoContent
 
 pingHandler :: ServerM api NoContent
 pingHandler = do
-    checkEndpointAvailability PingE
     logMsg "Received ping request."
+    checkEndpointAvailability PingE
     pure NoContent

@@ -8,7 +8,10 @@
 module Cardano.Server.Config where
 
 import           Cardano.Api                   (NetworkId (..))
-import           Data.Aeson                    (FromJSON (..), eitherDecodeFileStrict, genericParseJSON)
+import           Control.Monad
+import           Data.Aeson                    (FromJSON (..),
+                                                eitherDecodeFileStrict,
+                                                genericParseJSON)
 import qualified Data.Aeson                    as J
 import           Data.Aeson.Casing             (aesonPrefix, snakeCase)
 import           Data.Text                     (Text)
@@ -50,7 +53,7 @@ decodeOrErrorFromFile = fmap (either error id) . eitherDecodeFileStrict
 
 data ServerEndpoint
     = PingE
-    | FundsE
+    | UtxosE
     | NewTxE
     | SubmitTxE
     | ServerTxE
@@ -60,7 +63,7 @@ data ServerEndpoint
 instance Read ServerEndpoint where
     readsPrec _ = \case
         "ping"     -> [(PingE    , "")]
-        "funds"    -> [(FundsE   , "")]
+        "utxos"    -> [(UtxosE   , "")]
         "newTx"    -> [(NewTxE   , "")]
         "submitTx" -> [(SubmitTxE, "")]
         "serverTx" -> [(ServerTxE, "")]
@@ -70,18 +73,18 @@ instance Read ServerEndpoint where
 instance Show ServerEndpoint where
     show = \case
         PingE     -> "ping"
-        FundsE    -> "funds"
+        UtxosE    -> "utxos"
         NewTxE    -> "newTx"
         SubmitTxE -> "submitTx"
         ServerTxE -> "serverTx"
         StatusE   -> "status"
 
 instance FromJSON ServerEndpoint where
-    parseJSON = \case
-        J.String "ping"     -> pure PingE
-        J.String "funds"    -> pure FundsE
-        J.String "newTx"    -> pure NewTxE
-        J.String "submitTx" -> pure SubmitTxE
-        J.String "serverTx" -> pure ServerTxE
-        J.String "status"   -> pure StatusE
-        _                   -> fail "FromJSON ServerEndpoint"
+    parseJSON = J.withText "ServerEndpoint" $ \case
+        "ping"     -> pure PingE
+        "utxos"    -> pure UtxosE
+        "newTx"    -> pure NewTxE
+        "submitTx" -> pure SubmitTxE
+        "serverTx" -> pure ServerTxE
+        "status"   -> pure StatusE
+        _          -> mzero

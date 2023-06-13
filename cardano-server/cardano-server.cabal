@@ -32,13 +32,13 @@ library
     import: lang
     exposed-modules: 
       Cardano.Server.Config
-      Cardano.Server.Endpoints.Funds 
       Cardano.Server.Endpoints.Ping
       Cardano.Server.Endpoints.Status
       Cardano.Server.Endpoints.Tx.Internal
       Cardano.Server.Endpoints.Tx.New
       Cardano.Server.Endpoints.Tx.Server
       Cardano.Server.Endpoints.Tx.Submit
+      Cardano.Server.Endpoints.Utxos 
       Cardano.Server.Error
       Cardano.Server.Error.Class
       Cardano.Server.Error.CommonErrors
@@ -63,6 +63,7 @@ library
       cardano-node-emulator                  -any,
       containers                             -any,
       cryptonite                             -any,
+      csl-types                              -any,
       data-default                           -any,
       directory                              -any,
       exceptions                             -any,

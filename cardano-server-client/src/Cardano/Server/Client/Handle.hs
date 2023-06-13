@@ -14,7 +14,7 @@
 
 module Cardano.Server.Client.Handle where
 
-import           Cardano.Server.Client.Gen          (randomFundsReqBody, randomSubmitTxBody)
+import           Cardano.Server.Client.Gen          (randomAddressBech32Text, randomSubmitTxBody)
 import           Cardano.Server.Client.Internal     (ClientEndpoint (..), Interval, Mode (..))
 import           Cardano.Server.Config              (ServerEndpoint (..))
 import           Cardano.Server.Endpoints.Tx.Submit (SubmitTxReqBody (..))
@@ -41,14 +41,14 @@ type HasServantClientEnv = ?servantClientEnv :: ClientEnv
 data ClientHandle api = ClientHandle
     -- Auto
     { autoPing       :: HasServantClientEnv => Interval -> ServerM api (Proxy 'PingE)
-    , autoFunds      :: HasServantClientEnv => Interval -> ServerM api (Proxy 'FundsE)
+    , autoUtxos      :: HasServantClientEnv => Interval -> ServerM api (Proxy 'UtxosE)
     , autoNewTx      :: HasServantClientEnv => Interval -> ServerM api (Proxy 'NewTxE)
     , autoSumbitTx   :: HasServantClientEnv => Interval -> ServerM api (Proxy 'SubmitTxE)
     , autoServerTx   :: HasServantClientEnv => Interval -> ServerM api (Proxy 'ServerTxE)
     , autoStatus     :: HasServantClientEnv => Interval -> ServerM api (Proxy 'StatusE)
     -- Manual
     , manualPing     :: HasServantClientEnv => Text -> ServerM api (Proxy 'PingE)
-    , manualFunds    :: HasServantClientEnv => Text -> ServerM api (Proxy 'FundsE)
+    , manualUtxos    :: HasServantClientEnv => Text -> ServerM api (Proxy 'UtxosE)
     , manualNewTx    :: HasServantClientEnv => Text -> ServerM api (Proxy 'NewTxE)
     , manualSubmitTx :: HasServantClientEnv => Text -> ServerM api (Proxy 'SubmitTxE)
     , manualServerTx :: HasServantClientEnv => Text -> ServerM api (Proxy 'ServerTxE)
@@ -58,13 +58,13 @@ data ClientHandle api = ClientHandle
 instance Default (ClientHandle api) where
     def = ClientHandle
         { autoPing       = autoWith (pure ())
-        , autoFunds      = \i -> getNetworkId >>= (`autoWith` i) . randomFundsReqBody
+        , autoUtxos      = \i -> getNetworkId >>= (`autoWith` i) . randomAddressBech32Text
         , autoNewTx      = throwAutoNotImplemented NewTxE
         , autoSumbitTx   = autoWith randomSubmitTxBody
         , autoServerTx   = throwAutoNotImplemented ServerTxE
         , autoStatus     = throwAutoNotImplemented StatusE
         , manualPing     = const $ sendRequest ()
-        , manualFunds    = manualWithRead
+        , manualUtxos    = manualWithRead
         , manualNewTx    = throwManualNotImplemented NewTxE
         , manualSubmitTx = manualWith readSubmitTxArg
         , manualServerTx = throwManualNotImplemented ServerTxE

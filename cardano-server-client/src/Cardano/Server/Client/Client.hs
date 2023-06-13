@@ -44,13 +44,13 @@ runClientWithOpts sh ClientHandle{..} CommonOptions{..} = handleNotImplementedMe
     let ?servantClientEnv = sce
     runServerM env $ setLoggerFilePath "client.log" $ withGreetings $ case (optsMode, optsEndpoint) of
         (Auto     i, PingE    ) -> void $ autoPing         i
-        (Auto     i, FundsE   ) -> void $ autoFunds        i
+        (Auto     i, UtxosE   ) -> void $ autoUtxos        i
         (Auto     i, NewTxE   ) -> void $ autoNewTx        i
         (Auto     i, SubmitTxE) -> void $ autoSumbitTx     i
         (Auto     i, ServerTxE) -> void $ autoServerTx     i
         (Auto     i, StatusE  ) -> void $ autoStatus       i
         (Manual txt, PingE    ) -> void $ manualPing     txt
-        (Manual txt, FundsE   ) -> void $ manualFunds    txt
+        (Manual txt, UtxosE   ) -> void $ manualUtxos    txt
         (Manual txt, NewTxE   ) -> void $ manualNewTx    txt
         (Manual txt, SubmitTxE) -> void $ manualSubmitTx txt
         (Manual txt, ServerTxE) -> void $ manualServerTx txt

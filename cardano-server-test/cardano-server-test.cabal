@@ -54,7 +54,7 @@ test-suite cardano-server-test
   Main-Is:              Main.hs
   Other-Modules:        
                         Cardano.Server.Client.OptsSpec
-                        Cardano.Server.Endpoints.FundsSpec
+                        Cardano.Server.Endpoints.UtxosSpec
                         Cardano.Server.Endpoints.PingSpec
                         Cardano.Server.Endpoints.StatusSpec
                         Cardano.Server.Endpoints.Tx.ServerSpec

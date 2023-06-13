@@ -22,7 +22,7 @@ data CommonOptions = CommonOptions
 serverEndpointParser :: Parser ServerEndpoint
 serverEndpointParser = argument auto
     (  value ServerTxE
-    <> metavar "ping | funds | newTx | submitTx | serverTx | status"
+    <> metavar "ping | utxos | newTx | submitTx | serverTx | status"
     )
 
 --------------------------------------------- Auto ---------------------------------------------

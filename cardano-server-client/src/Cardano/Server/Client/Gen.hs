@@ -12,8 +12,7 @@ import           Cardano.Crypto.DSIGN.Class         (DSIGNAlgorithm (..), seedSi
 import           Cardano.Crypto.DSIGN.Ed25519       (Ed25519DSIGN)
 import           Cardano.Node.Emulator.Generators   (genSomeCardanoApiTx)
 import           Cardano.Server.Client.Internal     (ClientEndpoint (EndpointArg))
-import           Cardano.Server.Config              (ServerEndpoint (FundsE, SubmitTxE))
-import           Cardano.Server.Endpoints.Funds     (FundsReqBody (FundsReqBody))
+import           Cardano.Server.Config              (ServerEndpoint (SubmitTxE))
 import           Cardano.Server.Endpoints.Tx.Submit (SubmitTxReqBody (..))
 import           Control.Monad                      (replicateM)
 import           Control.Monad.IO.Class             (MonadIO (..))
@@ -32,18 +31,13 @@ import           Test.Crypto.Util                   (Message, arbitrarySeedOfSiz
 import           Test.QuickCheck                    (Arbitrary (..), generate)
 import           Text.Hex                           (encodeHex)
 
-randomFundsReqBody :: MonadIO m => NetworkId -> m (EndpointArg 'FundsE api)
-randomFundsReqBody network = liftIO $ FundsReqBody
-    <$> randomAddressBech32Text network
-    <*> randomCSText
-
 randomSubmitTxBody :: MonadIO m => m (EndpointArg 'SubmitTxE api)
 randomSubmitTxBody = liftIO $ SubmitTxReqBody
     <$> randomCardanoTxText
     <*> (randomRIO (1,1) >>= (`replicateM` ((,) <$> randomPubKeyText <*> randomSignatureText)))
 
-randomAddressBech32Text :: NetworkId -> IO Text
-randomAddressBech32Text network = do
+randomAddressBech32Text :: MonadIO m => NetworkId -> m Text
+randomAddressBech32Text network = liftIO $
     generate arbitrary >>= maybe (randomAddressBech32Text network) pure . addressToBech32 network
 
 randomCardanoTxText :: IO Text
