@@ -11,6 +11,7 @@
 {-# LANGUAGE RankNTypes                   #-}
 {-# LANGUAGE RecordWildCards              #-}
 {-# LANGUAGE ScopedTypeVariables          #-}
+{-# LANGUAGE TypeApplications             #-}
 {-# LANGUAGE TypeFamilies                 #-}
 {-# LANGUAGE UndecidableInstances         #-}
 
@@ -24,12 +25,15 @@ import           Cardano.Server.Input              (InputContext)
 import           Cardano.Server.Utils.Logger       (HasLogger (..), Logger, logger)
 import           Cardano.Server.WalletEncryption   (loadWallet)
 import           Control.Exception                 (throw)
+import           Control.Lens                      ((^?))
 import           Control.Monad.Catch               (MonadCatch, MonadThrow (..))
 import           Control.Monad.Except              (MonadError (throwError))
 import           Control.Monad.Extra               (join, whenM)
 import           Control.Monad.IO.Class            (MonadIO)
 import           Control.Monad.Reader              (MonadReader, ReaderT (ReaderT, runReaderT), asks, local)
-import           Data.Default                      (Default (..))
+import           Data.Aeson                        (fromJSON)
+import qualified Data.Aeson                        as J
+import           Data.Aeson.Lens                   (key)
 import           Data.Functor                      ((<&>))
 import           Data.IORef                        (IORef, newIORef)
 import           Data.Kind                         (Type)
@@ -143,10 +147,15 @@ loadEnv ServerHandle{..} = do
         envQueueRef  <- newIORef empty
         envWallet    <- sequence $ loadWallet <$> cWalletFile
         pp <- decodeOrErrorFromFile cProtocolParametersFile
+        slotConfig <- do
+            val <- decodeOrErrorFromFile @J.Value cChainIndexConfigFile
+            case val ^? key "cicSlotConfig" <&> fromJSON of
+                Just (J.Success sc) -> pure sc
+                _                   -> error "no slot config"
         let envPort              = cPort
             envMinUtxosNumber    = cMinUtxosNumber
             envMaxUtxosNumber    = cMaxUtxosNumber
-            envLedgerParams      = Params def (pParamsFromProtocolParams pp) cNetworkId
+            envLedgerParams      = Params slotConfig (pParamsFromProtocolParams pp) cNetworkId
             envActiveEndpoints   = cActiveEndpoints
             envCollateral        = cCollateral
             envNodeFilePath      = cNodeFilePath

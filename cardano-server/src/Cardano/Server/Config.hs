@@ -27,6 +27,7 @@ data Config = Config
     , cMinUtxosNumber         :: Int
     , cMaxUtxosNumber         :: Int
     , cProtocolParametersFile :: FilePath
+    , cChainIndexConfigFile   :: FilePath -- For correct timeSlot config
     , cAuxiliaryEnvFile       :: FilePath
     , cNodeFilePath           :: FilePath
     , cWalletFile             :: Maybe FilePath
