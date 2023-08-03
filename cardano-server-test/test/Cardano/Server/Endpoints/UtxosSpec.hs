@@ -15,7 +15,7 @@ spec :: HasServantClientEnv => Spec
 spec = describe "/utxos" $ do
 
     it "get utxos when all is ok" $ do
-        Config{..} <- decodeOrErrorFromFile "testnet/config.json"
+        Config{..} <- decodeOrErrorFromFile "cardano-server-test/test/configuration/config.json"
         addr <- randomAddressBech32Text cNetworkId
         shouldBeOk $ utxosC addr
 

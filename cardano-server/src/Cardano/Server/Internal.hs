@@ -150,7 +150,7 @@ loadEnv Config{..} ServerHandle{..} = do
         val <- decodeOrErrorFromFile @J.Value cChainIndexConfigFile
         case val ^? key "cicSlotConfig" <&> fromJSON of
             Just (J.Success sc) -> pure sc
-            _                   -> error "no slot config"
+            _                   -> error "There is no slot config in chain index config file."
     let envPort              = cPort
         envMinUtxosNumber    = cMinUtxosNumber
         envMaxUtxosNumber    = cMaxUtxosNumber
