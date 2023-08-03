@@ -5,4 +5,4 @@ testnet-preprod/wallets/*
 mainnet/wallets/*
 logs/*
 .history
-cardano-server-test/test/configuration/wallet.json
+cardano-server-test/test/configuration/wallets/*
