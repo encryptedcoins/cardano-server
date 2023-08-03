@@ -38,12 +38,6 @@ data Config = Config
     , cActiveEndpoints        :: [ServerEndpoint]
     } deriving (Show, Generic)
 
-configFile :: FilePath
-configFile = "config.json"
-
-loadConfig :: HasCallStack => IO Config
-loadConfig = decodeOrErrorFromFile configFile
-
 instance FromJSON Config where
    parseJSON = genericParseJSON $ aesonPrefix snakeCase
 

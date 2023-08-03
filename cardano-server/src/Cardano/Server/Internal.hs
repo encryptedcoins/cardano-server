@@ -18,7 +18,7 @@
 module Cardano.Server.Internal where
 
 import           Cardano.Node.Emulator             (Params (..), pParamsFromProtocolParams)
-import           Cardano.Server.Config             (Config (..), ServerEndpoint, decodeOrErrorFromFile, loadConfig)
+import           Cardano.Server.Config             (Config (..), ServerEndpoint, decodeOrErrorFromFile)
 import           Cardano.Server.Error              (Envelope)
 import           Cardano.Server.Error.CommonErrors (InternalServerError (NoWalletProvided))
 import           Cardano.Server.Input              (InputContext)
@@ -141,30 +141,29 @@ getNetworkId = asks $ pNetworkId . envLedgerParams
 getAuxillaryEnv :: ServerM api (AuxillaryEnvOf api)
 getAuxillaryEnv = asks $ shAuxiliaryEnv . envServerHandle
 
-loadEnv :: HasCallStack => ServerHandle api -> IO (Env api)
-loadEnv ServerHandle{..} = do
-        Config{..}   <- loadConfig
-        envQueueRef  <- newIORef empty
-        envWallet    <- sequence $ loadWallet <$> cWalletFile
-        pp <- decodeOrErrorFromFile cProtocolParametersFile
-        slotConfig <- do
-            val <- decodeOrErrorFromFile @J.Value cChainIndexConfigFile
-            case val ^? key "cicSlotConfig" <&> fromJSON of
-                Just (J.Success sc) -> pure sc
-                _                   -> error "no slot config"
-        let envPort              = cPort
-            envMinUtxosNumber    = cMinUtxosNumber
-            envMaxUtxosNumber    = cMaxUtxosNumber
-            envLedgerParams      = Params slotConfig (pParamsFromProtocolParams pp) cNetworkId
-            envActiveEndpoints   = cActiveEndpoints
-            envCollateral        = cCollateral
-            envNodeFilePath      = cNodeFilePath
-            envChainIndex        = fromMaybe shDefaultCI cChainIndex
-            envBfToken           = cBfToken
-            envLogger            = logger
-            envLoggerFilePath    = Nothing
-            envServerHandle      = ServerHandle{..}
-        pure Env{..}
+loadEnv :: HasCallStack => Config -> ServerHandle api -> IO (Env api)
+loadEnv Config{..} ServerHandle{..} = do
+    envQueueRef  <- newIORef empty
+    envWallet    <- sequence $ loadWallet <$> cWalletFile
+    pp <- decodeOrErrorFromFile cProtocolParametersFile
+    slotConfig <- do
+        val <- decodeOrErrorFromFile @J.Value cChainIndexConfigFile
+        case val ^? key "cicSlotConfig" <&> fromJSON of
+            Just (J.Success sc) -> pure sc
+            _                   -> error "no slot config"
+    let envPort              = cPort
+        envMinUtxosNumber    = cMinUtxosNumber
+        envMaxUtxosNumber    = cMaxUtxosNumber
+        envLedgerParams      = Params slotConfig (pParamsFromProtocolParams pp) cNetworkId
+        envActiveEndpoints   = cActiveEndpoints
+        envCollateral        = cCollateral
+        envNodeFilePath      = cNodeFilePath
+        envChainIndex        = fromMaybe shDefaultCI cChainIndex
+        envBfToken           = cBfToken
+        envLogger            = logger
+        envLoggerFilePath    = Nothing
+        envServerHandle      = ServerHandle{..}
+    pure Env{..}
 
 setLoggerFilePath :: FilePath -> ServerM api a -> ServerM api a
 setLoggerFilePath fp = local (\Env{..} -> Env{envLoggerFilePath = Just fp, ..})

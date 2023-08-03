@@ -22,11 +22,13 @@ import           Data.Text                    (Text)
 import           Servant.Client               (ClientError (FailureResponse), ClientM,
                                                ResponseF (responseBody, responseStatusCode), runClientM)
 import           Test.Hspec                   (Expectation, Spec, expectationFailure, hspec, shouldBe, shouldSatisfy)
+import Cardano.Server.Config (decodeOrErrorFromFile)
 
-withCardanoServer :: ServerConstraints api => ServerHandle api -> (HasServantClientEnv => Spec) -> IO ()
-withCardanoServer sHandle specs = do
-    env <- loadEnv sHandle
-    sce <- createServantClientEnv
+withCardanoServer :: ServerConstraints api => FilePath -> ServerHandle api -> (HasServantClientEnv => Spec) -> IO ()
+withCardanoServer configFp sHandle specs = do
+    config <- decodeOrErrorFromFile configFp
+    env <- loadEnv config sHandle
+    sce <- createServantClientEnv config
     let ?servantClientEnv = sce
     bracket
         (liftIO $ C.forkIO $ runServer' env{envLogger = mutedLogger})
