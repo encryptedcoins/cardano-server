@@ -4,3 +4,4 @@ testnet-preview/wallets/*
 testnet-preprod/wallets/*
 mainnet/wallets/*
 logs/*
+.history
