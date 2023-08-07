@@ -174,3 +174,37 @@ $ cabal run cardano-server-client-example  -- [ping | utxos | serverTx | newTx |
 ```console
 $ cabal run cardano-server-client-example -- serverTx --manual a72kf,jr82ar4
 ```
+
+### Running tests
+To use cardano-server you need installed [cardano-node](https://github.com/input-output-hk/cardano-node), [cardano-wallet](https://github.com/cardano-foundation/cardano-wallet) and [kupo](https://github.com/CardanoSolutions/kupo).
+To run the tests follow these steps:
+
+1. Write paths to cardano-node socket, cardano-node database and kupo database into [run.sh](https://github.com/encryptedcoins/cardano-server/blob/v1-rc1/cardano-server-test/test/scripts/run.sh) script.
+
+2. If you want to use your own wallet, put it in the [wallets directory](https://github.com/encryptedcoins/cardano-server/blob/v1-rc1/cardano-server-test/test/configuration/wallets). If you have changed name of the wallet file, you also need to change it in [config.json](https://github.com/encryptedcoins/cardano-server/blob/v1-rc1/cardano-server-test/test/configuration/config.json) and [run.sh](https://github.com/encryptedcoins/cardano-server/blob/v1-rc1/cardano-server-test/test/scripts/run.sh) script. To run tests successfully wallet should have small amount (about 1₳) of ada.
+
+3. Execute [run.sh](https://github.com/encryptedcoins/cardano-server/blob/v1-rc1/cardano-server-test/test/scripts/run.sh) script and wait until cardano-wallet fully syncs:
+```console
+$ cd cardano-server-test/test/scripts
+$ ./run.sh
+```
+When you see line like this in cardano-wallet terminal move to next step.
+```console
+[cardano-wallet.wallet-engine:Notice:42] [current-time]: In sync! Applied n blocks...
+```
+
+
+4. Move up to the main project directory:
+```console
+$ cd ../../..
+```
+
+5. If you want to see any server logs, run the server in separate terminal window. Otherwise just skip this step.
+```console
+$ cabal run cardano-server-example
+```
+
+6. Run server tests:
+```console
+$ cabal run cardano-server-test
+```
