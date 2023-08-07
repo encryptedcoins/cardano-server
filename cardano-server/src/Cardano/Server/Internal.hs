@@ -147,7 +147,7 @@ loadEnv Config{..} ServerHandle{..} = do
     envWallet    <- sequence $ loadWallet <$> cWalletFile
     pp <- decodeOrErrorFromFile cProtocolParametersFile
     slotConfig <- do
-        val <- decodeOrErrorFromFile @J.Value cChainIndexConfigFile
+        val <- decodeOrErrorFromFile @J.Value cSlotConfigFile
         case val ^? key "cicSlotConfig" <&> fromJSON of
             Just (J.Success sc) -> pure sc
             _                   -> error "There is no slot config in chain index config file."

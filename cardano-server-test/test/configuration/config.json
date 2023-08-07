@@ -9,6 +9,6 @@
 , "node_file_path"           : ""
 , "protocol_parameters_file" : "cardano-server-test/test/configuration/protocol-parameters.json"
 , "chain_index"              : "Kupo"
-, "chain_index_config_file"  : "cardano-server-test/test/configuration/plutus-chain-index-config.json"
+, "slot_config_file"         : "cardano-server-test/test/configuration/slotConfig.json"
 , "active_endpoints"         : ["ping", "utxos", "submitTx", "newTx", "serverTx", "status"]
 }
