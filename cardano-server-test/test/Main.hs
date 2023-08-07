@@ -11,7 +11,7 @@ import qualified Cardano.Server.WalletEncryptionSpec    as WalletEncryption
 import           Cardano.Server.Test.Internal           (withCardanoServer)
 
 main :: IO ()
-main = withCardanoServer "cardano-server-test/test/configuration/config.json" exampleServerHandle $ do
+main = withCardanoServer "cardano-server-test/test/configuration/config.json" exampleServerHandle 1 $ do
     WalletEncryption.spec
     Ping.spec
     Utxos.spec

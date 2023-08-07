@@ -78,6 +78,7 @@ test-suite cardano-server-test
     hspec-wai                              -any,
     http-types                             -any,
     memory                                 -any,
+    mtl                                    -any,
     plutus-apps-extra                      -any,
     servant-client                         -any,
     text                                   -any,
