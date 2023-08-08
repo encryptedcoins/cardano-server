@@ -2,11 +2,13 @@
 , "port"                     : 3000
 , "auxiliary_env_file"       : ""
 , "wallet_file"              : "cardano-server-test/test/configuration/wallets/test-wallet.json"
+, "node_file_path"           : "../../../../encoins-tools/testnet-preprod/apps/cardano-node/node.sock"
+, "node_db_file_path"        : "../../../../encoins-tools/testnet-preprod/data/chain"
+, "kupo_db_file_path"        : "../../../../encoins-tools/testnet-preprod/data"
 , "min_utxos_number"         : 1
 , "max_utxos_number"         : 15
 , "network_id"               : {"tag" : "Testnet", "contents" : 2}
 , "collateral"               : {"txOutRefId" : {"getTxId" : ""}, "txOutRefIdx" : 0}
-, "node_file_path"           : ""
 , "protocol_parameters_file" : "cardano-server-test/test/configuration/protocol-parameters.json"
 , "chain_index"              : "Kupo"
 , "slot_config_file"         : "cardano-server-test/test/configuration/slotConfig.json"
