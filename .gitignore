@@ -1,6 +1,4 @@
+.history
 dist-newstyle
-testnet/wallets/*
-testnet-preview/wallets/*
-testnet-preprod/wallets/*
-mainnet/wallets/*
 logs/*
+cardano-server-test/test/configuration/wallets/*

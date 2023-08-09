@@ -27,7 +27,7 @@ data Config = Config
     , cMinUtxosNumber         :: Int
     , cMaxUtxosNumber         :: Int
     , cProtocolParametersFile :: FilePath
-    , cChainIndexConfigFile   :: FilePath -- For correct timeSlot config
+    , cSlotConfigFile         :: FilePath
     , cAuxiliaryEnvFile       :: FilePath
     , cNodeFilePath           :: FilePath
     , cWalletFile             :: Maybe FilePath
@@ -37,12 +37,6 @@ data Config = Config
     , cChainIndex             :: Maybe ChainIndex
     , cActiveEndpoints        :: [ServerEndpoint]
     } deriving (Show, Generic)
-
-configFile :: FilePath
-configFile = "config.json"
-
-loadConfig :: HasCallStack => IO Config
-loadConfig = decodeOrErrorFromFile configFile
 
 instance FromJSON Config where
    parseJSON = genericParseJSON $ aesonPrefix snakeCase

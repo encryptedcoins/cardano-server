@@ -44,7 +44,7 @@ instance IsCardanoServerError BalanceExternalTxError where
     errMsg e = "The requested transaction could not be built. Reason: " <> case e of
         MakeUnbalancedTxError
             -> "Unable to build an UnbalancedTx."
-        MakeBuildTxFromEmulatorTxError
+        MakeBuildTxFromEmulatorTxError{}
             -> "Unable to extract CardanoBuildTx from EmulatorTx."
         NonBabbageEraChangeAddress
             -> "Change address is not from Babbage era."

@@ -15,13 +15,14 @@
 
 module Cardano.Server.Main where
 
-import           Cardano.Server.Endpoints.Utxos       (UtxosApi, utxosHandler)
+import           Cardano.Server.Config                (Config)
 import           Cardano.Server.Endpoints.Ping        (PingApi, pingHandler)
 import           Cardano.Server.Endpoints.Status      (StatusApi, commonStatusHandler)
 import           Cardano.Server.Endpoints.Tx.Internal (TxApiErrorOf)
 import           Cardano.Server.Endpoints.Tx.New      (NewTxApi, newTxHandler)
 import           Cardano.Server.Endpoints.Tx.Server   (ServerTxApi, processQueue, serverTxHandler)
 import           Cardano.Server.Endpoints.Tx.Submit   (SubmitTxApi, submitTxHandler)
+import           Cardano.Server.Endpoints.Utxos       (UtxosApi, utxosHandler)
 import           Cardano.Server.Error.Class           (IsCardanoServerError)
 import           Cardano.Server.Error.CommonErrors    (ConnectionError (..))
 import           Cardano.Server.Internal              (Env (..), HasStatusEndpoint (..), InputOf, ServerHandle (..), ServerM (..),
@@ -90,10 +91,8 @@ server
 serverAPI :: forall api. Proxy (ServerApi' api)
 serverAPI = Proxy @(ServerApi' api)
 
-runServer :: ServerConstraints api => ServerHandle api -> IO ()
-runServer sh = (`catches` errorHanlders) $ do
-        env <- loadEnv sh
-        runServer' env
+runServer :: ServerConstraints api => Config -> ServerHandle api -> IO ()
+runServer c sh = (`catches` errorHanlders) $ loadEnv c sh >>= runServer'
     where
         errorHanlders = [Handler connectionErroH]
         connectionErroH e = T.putStrLn $ (<> " is unavailable.") $ case e of

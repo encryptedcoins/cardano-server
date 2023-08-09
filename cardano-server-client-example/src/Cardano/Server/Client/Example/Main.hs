@@ -8,6 +8,7 @@ module Cardano.Server.Client.Example.Main where
 
 import           Cardano.Server.Client.Client (runClient)
 import           Cardano.Server.Client.Handle (ClientHandle (..), autoWith, autoWithRandom, manualWith, manualWithRead)
+import           Cardano.Server.Config        (decodeOrErrorFromFile)
 import           Cardano.Server.Example.Main  (ExampleApi, exampleServerHandle)
 import           Cardano.Server.Input         (InputContext)
 import           Control.Monad                (replicateM)
@@ -20,8 +21,10 @@ import           PlutusTx.Builtins            (BuiltinByteString)
 import           PlutusTx.Builtins.Class      (stringToBuiltinByteString)
 import           System.Random                (randomIO, randomRIO)
 
-runExampleClient :: IO ()
-runExampleClient = runClient exampleServerHandle exampleClientHandle
+runExampleClient :: FilePath -> IO ()
+runExampleClient configFp = do
+    config <- decodeOrErrorFromFile configFp
+    runClient config exampleServerHandle exampleClientHandle
 
 exampleClientHandle :: ClientHandle ExampleApi
 exampleClientHandle = def
