@@ -12,12 +12,12 @@ import           Cardano.Server.Internal      (Env (envServerHandle), HasStatusE
                                                StatusHandler, checkEndpointAvailability)
 import           Cardano.Server.Utils.Logger  (logMsg, (.<))
 import           Control.Monad.Reader         (asks)
-import           Servant                      (Get, JSON, ReqBody, type (:>))
+import           Servant                      (JSON, ReqBody, type (:>), Post)
 
 type StatusApi errors reqBody result = "status"
     :> Throwing errors
     :> ReqBody '[JSON] reqBody
-    :> Get '[JSON] result
+    :> Post '[JSON] result
 
 type StatusApi' api = StatusApi (StatusEndpointErrorsOf api) (StatusEndpointReqBodyOf api) (StatusEndpointResOf api)
 
