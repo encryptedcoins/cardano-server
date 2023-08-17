@@ -24,4 +24,5 @@ if [ ! -f "$WALLET_PATH" ]; then
 fi
 
 # Load the wallet
+sleep 10
 sh ./cardano-server-test/test/scripts/load_wallet.sh "$WALLET_PATH"
