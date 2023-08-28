@@ -1,12 +1,19 @@
 {-# LANGUAGE DeriveGeneric      #-}
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE KindSignatures     #-}
+{-# LANGUAGE LambdaCase         #-}
 {-# LANGUAGE OverloadedStrings  #-}
+{-# LANGUAGE RankNTypes         #-}
 
 module Cardano.Server.Config where
 
 import           Cardano.Api                   (NetworkId (..))
-import           Data.Aeson                    (FromJSON (..), eitherDecodeFileStrict, genericParseJSON)
-import           Data.Aeson.Casing             (aesonDrop, aesonPrefix, snakeCase)
+import           Control.Monad
+import           Data.Aeson                    (FromJSON (..),
+                                                eitherDecodeFileStrict,
+                                                genericParseJSON)
+import qualified Data.Aeson                    as J
+import           Data.Aeson.Casing             (aesonPrefix, snakeCase)
 import           Data.Text                     (Text)
 import           GHC.Generics                  (Generic)
 import           GHC.Stack                     (HasCallStack)
@@ -19,37 +26,60 @@ data Config = Config
     , cPort                   :: Int
     , cMinUtxosNumber         :: Int
     , cMaxUtxosNumber         :: Int
-    , cNodeFilePath           :: FilePath
     , cProtocolParametersFile :: FilePath
-    , cWalletFile             :: Maybe FilePath
+    , cSlotConfigFile         :: FilePath
     , cAuxiliaryEnvFile       :: FilePath
-    , cNetworkId              :: NetworkId
+    , cNodeFilePath           :: FilePath
+    , cWalletFile             :: Maybe FilePath
     , cBfToken                :: Maybe BfToken
+    , cNetworkId              :: NetworkId
     , cCollateral             :: Maybe TxOutRef
     , cChainIndex             :: Maybe ChainIndex
-    , cInactiveEndpoints      :: InactiveEndpoints
+    , cActiveEndpoints        :: [ServerEndpoint]
     } deriving (Show, Generic)
-
-data InactiveEndpoints = InactiveEndpoints
-    { isInactivePing         :: Bool
-    , isInactiveFunds        :: Bool
-    , isInactiveSubmitTx     :: Bool
-    , isInactiveServerTx     :: Bool
-    , isInactiveNewTx        :: Bool
-    , isInactiveStatus       :: Bool
-    } deriving (Show, Generic)
-
-configFile :: FilePath
-configFile = "config.json"
-
-loadConfig :: HasCallStack => IO Config
-loadConfig = decodeOrErrorFromFile configFile
 
 instance FromJSON Config where
    parseJSON = genericParseJSON $ aesonPrefix snakeCase
 
-instance FromJSON InactiveEndpoints where
-   parseJSON = genericParseJSON $ aesonDrop 10 snakeCase
-
 decodeOrErrorFromFile :: (HasCallStack, FromJSON a) => FilePath -> IO a
 decodeOrErrorFromFile = fmap (either error id) . eitherDecodeFileStrict
+
+------------------------------------------------------------------- Endpoints -------------------------------------------------------------------
+
+data ServerEndpoint
+    = PingE
+    | UtxosE
+    | NewTxE
+    | SubmitTxE
+    | ServerTxE
+    | StatusE
+    deriving Eq
+
+instance Read ServerEndpoint where
+    readsPrec _ = \case
+        "ping"     -> [(PingE    , "")]
+        "utxos"    -> [(UtxosE   , "")]
+        "newTx"    -> [(NewTxE   , "")]
+        "submitTx" -> [(SubmitTxE, "")]
+        "serverTx" -> [(ServerTxE, "")]
+        "status"   -> [(StatusE  , "")]
+        _          -> []
+
+instance Show ServerEndpoint where
+    show = \case
+        PingE     -> "ping"
+        UtxosE    -> "utxos"
+        NewTxE    -> "newTx"
+        SubmitTxE -> "submitTx"
+        ServerTxE -> "serverTx"
+        StatusE   -> "status"
+
+instance FromJSON ServerEndpoint where
+    parseJSON = J.withText "ServerEndpoint" $ \case
+        "ping"     -> pure PingE
+        "utxos"    -> pure UtxosE
+        "newTx"    -> pure NewTxE
+        "submitTx" -> pure SubmitTxE
+        "serverTx" -> pure ServerTxE
+        "status"   -> pure StatusE
+        _          -> mzero

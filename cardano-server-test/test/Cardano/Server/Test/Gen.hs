@@ -3,18 +3,13 @@
 module Cardano.Server.Test.Gen where
 
 import           Cardano.Server.Client.Handle       ()
-import           Cardano.Server.Endpoints.Funds     (FundsReqBody (..), parseFundsReqBody)
 import           Cardano.Server.Endpoints.Tx.Submit (SubmitTxReqBody (SubmitTxReqBody), parseSubmitTxReqBody)
-import           Test.QuickCheck                    (Arbitrary (arbitrary))
+import           Control.Monad.IO.Class             (MonadIO (..))
+import           Data.Text                          (Text)
+import           PlutusAppsExtra.Utils.Address      (bech32ToAddress)
+import           Test.QuickCheck                    (Arbitrary (arbitrary), generate)
 
 newtype Malformed a = Malformed a
-
-instance (Arbitrary (Malformed FundsReqBody)) where
-    arbitrary = do
-        frb <- FundsReqBody <$> arbitrary <*> arbitrary
-        case parseFundsReqBody frb of
-            Right _ -> arbitrary
-            Left _  -> pure $ Malformed frb
 
 instance (Arbitrary (Malformed SubmitTxReqBody)) where
     arbitrary = do
@@ -22,3 +17,10 @@ instance (Arbitrary (Malformed SubmitTxReqBody)) where
         case parseSubmitTxReqBody strb of
             Right _ -> arbitrary
             Left _ -> pure $ Malformed strb
+
+malformedAddressTxt :: MonadIO m => m (Malformed Text)
+malformedAddressTxt = do
+    txt <- liftIO $ generate arbitrary
+    case bech32ToAddress txt of
+        Just _  -> malformedAddressTxt
+        Nothing -> pure $ Malformed txt

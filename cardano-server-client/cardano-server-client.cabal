@@ -41,11 +41,12 @@ library
       PartialTypeSignatures
     build-depends:
       base                          >= 4.9 && < 5,
-      cardano-server                         -any,
-      cardano-crypto-class                   -any,
-      cardano-crypto-tests                   -any,
       aeson                                  -any,
       bytestring                             -any,
+      cardano-crypto-class                   -any,
+      cardano-crypto-tests                   -any,
+      cardano-server                         -any,
+      csl-types                              -any,
       data-default                           -any,
       exceptions                             -any,
       extra                                  -any,

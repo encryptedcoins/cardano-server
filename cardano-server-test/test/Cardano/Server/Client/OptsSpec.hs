@@ -7,8 +7,9 @@
 
 module Cardano.Server.Client.OptsSpec where
 import           Cardano.Server.Client.Example.Main (readInput)
-import           Cardano.Server.Client.Internal     (Mode (Auto, Manual), ServerEndpoint (ServerTxE, SubmitTxE))
+import           Cardano.Server.Client.Internal     (Mode (Auto, Manual))
 import           Cardano.Server.Client.Opts         (CommonOptions (..), runWithOpts)
+import           Cardano.Server.Config              (ServerEndpoint (ServerTxE, SubmitTxE))
 import qualified Data.Text                          as T
 import           System.Environment                 (withArgs)
 import           Test.Hspec                         (Spec, describe, it, shouldBe)

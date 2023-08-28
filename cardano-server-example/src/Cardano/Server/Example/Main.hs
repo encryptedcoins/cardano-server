@@ -9,7 +9,8 @@
 
 module Cardano.Server.Example.Main where
 
-import           Cardano.Server.Error            (Envelope, toEnvelope, IsCardanoServerError (..))
+import           Cardano.Server.Config           (decodeOrErrorFromFile)
+import           Cardano.Server.Error            (Envelope, IsCardanoServerError (..), toEnvelope)
 import           Cardano.Server.Example.OffChain (testMintTx)
 import           Cardano.Server.Input            (InputContext)
 import           Cardano.Server.Internal         (AuxillaryEnvOf, InputOf, ServerHandle (ServerHandle), ServerM)
@@ -55,8 +56,10 @@ exampleServerHandle = ServerHandle
             when hasDuplicates $ throwM HasDuplicates
             return (sort bbs, ctx)
 
-runExampleServer :: IO ()
-runExampleServer = runServer exampleServerHandle
+runExampleServer :: FilePath -> IO ()
+runExampleServer configFp = do
+    config <- decodeOrErrorFromFile configFp
+    runServer config exampleServerHandle
     
 data ExampleStatusEndpointError = ExampleStatusEndpointError
     deriving (Show, Exception)

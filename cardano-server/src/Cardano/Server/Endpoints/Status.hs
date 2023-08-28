@@ -6,13 +6,13 @@
 
 module Cardano.Server.Endpoints.Status where
 
-import           Cardano.Server.Config        (isInactiveStatus)
+import           Cardano.Server.Config        (ServerEndpoint (StatusE))
 import           Cardano.Server.Error.Servant (Throwing)
 import           Cardano.Server.Internal      (Env (envServerHandle), HasStatusEndpoint (..), ServerHandle (shStatusHandler),
                                                StatusHandler, checkEndpointAvailability)
 import           Cardano.Server.Utils.Logger  (logMsg, (.<))
 import           Control.Monad.Reader         (asks)
-import           Servant                      (Post, JSON, ReqBody, type (:>))
+import           Servant                      (JSON, ReqBody, type (:>), Post)
 
 type StatusApi errors reqBody result = "status"
     :> Throwing errors
@@ -24,5 +24,5 @@ type StatusApi' api = StatusApi (StatusEndpointErrorsOf api) (StatusEndpointReqB
 commonStatusHandler :: Show (StatusEndpointReqBodyOf api) => StatusHandler api
 commonStatusHandler reqBody = do
     logMsg $ "New status request received:\n" .< reqBody
-    checkEndpointAvailability isInactiveStatus
-    asks (shStatusHandler . envServerHandle)  >>= ($ reqBody)
+    checkEndpointAvailability StatusE
+    asks (shStatusHandler . envServerHandle) >>= ($ reqBody)

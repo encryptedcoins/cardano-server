@@ -4,7 +4,7 @@
 
 module Cardano.Server.Endpoints.Ping where
 
-import           Cardano.Server.Config       (isInactivePing)
+import           Cardano.Server.Config       (ServerEndpoint (PingE))
 import           Cardano.Server.Internal     (ServerM, checkEndpointAvailability)
 import           Cardano.Server.Utils.Logger (logMsg)
 import           Servant                     (type (:>), NoContent(..), JSON, Get)
@@ -12,5 +12,7 @@ import           Servant                     (type (:>), NoContent(..), JSON, Ge
 type PingApi = "ping" :> Get '[JSON] NoContent
 
 pingHandler :: ServerM api NoContent
-pingHandler = checkEndpointAvailability isInactivePing
-    >> NoContent <$ logMsg "Received ping request."
+pingHandler = do
+    logMsg "Received ping request."
+    checkEndpointAvailability PingE
+    pure NoContent
