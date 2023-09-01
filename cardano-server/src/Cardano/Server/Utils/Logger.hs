@@ -44,9 +44,8 @@ logPretty a = logMsg $ T.pack $ show $ pretty a
 logMsgIO :: Text -> Maybe FilePath -> IO ()
 logMsgIO msg fileName = handle (maybe (const $ pure ()) (handler msg) fileName) $ do
     utcTime <- Time.getCurrentTime
-    let localTime = Time.addUTCTime (10800 :: Time.NominalDiffTime) utcTime
-        asctime = Time.formatTime Time.defaultTimeLocale "%a %b %d %H:%M:%S %Y" localTime
-        msg' = "\n" <> T.pack asctime <> " " <> "\n" <> msg <> "\n"
+    let fTime = Time.formatTime Time.defaultTimeLocale "%a %b %d %H:%M:%S %Y" utcTime <> " UTC"
+        msg' = "\n" <> T.pack fTime <> "\n" <> msg <> "\n"
     T.putStrLn msg'
     maybe (pure ()) ((`T.appendFile` msg') . mkFullPath) fileName
 
