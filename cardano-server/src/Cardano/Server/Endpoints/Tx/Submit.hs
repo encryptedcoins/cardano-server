@@ -11,8 +11,8 @@
 
 module Cardano.Server.Endpoints.Tx.Submit where
 
+import           Cardano.Server.Config                (ServerEndpoint (SubmitTxE))
 import           Cardano.Node.Emulator                (Params (..))
-import           Cardano.Server.Config                (isInactiveSubmitTx)
 import           Cardano.Server.Endpoints.Tx.Internal (TxApiErrorOf)
 import           Cardano.Server.Error                 (ConnectionError, Envelope, IsCardanoServerError (..),
                                                        SubmitTxToLocalNodeError, Throws, toEnvelope)
@@ -61,7 +61,7 @@ submitTxHandler :: IsCardanoServerError (TxApiErrorOf api)
     -> ServerM api (Envelope '[TxApiErrorOf api, SubmitTxApiError, SubmitTxToLocalNodeError, ConnectionError] NoContent)
 submitTxHandler req = toEnvelope $ do
     logMsg $ "New submitTx request received:\n" .< req
-    checkEndpointAvailability isInactiveSubmitTx
+    checkEndpointAvailability SubmitTxE
     (ctx, wtns) <- either throwM pure $ parseSubmitTxReqBody req
     let ctx' = foldr (uncurry addCardanoTxSignature) ctx wtns
     networkId <- asks $ pNetworkId . envLedgerParams

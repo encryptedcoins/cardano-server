@@ -1,7 +1,7 @@
 module Main where
 
 import qualified Cardano.Server.Client.OptsSpec         as ClientOpts
-import qualified Cardano.Server.Endpoints.FundsSpec     as Funds
+import qualified Cardano.Server.Endpoints.UtxosSpec     as Utxos
 import qualified Cardano.Server.Endpoints.PingSpec      as Ping
 import qualified Cardano.Server.Endpoints.StatusSpec    as Status
 import qualified Cardano.Server.Endpoints.Tx.ServerSpec as ServerTx
@@ -11,10 +11,10 @@ import qualified Cardano.Server.WalletEncryptionSpec    as WalletEncryption
 import           Cardano.Server.Test.Internal           (withCardanoServer)
 
 main :: IO ()
-main = withCardanoServer exampleServerHandle $ do
+main = withCardanoServer "cardano-server-test/test/configuration/config.json" exampleServerHandle 1 $ do
     WalletEncryption.spec
     Ping.spec
-    Funds.spec
+    Utxos.spec
     ServerTx.spec
     SubmitTx.spec
     Status.spec

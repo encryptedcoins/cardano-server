@@ -11,25 +11,29 @@
 {-# LANGUAGE RankNTypes                   #-}
 {-# LANGUAGE RecordWildCards              #-}
 {-# LANGUAGE ScopedTypeVariables          #-}
+{-# LANGUAGE TypeApplications             #-}
 {-# LANGUAGE TypeFamilies                 #-}
 {-# LANGUAGE UndecidableInstances         #-}
 
 module Cardano.Server.Internal where
 
 import           Cardano.Node.Emulator             (Params (..), pParamsFromProtocolParams)
-import           Cardano.Server.Config             (Config (..), InactiveEndpoints, decodeOrErrorFromFile, loadConfig)
+import           Cardano.Server.Config             (Config (..), ServerEndpoint, decodeOrErrorFromFile)
 import           Cardano.Server.Error              (Envelope)
 import           Cardano.Server.Error.CommonErrors (InternalServerError (NoWalletProvided))
 import           Cardano.Server.Input              (InputContext)
 import           Cardano.Server.Utils.Logger       (HasLogger (..), Logger, logger)
 import           Cardano.Server.WalletEncryption   (loadWallet)
 import           Control.Exception                 (throw)
+import           Control.Lens                      ((^?))
 import           Control.Monad.Catch               (MonadCatch, MonadThrow (..))
 import           Control.Monad.Except              (MonadError (throwError))
 import           Control.Monad.Extra               (join, whenM)
 import           Control.Monad.IO.Class            (MonadIO)
 import           Control.Monad.Reader              (MonadReader, ReaderT (ReaderT, runReaderT), asks, local)
-import           Data.Default                      (Default (..))
+import           Data.Aeson                        (fromJSON)
+import qualified Data.Aeson                        as J
+import           Data.Aeson.Lens                   (key)
 import           Data.Functor                      ((<&>))
 import           Data.IORef                        (IORef, newIORef)
 import           Data.Kind                         (Type)
@@ -110,7 +114,7 @@ data Env api = Env
     , envCollateral            :: Maybe TxOutRef
     , envNodeFilePath          :: FilePath
     , envChainIndex            :: ChainIndex
-    , envInactiveEndpoints     :: InactiveEndpoints
+    , envActiveEndpoints       :: [ServerEndpoint]
     , envLogger                :: Logger (ServerM api)
     , envLoggerFilePath        :: Maybe FilePath
     , envServerHandle          :: ServerHandle api
@@ -137,28 +141,32 @@ getNetworkId = asks $ pNetworkId . envLedgerParams
 getAuxillaryEnv :: ServerM api (AuxillaryEnvOf api)
 getAuxillaryEnv = asks $ shAuxiliaryEnv . envServerHandle
 
-loadEnv :: HasCallStack => ServerHandle api -> IO (Env api)
-loadEnv ServerHandle{..} = do
-        Config{..}   <- loadConfig
-        envQueueRef  <- newIORef empty
-        envWallet    <- sequence $ loadWallet <$> cWalletFile
-        pp <- decodeOrErrorFromFile cProtocolParametersFile
-        let envPort              = cPort
-            envMinUtxosNumber    = cMinUtxosNumber
-            envMaxUtxosNumber    = cMaxUtxosNumber
-            envLedgerParams      = Params def (pParamsFromProtocolParams pp) cNetworkId
-            envInactiveEndpoints = cInactiveEndpoints
-            envCollateral        = cCollateral
-            envNodeFilePath      = cNodeFilePath
-            envChainIndex        = fromMaybe shDefaultCI cChainIndex
-            envBfToken           = cBfToken
-            envLogger            = logger
-            envLoggerFilePath    = Nothing
-            envServerHandle      = ServerHandle{..}
-        pure Env{..}
+loadEnv :: HasCallStack => Config -> ServerHandle api -> IO (Env api)
+loadEnv Config{..} ServerHandle{..} = do
+    envQueueRef  <- newIORef empty
+    envWallet    <- sequence $ loadWallet <$> cWalletFile
+    pp <- decodeOrErrorFromFile cProtocolParametersFile
+    slotConfig <- do
+        val <- decodeOrErrorFromFile @J.Value cSlotConfigFile
+        case val ^? key "cicSlotConfig" <&> fromJSON of
+            Just (J.Success sc) -> pure sc
+            _                   -> error "There is no slot config in chain index config file."
+    let envPort              = cPort
+        envMinUtxosNumber    = cMinUtxosNumber
+        envMaxUtxosNumber    = cMaxUtxosNumber
+        envLedgerParams      = Params slotConfig (pParamsFromProtocolParams pp) cNetworkId
+        envActiveEndpoints   = cActiveEndpoints
+        envCollateral        = cCollateral
+        envNodeFilePath      = cNodeFilePath
+        envChainIndex        = fromMaybe shDefaultCI cChainIndex
+        envBfToken           = cBfToken
+        envLogger            = logger
+        envLoggerFilePath    = Nothing
+        envServerHandle      = ServerHandle{..}
+    pure Env{..}
 
 setLoggerFilePath :: FilePath -> ServerM api a -> ServerM api a
 setLoggerFilePath fp = local (\Env{..} -> Env{envLoggerFilePath = Just fp, ..})
 
-checkEndpointAvailability :: (InactiveEndpoints -> Bool) -> ServerM api ()
-checkEndpointAvailability endpoint = whenM (asks (endpoint . envInactiveEndpoints)) $ throwError err404
+checkEndpointAvailability :: ServerEndpoint -> ServerM api ()
+checkEndpointAvailability endpoint = whenM (asks ((endpoint `notElem`) . envActiveEndpoints)) $ throwError err404

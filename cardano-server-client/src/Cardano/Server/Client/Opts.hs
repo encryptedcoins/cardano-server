@@ -2,7 +2,8 @@
 
 module Cardano.Server.Client.Opts where
 
-import           Cardano.Server.Client.Internal (Mode (..), ServerEndpoint (..))
+import           Cardano.Server.Client.Internal (Mode (..))
+import           Cardano.Server.Config          (ServerEndpoint (..))
 import           Control.Applicative            ((<|>))
 import           Options.Applicative            (Parser, argument, auto, execParser, fullDesc, help, helper, info, long, metavar,
                                                  option, short, strOption, value, (<**>))
@@ -21,7 +22,7 @@ data CommonOptions = CommonOptions
 serverEndpointParser :: Parser ServerEndpoint
 serverEndpointParser = argument auto
     (  value ServerTxE
-    <> metavar "ping | funds | newTx | submitTx | serverTx | status"
+    <> metavar "ping | utxos | newTx | submitTx | serverTx | status"
     )
 
 --------------------------------------------- Auto ---------------------------------------------
