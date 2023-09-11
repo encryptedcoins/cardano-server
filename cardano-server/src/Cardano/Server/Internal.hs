@@ -1,23 +1,23 @@
-{-# LANGUAGE AllowAmbiguousTypes          #-}
-{-# LANGUAGE ConstraintKinds              #-}
-{-# LANGUAGE DataKinds                    #-}
-{-# LANGUAGE DerivingVia                  #-}
-{-# LANGUAGE ExistentialQuantification    #-}
-{-# LANGUAGE FlexibleContexts             #-}
-{-# LANGUAGE FlexibleInstances            #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving   #-}
-{-# LANGUAGE MultiParamTypeClasses        #-}
-{-# LANGUAGE OverloadedStrings            #-}
-{-# LANGUAGE RankNTypes                   #-}
-{-# LANGUAGE RecordWildCards              #-}
-{-# LANGUAGE ScopedTypeVariables          #-}
-{-# LANGUAGE TypeApplications             #-}
-{-# LANGUAGE TypeFamilies                 #-}
-{-# LANGUAGE UndecidableInstances         #-}
+{-# LANGUAGE AllowAmbiguousTypes        #-}
+{-# LANGUAGE ConstraintKinds            #-}
+{-# LANGUAGE DataKinds                  #-}
+{-# LANGUAGE DerivingVia                #-}
+{-# LANGUAGE ExistentialQuantification  #-}
+{-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE RankNTypes                 #-}
+{-# LANGUAGE RecordWildCards            #-}
+{-# LANGUAGE ScopedTypeVariables        #-}
+{-# LANGUAGE TypeApplications           #-}
+{-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE UndecidableInstances       #-}
 
 module Cardano.Server.Internal where
 
-import           Cardano.Node.Emulator             (Params (..), pParamsFromProtocolParams)
+import           Cardano.Node.Emulator             (Params (..), SlotConfig, pParamsFromProtocolParams)
 import           Cardano.Server.Config             (Config (..), ServerEndpoint, decodeOrErrorFromFile)
 import           Cardano.Server.Error              (Envelope)
 import           Cardano.Server.Error.CommonErrors (InternalServerError (NoWalletProvided))
@@ -145,25 +145,29 @@ loadEnv :: HasCallStack => Config -> ServerHandle api -> IO (Env api)
 loadEnv Config{..} ServerHandle{..} = do
     envQueueRef  <- newIORef empty
     envWallet    <- sequence $ loadWallet <$> cWalletFile
-    pp <- decodeOrErrorFromFile cProtocolParametersFile
-    slotConfig <- do
-        val <- decodeOrErrorFromFile @J.Value cSlotConfigFile
-        case val ^? key "cicSlotConfig" <&> fromJSON of
-            Just (J.Success sc) -> pure sc
-            _                   -> error "There is no slot config in chain index config file."
-    let envPort              = cPort
-        envMinUtxosNumber    = cMinUtxosNumber
-        envMaxUtxosNumber    = cMaxUtxosNumber
-        envLedgerParams      = Params slotConfig (pParamsFromProtocolParams pp) cNetworkId
-        envActiveEndpoints   = cActiveEndpoints
-        envCollateral        = cCollateral
-        envNodeFilePath      = cNodeFilePath
-        envChainIndex        = fromMaybe shDefaultCI cChainIndex
-        envBfToken           = cBfToken
-        envLogger            = logger
-        envLoggerFilePath    = Nothing
-        envServerHandle      = ServerHandle{..}
+    pp           <- decodeOrErrorFromFile cProtocolParametersFile
+    slotConfig   <- loadSlotConfig cSlotConfigFile
+    let envPort            = cPort
+        envMinUtxosNumber  = cMinUtxosNumber
+        envMaxUtxosNumber  = cMaxUtxosNumber
+        envLedgerParams    = Params slotConfig (pParamsFromProtocolParams pp) cNetworkId
+        envActiveEndpoints = cActiveEndpoints
+        envCollateral      = cCollateral
+        envNodeFilePath    = cNodeFilePath
+        envChainIndex      = fromMaybe shDefaultCI cChainIndex
+        envBfToken         = cBfToken
+        envLogger          = logger
+        envLoggerFilePath  = Nothing
+        envServerHandle    = ServerHandle{..}
     pure Env{..}
+
+-- Get slot config from slot config file or extract it from plutus config.
+loadSlotConfig :: FilePath -> IO SlotConfig
+loadSlotConfig fp = do
+    val <- decodeOrErrorFromFile @J.Value fp
+    case val ^? key "cicSlotConfig" <&> fromJSON of
+        Just (J.Success sc) -> pure sc
+        _                   -> decodeOrErrorFromFile fp
 
 setLoggerFilePath :: FilePath -> ServerM api a -> ServerM api a
 setLoggerFilePath fp = local (\Env{..} -> Env{envLoggerFilePath = Just fp, ..})
