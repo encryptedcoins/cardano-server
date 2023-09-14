@@ -44,8 +44,6 @@ instance IsCardanoServerError BalanceExternalTxError where
     errMsg e = "The requested transaction could not be built. Reason: " <> case e of
         MakeUnbalancedTxError
             -> "Unable to build an UnbalancedTx."
-        MakeBuildTxFromEmulatorTxError{}
-            -> "Unable to extract CardanoBuildTx from EmulatorTx."
         NonBabbageEraChangeAddress
             -> "Change address is not from Babbage era."
         MakeUtxoProviderError err
@@ -59,7 +57,6 @@ instance IsCardanoServerError SubmitTxToLocalNodeError where
         _                       -> toEnum 422
     errMsg = \case
         NoConnectionToLocalNode -> "Server local node is currently unavailable."
-        CantSubmitEmulatorTx{}  -> "Can not sumbit emulator tx to local node."
         FailedSumbit err        -> "An error occurred while sending tx to local node. Reason: " .< err
 
 data CslError 

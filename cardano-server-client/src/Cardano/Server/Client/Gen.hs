@@ -1,47 +1,25 @@
-{-# LANGUAGE DataKinds           #-}
-{-# LANGUAGE GADTs               #-}
-{-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications    #-}
 
 module Cardano.Server.Client.Gen where
 
-import           Cardano.Api                        (BabbageEra, EraInMode (BabbageEraInCardanoMode),
-                                                     SerialiseAsCBOR (serialiseToCBOR), Tx)
-import           Cardano.Crypto.DSIGN.Class         (DSIGNAlgorithm (..), seedSizeDSIGN)
-import           Cardano.Crypto.DSIGN.Ed25519       (Ed25519DSIGN)
-import           Cardano.Node.Emulator.Generators   (genSomeCardanoApiTx)
-import           Cardano.Server.Client.Internal     (ClientEndpoint (EndpointArg))
-import           Cardano.Server.Config              (ServerEndpoint (SubmitTxE))
-import           Cardano.Server.Endpoints.Tx.Submit (SubmitTxReqBody (..))
-import           Control.Monad                      (replicateM)
-import           Control.Monad.IO.Class             (MonadIO (..))
-import           Data.Aeson.Extras                  (encodeByteString)
-import           Data.Data                          (Proxy)
-import           Data.Functor                       ((<&>))
-import           Data.Proxy                         (Proxy (..))
-import           Data.Text                          (Text)
-import           Hedgehog.Gen                       (sample)
-import           Ledger                             (NetworkId, SomeCardanoApiTx (SomeTx))
-import           Plutus.PAB.Arbitrary               ()
-import           Plutus.V1.Ledger.Api               (CurrencySymbol (..), fromBuiltin)
-import           PlutusAppsExtra.Utils.Address      (addressToBech32)
-import           System.Random                      (randomRIO)
-import           Test.Crypto.Util                   (Message, arbitrarySeedOfSize)
-import           Test.QuickCheck                    (Arbitrary (..), generate)
-import           Text.Hex                           (encodeHex)
-
-randomSubmitTxBody :: MonadIO m => m (EndpointArg 'SubmitTxE api)
-randomSubmitTxBody = liftIO $ SubmitTxReqBody
-    <$> randomCardanoTxText
-    <*> (randomRIO (1,1) >>= (`replicateM` ((,) <$> randomPubKeyText <*> randomSignatureText)))
+import           Cardano.Crypto.DSIGN.Class    (DSIGNAlgorithm (..), seedSizeDSIGN)
+import           Cardano.Crypto.DSIGN.Ed25519  (Ed25519DSIGN)
+import           Control.Monad.IO.Class        (MonadIO (..))
+import           Data.Data                     (Proxy)
+import           Data.Proxy                    (Proxy (..))
+import           Data.Text                     (Text)
+import           Ledger                        (NetworkId)
+import           Plutus.PAB.Arbitrary          ()
+import           Plutus.V1.Ledger.Api          (CurrencySymbol (..), fromBuiltin)
+import           PlutusAppsExtra.Utils.Address (addressToBech32)
+import           Test.Crypto.Util              (Message, arbitrarySeedOfSize)
+import           Test.QuickCheck               (Arbitrary (..), generate)
+import           Text.Hex                      (encodeHex)
 
 randomAddressBech32Text :: MonadIO m => NetworkId -> m Text
 randomAddressBech32Text network = liftIO $
     generate arbitrary >>= maybe (randomAddressBech32Text network) pure . addressToBech32 network
-
-randomCardanoTxText :: IO Text
-randomCardanoTxText = randomBabbageEraTx <&> encodeByteString . serialiseToCBOR
 
 randomCSText :: IO Text
 randomCSText = do
@@ -60,8 +38,3 @@ randomPubKeyText = do
     vk <- generate $ deriveVerKeyDSIGN @Ed25519DSIGN . genKeyDSIGN 
         <$> arbitrarySeedOfSize (seedSizeDSIGN (Proxy :: Proxy Ed25519DSIGN))
     pure $ encodeHex $ rawSerialiseVerKeyDSIGN vk
-
-randomBabbageEraTx :: IO (Tx BabbageEra)
-randomBabbageEraTx = sample genSomeCardanoApiTx >>= \case
-    SomeTx tx BabbageEraInCardanoMode -> pure tx
-    _                                 -> randomBabbageEraTx

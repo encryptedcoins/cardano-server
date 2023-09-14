@@ -9,9 +9,7 @@
 
 module Cardano.Server.Tx where
 
-import           Cardano.Server.Error                 (ConnectionError (ConnectionError),
-                                                       MkTxError (AllConstructorsFailed, CantExtractKeyHashesFromAddress, NotEnoughFunds),
-                                                       throwMaybe)
+import           Cardano.Server.Error                 (ConnectionError (ConnectionError), MkTxError (..), throwMaybe)
 import           Cardano.Server.Input                 (InputContext (..))
 import           Cardano.Server.Internal              (Env (..), ServerM)
 import           Cardano.Server.Utils.Logger          (logMsg, logPretty, logSmth)
@@ -31,14 +29,15 @@ import qualified Data.Map                             as Map
 import           Data.Maybe                           (fromJust, isNothing, mapMaybe)
 import qualified Data.Set                             as Set
 import qualified Data.Text                            as T
-import           Ledger                               (Address, CardanoTx (..), TxOutRef, onCardanoTx, unspentOutputsTx)
-import           Ledger.Ada                           (adaOf, lovelaceValueOf, toValue)
-import           Ledger.Constraints                   (TxConstraints (..))
-import           Ledger.Constraints.OffChain          (ScriptLookups (..))
-import           Ledger.Tx.CardanoAPI                 as CardanoAPI
+import           Ledger                               (Address, TxOutRef)
+import           Ledger.Tx.CardanoAPI                 as CardanoAPI (CardanoTx, fromCardanoValue, unspentOutputsTx)
+import           Ledger.Tx.Constraints                (ScriptLookups (..), TxConstraints (..))
 import           Ledger.Typed.Scripts                 (Any)
-import           Ledger.Value                         (CurrencySymbol (..), TokenName (..), Value (..))
+import qualified Ledger.Value.CardanoAPI              as C
 import           Network.HTTP.Client                  (HttpExceptionContent (..))
+import qualified Plutus.Script.Utils.Ada              as P
+import           Plutus.V2.Ledger.Api                 (CurrencySymbol (..), TokenName (..))
+import qualified Plutus.V2.Ledger.Api                 as P
 import           PlutusAppsExtra.Constraints.Balance  (balanceExternalTx)
 import           PlutusAppsExtra.Constraints.OffChain (useAsCollateralTx', utxoProducedPublicKeyTx)
 import           PlutusAppsExtra.IO.ChainIndex        (getUtxosAt)
@@ -115,9 +114,9 @@ checkForCleanUtxos = mkTxErrorH $ do
 mkWalletTxOutRefs :: Address -> Int -> ServerM api [TxOutRef]
 mkWalletTxOutRefs addr n = do
     (pkh, scr) <- throwMaybe (CantExtractKeyHashesFromAddress addr) $ addressToKeyHashes addr
-    let txBuilder = mapM_ (const $ utxoProducedPublicKeyTx pkh scr (lovelaceValueOf 10_000_000) Nothing) [1..n]
+    let txBuilder = mapM_ (const $ utxoProducedPublicKeyTx pkh scr (fromCardanoValue $ C.lovelaceValueOf 10_000_000) Nothing) [1..n]
     signedTx <- mkTx [] def [txBuilder]
-    let refs =  onCardanoTx (Map.keys . Ledger.unspentOutputsTx) (Map.keys . CardanoAPI.unspentOutputsTx) signedTx
+    let refs = Map.keys . CardanoAPI.unspentOutputsTx $ signedTx
     pure refs
 
 mkTxErrorH :: ServerM api a -> ServerM api a
@@ -130,7 +129,7 @@ mkTxErrorH = (`catches` [clientErrorH])
             body <- decode @J.Value $ responseBody r
             guard $ body ^? key "code" == Just "not_enough_money"
             msg <- body ^? key "message" . _String
-            ada <- fmap adaOf . readMaybe . T.unpack . T.takeWhile (not . isSpace) . T.dropWhile (not . isDigit) $ msg
+            ada <- fmap P.adaOf . readMaybe . T.unpack . T.takeWhile (not . isSpace) . T.dropWhile (not . isDigit) $ msg
             let triples = filter (not . null) $ chunksOf 3 $ map T.stripStart $ drop 1 $ T.splitOn "\n" $ mconcat $ drop 1 $ T.splitOn "tokens:" msg
                 toBbs = fmap toBuiltin . decodeHex . T.pack
                 fromTriple [policy, token, quantity] = do
@@ -139,9 +138,9 @@ mkTxErrorH = (`catches` [clientErrorH])
                         "" -> Just ""
                         xs -> TokenName <$> toBbs xs
                     quantity' <- readMaybe $ dropPrefix "quantity: " quantity
-                    pure $ Value $ PAM.singleton policy' (PAM.singleton token' quantity')
+                    pure $ P.Value $ PAM.singleton policy' (PAM.singleton token' quantity')
                 fromTriple _ = Nothing
-            pure $ mconcat $ (toValue ada :) $ mapMaybe (fromTriple . map T.unpack) triples
+            pure $ mconcat $ (P.toValue ada :) $ mapMaybe (fromTriple . map T.unpack) triples
 
 prettyLookups :: ScriptLookups Any -> Doc ann
 prettyLookups ScriptLookups{..} = vsep $ map (hang 2 . vsep)
