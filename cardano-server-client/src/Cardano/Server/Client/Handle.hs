@@ -14,7 +14,7 @@
 
 module Cardano.Server.Client.Handle where
 
-import           Cardano.Server.Client.Gen          (randomAddressBech32Text, randomSubmitTxBody)
+import           Cardano.Server.Client.Gen          (randomAddressBech32Text)
 import           Cardano.Server.Client.Internal     (ClientEndpoint (..), Interval, Mode (..))
 import           Cardano.Server.Config              (ServerEndpoint (..))
 import           Cardano.Server.Endpoints.Tx.Submit (SubmitTxReqBody (..))
@@ -60,7 +60,7 @@ instance Default (ClientHandle api) where
         { autoPing       = autoWith (pure ())
         , autoUtxos      = \i -> getNetworkId >>= (`autoWith` i) . randomAddressBech32Text
         , autoNewTx      = throwAutoNotImplemented NewTxE
-        , autoSumbitTx   = autoWith randomSubmitTxBody
+        , autoSumbitTx   = throwAutoNotImplemented SubmitTxE
         , autoServerTx   = throwAutoNotImplemented ServerTxE
         , autoStatus     = throwAutoNotImplemented StatusE
         , manualPing     = const $ sendRequest ()
