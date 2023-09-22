@@ -12,7 +12,7 @@ module Cardano.Server.Error.CommonErrors
     , SubmitTxToLocalNodeError (..)
     , CslError (..)
     ) where
-    
+
 import           Cardano.Server.Error.Class           (IsCardanoServerError (errMsg, errStatus))
 import           Cardano.Server.Utils.Logger          ((.<))
 import           Control.Exception                    (Exception)
@@ -42,14 +42,14 @@ instance IsCardanoServerError MkTxError where
 instance IsCardanoServerError BalanceExternalTxError where
     errStatus _ = toEnum 422
     errMsg e = "The requested transaction could not be built. Reason: " <> case e of
-        MakeUnbalancedTxError
-            -> "Unable to build an UnbalancedTx."
-        NonBabbageEraChangeAddress
-            -> "Change address is not from Babbage era."
-        MakeUtxoProviderError err
-            -> "Unable to extract an utxoProvider from wallet outputs:\n" .< err
-        MakeAutoBalancedTxError err
-            -> "Unable to build an auto balanced tx:\n" .< err
+        MakeUnbalancedTxError lookups constrs
+            -> "Unable to build an UnbalancedTx:\n\nTxLookups:\n\n" <> lookups <> "\n\nTxConstraints:\n\n" <> constrs
+        NonBabbageEraChangeAddress addr
+            -> "Change address is not from Babbage era:\n\n" .< addr
+        MakeUtxoProviderError tx err
+            -> "Unable to extract an utxoProvider from wallet outputs:\n\nFailed tx:\n\n" .< tx <> "\n\nError:\n\n" .< err
+        MakeAutoBalancedTxError tx err
+            -> "Unable to build an auto balanced tx:\n\nFailed tx:\n\n" .< tx <> "\n\nError:\n\n" .< err
 
 instance IsCardanoServerError SubmitTxToLocalNodeError where
     errStatus = \case
@@ -59,7 +59,7 @@ instance IsCardanoServerError SubmitTxToLocalNodeError where
         NoConnectionToLocalNode -> "Server local node is currently unavailable."
         FailedSumbit err        -> "An error occurred while sending tx to local node. Reason: " .< err
 
-data CslError 
+data CslError
     = CslConversionError
     deriving (Show, Exception)
 
