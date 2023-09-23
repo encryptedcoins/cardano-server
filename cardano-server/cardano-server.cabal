@@ -1,7 +1,7 @@
 cabal-version:      3.0
 
 name:               cardano-server
-version:            0.1.0.0
+version:            1.0.0.0
 
 author:             Grigory Petrov
                     Vladimir Sinyakov
@@ -79,8 +79,9 @@ library
       plutus-apps-extra                      -any,
       plutus-ledger                          -any,
       plutus-ledger-api                      -any,
-      plutus-ledger-constraints              -any,
+      plutus-script-utils                    -any,
       plutus-tx                              -any,
+      plutus-tx-constraints                  -any,
       prettyprinter                          -any,
       servant                                -any,
       servant-client                         -any,
