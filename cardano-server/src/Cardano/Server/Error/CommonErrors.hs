@@ -42,13 +42,13 @@ instance IsCardanoServerError MkTxError where
 instance IsCardanoServerError BalanceExternalTxError where
     errStatus _ = toEnum 422
     errMsg e = "The requested transaction could not be built. Reason: " <> case e of
-        MakeUnbalancedTxError
+        MakeUnbalancedTxError _ _
             -> "Unable to build an UnbalancedTx."
-        NonBabbageEraChangeAddress
+        NonBabbageEraChangeAddress _
             -> "Change address is not from Babbage era."
-        MakeUtxoProviderError err
+        MakeUtxoProviderError err _
             -> "Unable to extract an utxoProvider from wallet outputs:\n" .< err
-        MakeAutoBalancedTxError err
+        MakeAutoBalancedTxError err _
             -> "Unable to build an auto balanced tx:\n" .< err
 
 instance IsCardanoServerError SubmitTxToLocalNodeError where
