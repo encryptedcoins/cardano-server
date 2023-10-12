@@ -33,7 +33,7 @@ source-repository-package
 source-repository-package
   type: git
   location: https://github.com/encryptedcoins/plutus-apps-extra
-  tag: v1
+  tag: d513bfe6441f2f6f42eea4cfcde824a604ef3395
   subdir:
     plutus-apps-extra
 
@@ -46,7 +46,7 @@ source-repository-package
   type: git
   location: https://github.com/input-output-hk/plutus-apps
   tag: 68efca7eda4afd1c14698adf697d70acb5a489e2
-  subdir: 
+  subdir:
     cardano-node-emulator
     cardano-streaming
     doc
