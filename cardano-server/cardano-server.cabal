@@ -57,6 +57,7 @@ library
       base                          >= 4.9 && < 5,
       aeson                                  -any,
       aeson-casing                           -any,
+      async                                  -any,
       bytestring                             -any,
       cardano-addresses                      -any,
       cardano-api                            -any,
