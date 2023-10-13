@@ -130,7 +130,7 @@ txEndpointsTxBuilders input = asks (shTxEndpointsTxBuilders . envServerHandle) >
 
 serverIdle :: ServerM api ()
 serverIdle = do
-    delay <- liftIO $ async $ waitTime 5
+    delay <- liftIO $ async $ waitTime 2
     join $ asks $ shServerIdle . envServerHandle
     liftIO $ wait delay
 
