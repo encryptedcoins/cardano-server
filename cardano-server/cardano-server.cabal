@@ -19,18 +19,18 @@ common lang
       -Wnoncanonical-monad-instances
       -Wredundant-constraints
       -Wno-unused-do-bind
-      
+
       -- See Plutus Tx readme
       -fno-ignore-interface-pragmas
       -fno-omit-interface-pragmas
       -fno-specialise
       -fno-strictness
-      -fobject-code       
+      -fobject-code
       -fplugin-opt PlutusTx.Plugin:defer-errors
 
 library
     import: lang
-    exposed-modules: 
+    exposed-modules:
       Cardano.Server.Config
       Cardano.Server.Endpoints.Ping
       Cardano.Server.Endpoints.Status
@@ -38,7 +38,7 @@ library
       Cardano.Server.Endpoints.Tx.New
       Cardano.Server.Endpoints.Tx.Server
       Cardano.Server.Endpoints.Tx.Submit
-      Cardano.Server.Endpoints.Utxos 
+      Cardano.Server.Endpoints.Utxos
       Cardano.Server.Error
       Cardano.Server.Error.Class
       Cardano.Server.Error.CommonErrors
