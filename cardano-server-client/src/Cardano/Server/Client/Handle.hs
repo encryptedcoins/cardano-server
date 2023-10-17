@@ -46,6 +46,7 @@ data ClientHandle api = ClientHandle
     , autoSumbitTx   :: HasServantClientEnv => Interval -> ServerM api (Proxy 'SubmitTxE)
     , autoServerTx   :: HasServantClientEnv => Interval -> ServerM api (Proxy 'ServerTxE)
     , autoStatus     :: HasServantClientEnv => Interval -> ServerM api (Proxy 'StatusE)
+    , autoVersion    :: HasServantClientEnv => Interval -> ServerM api (Proxy 'VersionE)
     -- Manual
     , manualPing     :: HasServantClientEnv => Text -> ServerM api (Proxy 'PingE)
     , manualUtxos    :: HasServantClientEnv => Text -> ServerM api (Proxy 'UtxosE)
@@ -53,6 +54,7 @@ data ClientHandle api = ClientHandle
     , manualSubmitTx :: HasServantClientEnv => Text -> ServerM api (Proxy 'SubmitTxE)
     , manualServerTx :: HasServantClientEnv => Text -> ServerM api (Proxy 'ServerTxE)
     , manualStatus   :: HasServantClientEnv => Text -> ServerM api (Proxy 'StatusE)
+    , manualVersion  :: HasServantClientEnv => Text -> ServerM api (Proxy 'VersionE)
     }
 
 instance Default (ClientHandle api) where
@@ -63,15 +65,17 @@ instance Default (ClientHandle api) where
         , autoSumbitTx   = throwAutoNotImplemented SubmitTxE
         , autoServerTx   = throwAutoNotImplemented ServerTxE
         , autoStatus     = throwAutoNotImplemented StatusE
+        , autoVersion     = throwAutoNotImplemented VersionE
         , manualPing     = const $ sendRequest ()
         , manualUtxos    = manualWithRead
         , manualNewTx    = throwManualNotImplemented NewTxE
         , manualSubmitTx = manualWith readSubmitTxArg
         , manualServerTx = throwManualNotImplemented ServerTxE
         , manualStatus   = throwManualNotImplemented StatusE
+        , manualVersion  = throwManualNotImplemented VersionE
         }
         where
-            readSubmitTxArg (T.splitOn "," -> tx:wits) 
+            readSubmitTxArg (T.splitOn "," -> tx:wits)
                 = pure $ SubmitTxReqBody tx $ map (\[a,b] -> (a,b)) $ chunksOf 2 wits
 
 data NotImplementedMethodError = NotImplementedMethodError Mode ServerEndpoint
@@ -120,11 +124,11 @@ manualWithJsonFile :: forall (e :: ServerEndpoint) api.
 manualWithJsonFile filePath
     = liftIO (LBS.readFile $ T.unpack filePath) >>= either ((Proxy <$) . logSmth) (sendRequest @e) . eitherDecode
 
-sendRequest :: forall e api. 
+sendRequest :: forall e api.
     ( HasServantClientEnv
     , ClientEndpoint e api
     ) => EndpointArg e api -> ServerM api (Proxy e)
 sendRequest reqBody = Proxy <$ do
-    logMsg $ "Sending request with:\n" .< reqBody 
+    logMsg $ "Sending request with:\n" .< reqBody
     res <- liftIO (flip runClientM ?servantClientEnv $ endpointClient @e @api reqBody)
     logMsg $ "Received response:\n" <> either (T.pack . show) (T.pack . show) res

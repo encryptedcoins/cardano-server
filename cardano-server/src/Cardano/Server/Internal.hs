@@ -95,6 +95,12 @@ class HasStatusEndpoint api where
 
 type StatusHandler api = StatusEndpointReqBodyOf api -> ServerM api (Envelope (StatusEndpointErrorsOf api) (StatusEndpointResOf api))
 
+class HasVersionEndpoint api where
+    type VersionEndpointResOf api :: Type
+    versionHandler :: VersionHandler api
+
+type VersionHandler api = ServerM api (VersionEndpointResOf api)
+
 data ServerHandle api = ServerHandle
     { shDefaultCI              :: ChainIndex
     , shAuxiliaryEnv           :: AuxillaryEnvOf api
@@ -103,6 +109,7 @@ data ServerHandle api = ServerHandle
     , shServerIdle             :: ServerM api ()
     , shProcessRequest         :: TxApiRequestOf api -> ServerM api (InputWithContext api)
     , shStatusHandler          :: StatusHandler api
+    , shVersionHandler         :: VersionHandler api
     }
 
 data Env api = Env
@@ -146,7 +153,10 @@ getNetworkId = asks $ pNetworkId . envLedgerParams
 getAuxillaryEnv :: ServerM api (AuxillaryEnvOf api)
 getAuxillaryEnv = asks $ shAuxiliaryEnv . envServerHandle
 
-loadEnv :: HasCallStack => Config -> ServerHandle api -> IO (Env api)
+loadEnv :: HasCallStack
+  => Config
+  -> ServerHandle api
+  -> IO (Env api)
 loadEnv Config{..} ServerHandle{..} = do
     envQueueRef  <- newIORef empty
     envWallet    <- sequence $ loadWallet <$> cWalletFile

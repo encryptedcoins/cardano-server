@@ -39,6 +39,7 @@ library
       Cardano.Server.Endpoints.Tx.Server
       Cardano.Server.Endpoints.Tx.Submit
       Cardano.Server.Endpoints.Utxos
+      Cardano.Server.Endpoints.Version
       Cardano.Server.Error
       Cardano.Server.Error.Class
       Cardano.Server.Error.CommonErrors
