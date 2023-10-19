@@ -31,19 +31,19 @@ class Exception e => IsCardanoServerError e where
     errHeaders _ = [(Network.HTTP.Types.Header.hContentType, "application/json")]
 
 cardanoServerErrorToJSON :: IsCardanoServerError e => e -> J.Value
-cardanoServerErrorToJSON e = J.object 
+cardanoServerErrorToJSON e = J.object
     [ "errCode" .= fromEnum (errStatus e)
     , "errMsg" .= errMsg e
     ]
- 
+
 parseErrorText :: J.Value -> Maybe Text
 parseErrorText = (^? key "errMsg" . _String)
 
 toServantError :: forall e. IsCardanoServerError e => e -> Servant.ServerError
-toServantError e = Servant.ServerError 
-    (fromEnum $ errStatus e) 
+toServantError e = Servant.ServerError
+    (fromEnum $ errStatus e)
     (T.unpack $ errStatusText e)
-    (errBody e) 
+    (errBody e)
     (errHeaders e)
 
 statusTextFromStatus :: Status -> Text

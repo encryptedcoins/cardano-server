@@ -12,7 +12,7 @@ module Cardano.Server.Error.CommonErrors
     , SubmitTxToLocalNodeError (..)
     , CslError (..)
     ) where
-    
+
 import           Cardano.Server.Error.Class           (IsCardanoServerError (errMsg, errStatus))
 import           Cardano.Server.Utils.Logger          ((.<))
 import           Control.Exception                    (Exception)
@@ -59,7 +59,7 @@ instance IsCardanoServerError SubmitTxToLocalNodeError where
         NoConnectionToLocalNode -> "Server local node is currently unavailable."
         FailedSumbit err        -> "An error occurred while sending tx to local node. Reason: " .< err
 
-data CslError 
+data CslError
     = CslConversionError
     deriving (Show, Exception)
 

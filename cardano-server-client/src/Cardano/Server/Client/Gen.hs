@@ -29,12 +29,12 @@ randomCSText = do
 randomSignatureText :: IO Text
 randomSignatureText = do
     msg :: Message <- generate arbitrary
-    sig :: SigDSIGN Ed25519DSIGN <- generate $ signDSIGN () msg 
+    sig :: SigDSIGN Ed25519DSIGN <- generate $ signDSIGN () msg
         <$> (genKeyDSIGN <$> arbitrarySeedOfSize (seedSizeDSIGN (Proxy :: Proxy Ed25519DSIGN)))
     pure $ encodeHex $ rawSerialiseSigDSIGN sig
 
 randomPubKeyText :: IO Text
 randomPubKeyText = do
-    vk <- generate $ deriveVerKeyDSIGN @Ed25519DSIGN . genKeyDSIGN 
+    vk <- generate $ deriveVerKeyDSIGN @Ed25519DSIGN . genKeyDSIGN
         <$> arbitrarySeedOfSize (seedSizeDSIGN (Proxy :: Proxy Ed25519DSIGN))
     pure $ encodeHex $ rawSerialiseVerKeyDSIGN vk

@@ -23,8 +23,8 @@ import           Plutus.V2.Ledger.Api            (BuiltinByteString)
 import           PlutusAppsExtra.IO.ChainIndex   (ChainIndex (..))
 import           PlutusAppsExtra.IO.Wallet       (getWalletAddr)
 
-type ExampleApi 
-    = ServerApi 
+type ExampleApi
+    = ServerApi
     ([BuiltinByteString], InputContext) -- Request body of tx endpoints
     ExampleApiError                     -- Error of tx endpoints
     Bool                                -- RequestBody of status enpoint
@@ -60,7 +60,7 @@ runExampleServer :: FilePath -> IO ()
 runExampleServer configFp = do
     config <- decodeOrErrorFromFile configFp
     runServer config exampleServerHandle
-    
+
 data ExampleStatusEndpointError = ExampleStatusEndpointError
     deriving (Show, Exception)
 
@@ -69,7 +69,7 @@ instance IsCardanoServerError ExampleStatusEndpointError where
     errMsg _ = "This is an example of an error in the status endpoint."
 
 statusEndpointHandler :: Bool -> ServerM ExampleApi (Envelope '[ExampleStatusEndpointError] Text)
-statusEndpointHandler b = toEnvelope $ 
-    if b 
+statusEndpointHandler b = toEnvelope $
+    if b
     then pure "This is an example of a status endpoint."
     else throwM ExampleStatusEndpointError

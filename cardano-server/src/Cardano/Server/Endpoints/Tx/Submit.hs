@@ -57,7 +57,7 @@ instance IsCardanoServerError SubmitTxApiError where
     errMsg (UnparsableWitnesses wtns) = "Cannot parse witnesses from hex:" .< wtns
 
 submitTxHandler :: IsCardanoServerError (TxApiErrorOf api)
-    => SubmitTxReqBody 
+    => SubmitTxReqBody
     -> ServerM api (Envelope '[TxApiErrorOf api, SubmitTxApiError, SubmitTxToLocalNodeError, ConnectionError] NoContent)
 submitTxHandler req = toEnvelope $ do
     logMsg $ "New submitTx request received:\n" .< req
