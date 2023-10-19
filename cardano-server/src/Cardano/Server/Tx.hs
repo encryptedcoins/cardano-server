@@ -41,13 +41,12 @@ import qualified Plutus.V2.Ledger.Api                 as P
 import           PlutusAppsExtra.Constraints.Balance  (balanceExternalTx)
 import           PlutusAppsExtra.Constraints.OffChain (useAsCollateralTx', utxoProducedPublicKeyTx)
 import           PlutusAppsExtra.IO.ChainIndex        (getUtxosAt)
-import           PlutusAppsExtra.IO.ChainIndex.Kupo   (getKupoUtxosAt)
 import           PlutusAppsExtra.IO.Time              (currentTime)
 import           PlutusAppsExtra.IO.Wallet            (balanceTx, getWalletAddr, signTx, submitTxConfirmed)
 import           PlutusAppsExtra.Types.Tx             (TransactionBuilder, TxConstructor (..), mkTxConstructor,
                                                        selectTxConstructor)
 import           PlutusAppsExtra.Utils.Address        (addressToKeyHashes)
-import           PlutusAppsExtra.Utils.ChainIndex     (filterCleanKupoUtxos)
+import           PlutusAppsExtra.Utils.ChainIndex     (filterCleanUtxos)
 import           PlutusTx                             (BuiltinData)
 import qualified PlutusTx.AssocMap                    as PAM
 import           PlutusTx.Builtins.Class              (ToBuiltin (..))
@@ -105,7 +104,7 @@ mkTx addressesTracked ctx txs = mkTxErrorH $ do
 checkForCleanUtxos :: ServerM api ()
 checkForCleanUtxos = mkTxErrorH $ do
     addr       <- getWalletAddr
-    cleanUtxos <- length . filterCleanKupoUtxos <$> getKupoUtxosAt addr
+    cleanUtxos <- length . filterCleanUtxos <$> getUtxosAt addr
     minUtxos   <- asks envMinUtxosNumber
     maxUtxos   <- asks envMaxUtxosNumber
     when (cleanUtxos < minUtxos) $ do
