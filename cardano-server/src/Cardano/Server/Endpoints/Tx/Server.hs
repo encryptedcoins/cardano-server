@@ -5,25 +5,29 @@
 {-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections       #-}
 {-# LANGUAGE TypeFamilies        #-}
 {-# LANGUAGE TypeOperators       #-}
+{-# LANGUAGE TypeApplications    #-}
+{-# LANGUAGE ViewPatterns        #-}
 
 module Cardano.Server.Endpoints.Tx.Server where
 
 import           Cardano.Server.Config                (ServerEndpoint (ServerTxE))
 import           Cardano.Server.Endpoints.Tx.Internal (TxApiErrorOf)
 import           Cardano.Server.Error                 (ConnectionError, Envelope, IsCardanoServerError, Throws, toEnvelope)
-import           Cardano.Server.Internal              (Env (envQueueRef), InputOf, InputWithContext, Queue, QueueRef, ServerM,
-                                                       TxApiRequestOf, checkEndpointAvailability, getQueueRef, runServerM,
-                                                       serverIdle, serverTrackedAddresses, setLoggerFilePath,
+import           Cardano.Server.Internal              (Env (envQueueRef), InputOf, Queue, QueueElem (..), QueueRef, ServerM,
+                                                       TxApiRequestOf, checkEndpointAvailability, getQueueRef, newQueueElem,
+                                                       runServerM, serverIdle, serverTrackedAddresses, setLoggerFilePath,
                                                        txEndpointProcessRequest, txEndpointsTxBuilders)
 import           Cardano.Server.Tx                    (checkForCleanUtxos, mkTx)
 import           Cardano.Server.Utils.Logger          (logMsg, logSmth, (.<))
 import           Cardano.Server.Utils.Wait            (waitTime)
+import           Control.Concurrent                   (putMVar, takeMVar)
 import           Control.Monad                        (join, liftM3, void, when)
-import           Control.Monad.Catch                  (SomeException, catch)
+import           Control.Monad.Catch                  (SomeException, catch, fromException, handle, throwM)
 import           Control.Monad.IO.Class               (MonadIO (..))
 import           Control.Monad.Reader                 (asks)
 import           Data.IORef                           (atomicModifyIORef, atomicWriteIORef, readIORef)
@@ -38,16 +42,20 @@ type ServerTxApi reqBody err = "serverTx"
     :> ReqBody '[JSON] reqBody
     :> Post '[JSON] NoContent
 
-serverTxHandler :: (Show (TxApiRequestOf api), IsCardanoServerError (TxApiErrorOf api))
+serverTxHandler :: forall api. (Show (TxApiRequestOf api), IsCardanoServerError (TxApiErrorOf api))
     => TxApiRequestOf api
     -> ServerM api (Envelope '[TxApiErrorOf api, ConnectionError] NoContent)
 serverTxHandler req = toEnvelope $ do
-    logMsg $ "New serverTx request received:\n" .< req
-    checkEndpointAvailability ServerTxE
-    arg <- txEndpointProcessRequest req
-    ref <- getQueueRef
-    liftIO $ atomicModifyIORef ref ((,()) . (|> arg))
-    pure NoContent
+        logMsg $ "New serverTx request received:\n" .< req
+        checkEndpointAvailability ServerTxE
+        qElem <- txEndpointProcessRequest req >>= newQueueElem
+        ref   <- getQueueRef
+        liftIO $ atomicModifyIORef ref ((,()) . (|> qElem))
+        liftIO (takeMVar $ qeMvar qElem) >>= either reThrow (const $ return NoContent)
+    where
+        reThrow (fromException @(TxApiErrorOf api) -> Just txApiErr)  = throwM txApiErr
+        reThrow (fromException @ConnectionError    -> Just connError) = throwM connError
+        reThrow err                                                   = throwM err
 
 processQueue ::  (Show (InputOf api)) => Env api -> IO ()
 processQueue env = runServerM env $ setLoggerFilePath "queue.log" $ do
@@ -63,7 +71,7 @@ processQueue env = runServerM env $ setLoggerFilePath "queue.log" $ do
             qRef <- asks envQueueRef
             liftIO (readIORef qRef) >>= \case
                 Empty -> idleQueue t >>= checkQueue
-                input :<| inputs -> processQueueElem qRef input inputs >> go
+                e :<| es -> processQueueElem qRef e es >> go
 
 idleQueue :: Time.UTCTime -> ServerM api Time.UTCTime
 idleQueue st = do
@@ -77,13 +85,12 @@ idleQueue st = do
     waitTime 3
     pure $ if enoughTimePassed then ct else st
 
-processQueueElem :: (Show (InputOf api)) => QueueRef api -> InputWithContext api -> Queue api -> ServerM api ()
-processQueueElem qRef qElem@(input, context) elems = do
-    liftIO $ atomicWriteIORef qRef elems
-    logMsg $ "New input to process:" .< input <> "\nContext:" .< context
-    processInputs qElem
-
-processInputs :: InputWithContext api -> ServerM api ()
-processInputs (input, context) = do
-    checkForCleanUtxos
-    void $ join $ liftM3 mkTx serverTrackedAddresses (pure context) $ txEndpointsTxBuilders input
+processQueueElem :: (Show (InputOf api)) => QueueRef api -> QueueElem api -> Queue api -> ServerM api ()
+processQueueElem qRef QueueElem{..} elems = handle h $ do
+        liftIO $ atomicWriteIORef qRef elems
+        logMsg $ "New input to process:" .< qeInput <> "\nContext:" .< qeContext
+        checkForCleanUtxos
+        void $ join $ liftM3 mkTx serverTrackedAddresses (pure qeContext) $ txEndpointsTxBuilders qeInput
+        liftIO $ putMVar qeMvar $ Right ()
+    where
+        h = liftIO . putMVar qeMvar . Left
