@@ -13,7 +13,7 @@ import           Cardano.Server.Error                 (ConnectionError (Connecti
 import           Cardano.Server.Input                 (InputContext (..))
 import           Cardano.Server.Internal              (Env (..), ServerM)
 import           Cardano.Server.Utils.Logger          (logMsg, logPretty, logSmth)
-import           Control.Lens                         ((^?))
+import           Control.Lens                         ((<&>), (^?))
 import           Control.Monad.Catch                  (Handler (..), MonadThrow (..), catches, handle)
 import           Control.Monad.Extra                  (guard, mconcatMapM, void, when)
 import           Control.Monad.IO.Class               (MonadIO (..))
@@ -41,12 +41,13 @@ import qualified Plutus.V2.Ledger.Api                 as P
 import           PlutusAppsExtra.Constraints.Balance  (balanceExternalTx)
 import           PlutusAppsExtra.Constraints.OffChain (useAsCollateralTx', utxoProducedPublicKeyTx)
 import           PlutusAppsExtra.IO.ChainIndex        (getUtxosAt)
+import           PlutusAppsExtra.IO.ChainIndex.Kupo   (getKupoResponsesAt)
 import           PlutusAppsExtra.IO.Time              (currentTime)
-import           PlutusAppsExtra.IO.Wallet            (balanceTx, getWalletAddr, getWalletUtxos, signTx, submitTxConfirmed)
+import           PlutusAppsExtra.IO.Wallet            (balanceTx, getWalletAddr, signTx, submitTxConfirmed)
 import           PlutusAppsExtra.Types.Tx             (TransactionBuilder, TxConstructor (..), mkTxConstructor,
                                                        selectTxConstructor)
 import           PlutusAppsExtra.Utils.Address        (addressToKeyHashes)
-import           PlutusAppsExtra.Utils.ChainIndex     (filterCleanUtxos)
+import           PlutusAppsExtra.Utils.Kupo           (filterCleanKupoResponses)
 import           PlutusTx                             (BuiltinData)
 import qualified PlutusTx.AssocMap                    as PAM
 import           PlutusTx.Builtins.Class              (ToBuiltin (..))
@@ -54,6 +55,7 @@ import           Prettyprinter                        (Doc, Pretty (..), hang, v
 import           Servant.Client                       (ClientError (FailureResponse), ResponseF (..))
 import           Text.Hex                             (decodeHex)
 import           Text.Read                            (readMaybe)
+
 
 mkBalanceTx :: [Address]
             -> InputContext
@@ -104,7 +106,7 @@ mkTx addressesTracked ctx txs = mkTxErrorH $ do
 checkForCleanUtxos :: ServerM api ()
 checkForCleanUtxos = mkTxErrorH $ do
     addr       <- getWalletAddr
-    cleanUtxos <- length . filterCleanUtxos <$> getWalletUtxos
+    cleanUtxos <- getWalletAddr >>= liftIO . getKupoResponsesAt <&> length . filterCleanKupoResponses
     minUtxos   <- asks envMinUtxosNumber
     maxUtxos   <- asks envMaxUtxosNumber
     when (cleanUtxos < minUtxos) $ do
