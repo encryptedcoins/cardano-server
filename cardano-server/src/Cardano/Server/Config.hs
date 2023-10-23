@@ -26,6 +26,7 @@ data Config = Config
     , cPort                   :: Int
     , cMinUtxosNumber         :: Int
     , cMaxUtxosNumber         :: Int
+    , cDiagnosticsInterval    :: Maybe Int
     , cProtocolParametersFile :: FilePath
     , cSlotConfigFile         :: FilePath
     , cAuxiliaryEnvFile       :: FilePath

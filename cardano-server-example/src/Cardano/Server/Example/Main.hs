@@ -4,27 +4,31 @@
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE ScopedTypeVariables  #-}
+{-# LANGUAGE TypeApplications     #-}
 {-# LANGUAGE TypeFamilies         #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Cardano.Server.Example.Main where
 
+import           Cardano.Server.Client.Internal  (statusC)
 import           Cardano.Server.Config           (decodeOrErrorFromFile)
 import           Cardano.Server.Error            (Envelope, IsCardanoServerError (..), toEnvelope)
 import           Cardano.Server.Example.OffChain (testMintTx)
 import           Cardano.Server.Input            (InputContext)
-import           Cardano.Server.Internal         (AuxillaryEnvOf, InputOf, ServerHandle (ServerHandle), ServerM)
+import           Cardano.Server.Internal         (AuxillaryEnvOf, InputOf, ServerHandle (ServerHandle), ServerM, mkServerClientEnv)
 import           Cardano.Server.Main             (ServerApi, runServer)
 import           Control.Monad                   (when)
 import           Control.Monad.Catch             (Exception, MonadThrow (throwM))
+import           Control.Monad.IO.Class          (MonadIO (..))
 import           Data.List                       (nub, sort)
 import           Data.Text                       (Text)
 import           Plutus.V2.Ledger.Api            (BuiltinByteString)
 import           PlutusAppsExtra.IO.ChainIndex   (ChainIndex (..))
 import           PlutusAppsExtra.IO.Wallet       (getWalletAddr)
+import           Servant.Client                  (runClientM)
 
-type ExampleApi 
-    = ServerApi 
+type ExampleApi
+    = ServerApi
     ([BuiltinByteString], InputContext) -- Request body of tx endpoints
     ExampleApiError                     -- Error of tx endpoints
     Bool                                -- RequestBody of status enpoint
@@ -50,6 +54,7 @@ exampleServerHandle = ServerHandle
         (pure ())                       -- What should the server do when there are no requests
         processRequest                  -- How to extract input from request in tx endpoints
         statusEndpointHandler           -- Handler of status endpoint
+        checkStatusEndpoint             -- How to check if status endpoint is alive.
     where
         processRequest (bbs, ctx) = do
             let hasDuplicates = length bbs /= length (nub bbs)
@@ -60,7 +65,7 @@ runExampleServer :: FilePath -> IO ()
 runExampleServer configFp = do
     config <- decodeOrErrorFromFile configFp
     runServer config exampleServerHandle
-    
+
 data ExampleStatusEndpointError = ExampleStatusEndpointError
     deriving (Show, Exception)
 
@@ -69,7 +74,13 @@ instance IsCardanoServerError ExampleStatusEndpointError where
     errMsg _ = "This is an example of an error in the status endpoint."
 
 statusEndpointHandler :: Bool -> ServerM ExampleApi (Envelope '[ExampleStatusEndpointError] Text)
-statusEndpointHandler b = toEnvelope $ 
-    if b 
+statusEndpointHandler b = toEnvelope $
+    if b
     then pure "This is an example of a status endpoint."
     else throwM ExampleStatusEndpointError
+
+checkStatusEndpoint :: ServerM ExampleApi (Either Text ())
+checkStatusEndpoint = do
+    env <- mkServerClientEnv
+    res <- liftIO $ runClientM (statusC @ExampleApi True) env
+    either throwM (const $ pure $ Right ()) res

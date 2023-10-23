@@ -1,19 +1,19 @@
-{-# LANGUAGE AllowAmbiguousTypes          #-}
-{-# LANGUAGE ConstraintKinds              #-}
-{-# LANGUAGE DataKinds                    #-}
-{-# LANGUAGE DerivingVia                  #-}
-{-# LANGUAGE ExistentialQuantification    #-}
-{-# LANGUAGE FlexibleContexts             #-}
-{-# LANGUAGE FlexibleInstances            #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving   #-}
-{-# LANGUAGE MultiParamTypeClasses        #-}
-{-# LANGUAGE OverloadedStrings            #-}
-{-# LANGUAGE RankNTypes                   #-}
-{-# LANGUAGE RecordWildCards              #-}
-{-# LANGUAGE ScopedTypeVariables          #-}
-{-# LANGUAGE TypeApplications             #-}
-{-# LANGUAGE TypeFamilies                 #-}
-{-# LANGUAGE UndecidableInstances         #-}
+{-# LANGUAGE AllowAmbiguousTypes        #-}
+{-# LANGUAGE ConstraintKinds            #-}
+{-# LANGUAGE DataKinds                  #-}
+{-# LANGUAGE DerivingVia                #-}
+{-# LANGUAGE ExistentialQuantification  #-}
+{-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE RankNTypes                 #-}
+{-# LANGUAGE RecordWildCards            #-}
+{-# LANGUAGE ScopedTypeVariables        #-}
+{-# LANGUAGE TypeApplications           #-}
+{-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE UndecidableInstances       #-}
 
 module Cardano.Server.Internal where
 
@@ -29,7 +29,7 @@ import           Control.Lens                      ((^?))
 import           Control.Monad.Catch               (MonadCatch, MonadThrow (..))
 import           Control.Monad.Except              (MonadError (throwError))
 import           Control.Monad.Extra               (join, whenM)
-import           Control.Monad.IO.Class            (MonadIO)
+import           Control.Monad.IO.Class            (MonadIO (..))
 import           Control.Monad.Reader              (MonadReader, ReaderT (ReaderT, runReaderT), asks, local)
 import           Data.Aeson                        (fromJSON)
 import qualified Data.Aeson                        as J
@@ -39,14 +39,18 @@ import           Data.IORef                        (IORef, newIORef)
 import           Data.Kind                         (Type)
 import           Data.Maybe                        (fromMaybe)
 import           Data.Sequence                     (Seq, empty)
+import           Data.Text                         (Text)
+import qualified Data.Text                         as T
 import           GHC.Stack                         (HasCallStack)
 import           Ledger                            (Address, NetworkId, TxOutRef)
+import           Network.HTTP.Client               (defaultManagerSettings, newManager)
 import qualified PlutusAppsExtra.IO.Blockfrost     as BF
 import           PlutusAppsExtra.IO.ChainIndex     (ChainIndex, HasChainIndex (..))
 import           PlutusAppsExtra.IO.Wallet         (HasWallet (..), RestoredWallet)
 import           PlutusAppsExtra.Types.Tx          (TransactionBuilder)
 import           Servant                           (Handler, err404)
 import qualified Servant
+import qualified Servant.Client                    as Servant
 
 newtype ServerM api a = ServerM {unServerM :: ReaderT (Env api) Handler a}
      deriving newtype
@@ -101,10 +105,12 @@ data ServerHandle api = ServerHandle
     , shServerIdle             :: ServerM api ()
     , shProcessRequest         :: TxApiRequestOf api -> ServerM api (InputWithContext api)
     , shStatusHandler          :: StatusHandler api
+    , shCheckIfStatusAlive     :: ServerM api (Either Text ())
     }
 
 data Env api = Env
     { envPort                  :: Int
+    , envHost                  :: Text
     , envQueueRef              :: QueueRef api
     , envWallet                :: Maybe RestoredWallet
     , envBfToken               :: Maybe BF.BfToken
@@ -118,6 +124,7 @@ data Env api = Env
     , envLogger                :: Logger (ServerM api)
     , envLoggerFilePath        :: Maybe FilePath
     , envServerHandle          :: ServerHandle api
+    , envDiagnosticsInterval   :: Int
     }
 
 serverTrackedAddresses :: ServerM api [Address]
@@ -151,18 +158,20 @@ loadEnv Config{..} ServerHandle{..} = do
         case val ^? key "cicSlotConfig" <&> fromJSON of
             Just (J.Success sc) -> pure sc
             _                   -> error "There is no slot config in chain index config file."
-    let envPort              = cPort
-        envMinUtxosNumber    = cMinUtxosNumber
-        envMaxUtxosNumber    = cMaxUtxosNumber
-        envLedgerParams      = Params slotConfig (pParamsFromProtocolParams pp) cNetworkId
-        envActiveEndpoints   = cActiveEndpoints
-        envCollateral        = cCollateral
-        envNodeFilePath      = cNodeFilePath
-        envChainIndex        = fromMaybe shDefaultCI cChainIndex
-        envBfToken           = cBfToken
-        envLogger            = logger
-        envLoggerFilePath    = Nothing
-        envServerHandle      = ServerHandle{..}
+    let envPort                = cPort
+        envHost                = cHost
+        envMinUtxosNumber      = cMinUtxosNumber
+        envMaxUtxosNumber      = cMaxUtxosNumber
+        envDiagnosticsInterval = fromMaybe 300 cDiagnosticsInterval
+        envLedgerParams        = Params slotConfig (pParamsFromProtocolParams pp) cNetworkId
+        envActiveEndpoints     = cActiveEndpoints
+        envCollateral          = cCollateral
+        envNodeFilePath        = cNodeFilePath
+        envChainIndex          = fromMaybe shDefaultCI cChainIndex
+        envBfToken             = cBfToken
+        envLogger              = logger
+        envLoggerFilePath      = Nothing
+        envServerHandle        = ServerHandle{..}
     pure Env{..}
 
 setLoggerFilePath :: FilePath -> ServerM api a -> ServerM api a
@@ -170,3 +179,14 @@ setLoggerFilePath fp = local (\Env{..} -> Env{envLoggerFilePath = Just fp, ..})
 
 checkEndpointAvailability :: ServerEndpoint -> ServerM api ()
 checkEndpointAvailability endpoint = whenM (asks ((endpoint `notElem`) . envActiveEndpoints)) $ throwError err404
+
+mkServerClientEnv :: ServerM api Servant.ClientEnv
+mkServerClientEnv = do
+    port    <- asks envPort
+    host    <- asks envHost
+    manager <- liftIO $ newManager defaultManagerSettings
+    pure $ Servant.ClientEnv
+        manager
+        (Servant.BaseUrl Servant.Http (T.unpack host) port "")
+        Nothing
+        Servant.defaultMakeClientRequest

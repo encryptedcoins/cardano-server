@@ -16,6 +16,7 @@
 module Cardano.Server.Main where
 
 import           Cardano.Server.Config                (Config)
+import           Cardano.Server.Diagnostics           (doDiagnostics)
 import           Cardano.Server.Endpoints.Ping        (PingApi, pingHandler)
 import           Cardano.Server.Endpoints.Status      (StatusApi, commonStatusHandler)
 import           Cardano.Server.Endpoints.Tx.Internal (TxApiErrorOf)
@@ -29,8 +30,10 @@ import           Cardano.Server.Internal              (Env (..), HasStatusEndpoi
                                                        TxApiRequestOf, envLoggerFilePath, loadEnv, runServerM)
 import           Cardano.Server.Tx                    (checkForCleanUtxos)
 import           Cardano.Server.Utils.Logger          (logMsg, (.<))
+import           Cardano.Server.Utils.Wait            (waitTime)
 import           Control.Concurrent                   (forkIO)
 import           Control.Exception                    (Handler (Handler), catches)
+import           Control.Monad.IO.Class               (MonadIO (..))
 import           Control.Monad.Reader                 (ReaderT (runReaderT), asks)
 import qualified Data.Text.Encoding                   as T
 import qualified Data.Text.IO                         as T
@@ -110,6 +113,7 @@ runServer' env = do
     where
         prepareServer = runServerM env $ do
             logMsg "Starting server..."
+            liftIO $ forkIO $ waitTime 10 >> runServerM env doDiagnostics
             checkForCleanUtxos
         settings = Warp.setLogger logReceivedRequest
                  $ Warp.setOnException (const logException)

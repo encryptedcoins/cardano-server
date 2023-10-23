@@ -42,7 +42,7 @@ instance IsCardanoServerError MkTxError where
 instance IsCardanoServerError BalanceExternalTxError where
     errStatus _ = toEnum 422
     errMsg e = "The requested transaction could not be built. Reason: " <> case e of
-        MakeUnbalancedTxError _ _
+        MakeUnbalancedTxError{}
             -> "Unable to build an UnbalancedTx."
         NonBabbageEraChangeAddress _
             -> "Change address is not from Babbage era."

@@ -32,6 +32,7 @@ library
     import: lang
     exposed-modules: 
       Cardano.Server.Config
+      Cardano.Server.Diagnostics
       Cardano.Server.Endpoints.Ping
       Cardano.Server.Endpoints.Status
       Cardano.Server.Endpoints.Tx.Internal
@@ -57,10 +58,12 @@ library
       base                          >= 4.9 && < 5,
       aeson                                  -any,
       aeson-casing                           -any,
+      async                                  -any,
       bytestring                             -any,
       cardano-addresses                      -any,
       cardano-api                            -any,
       cardano-node-emulator                  -any,
+      cardano-wallet-core                    -any,
       containers                             -any,
       cryptonite                             -any,
       csl-types                              -any,
