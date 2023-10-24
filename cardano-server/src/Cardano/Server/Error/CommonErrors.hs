@@ -53,11 +53,11 @@ instance IsCardanoServerError BalanceExternalTxError where
 
 instance IsCardanoServerError SubmitTxToLocalNodeError where
     errStatus = \case
-        NoConnectionToLocalNode -> toEnum 503
-        _                       -> toEnum 422
+        NoConnectionToLocalNode{} -> toEnum 503
+        FailedSumbit{}            -> toEnum 422
     errMsg = \case
-        NoConnectionToLocalNode -> "Server local node is currently unavailable."
-        FailedSumbit err        -> "An error occurred while sending tx to local node. Reason: " .< err
+        NoConnectionToLocalNode err -> "Server local node is currently unavailable. Details: " .< err
+        FailedSumbit err            -> "An error occurred while sending tx to local node. Reason: " .< err
 
 data CslError 
     = CslConversionError
