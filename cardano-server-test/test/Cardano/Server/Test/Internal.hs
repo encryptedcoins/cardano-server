@@ -44,7 +44,7 @@ withCardanoServer configFp sHandle minAdaInWallet specs = do
         const $ (waitTime 5 >>) $ hspec $ do
             specs
             unless walletHasEnouhgAda
-                $ it                 "The wallet has no minimum amount of ada." 
+                $ it                 "The wallet has no minimum amount of ada."
                 $ expectationFailure "This may cause some tests to fail. Please replenish your wallet and re-run the tests."
     where
         checkWalletHasMinAda fp = do
@@ -56,7 +56,7 @@ instance HasChainIndex (ReaderT RestoredWallet IO) where
 
 instance HasWallet (ReaderT RestoredWallet IO) where
     getRestoredWallet = ask
-    
+
 
 shoudlFailWithStatus :: (Show a, HasServantClientEnv) => ClientM a -> Int -> Expectation
 shoudlFailWithStatus ma s = runClientM ma ?servantClientEnv >>= \case

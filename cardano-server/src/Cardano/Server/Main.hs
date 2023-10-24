@@ -129,5 +129,5 @@ corsWithContentType = cors (const $ Just policy)
     where policy = simpleCorsResourcePolicy { corsRequestHeaders = ["Content-Type"] }
 
 mkApp :: forall api. ServerConstraints api => Env api -> Application
-mkApp env 
+mkApp env
     = corsWithContentType $ serve (serverAPI @api) $ hoistServer (serverAPI @api) ((`runReaderT` env) . unServerM) server

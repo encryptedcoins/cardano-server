@@ -42,7 +42,7 @@ submitTxC = client (Proxy @(SubmitTxApi (TxApiErrorOf api)))
 serverTxC :: forall api. MimeRender JSON (TxApiRequestOf api) => TxApiRequestOf api -> ClientM NoContent
 serverTxC = client (Proxy @(ServerTxApi (TxApiRequestOf api) (TxApiErrorOf api)))
 
-statusC :: forall api. 
+statusC :: forall api.
     ( MimeRender JSON (StatusEndpointReqBodyOf api)
     , HasClient ClientM (Post '[JSON] (StatusEndpointResOf api))
     ) => StatusEndpointReqBodyOf api -> ClientM (StatusEndpointResOf api)
@@ -85,7 +85,7 @@ instance ( Show (StatusEndpointReqBodyOf api)
          ) => ClientEndpoint 'StatusE api where
     type EndpointArg 'StatusE api = StatusEndpointReqBodyOf api
     type EndpointRes 'StatusE api = StatusEndpointResOf api
-    endpointClient                = statusC @api 
+    endpointClient                = statusC @api
 
 type Interval = Int
 

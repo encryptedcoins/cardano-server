@@ -30,7 +30,7 @@ exampleClientHandle :: ClientHandle ExampleApi
 exampleClientHandle = def
     { autoNewTx      = autoWith   genInput
     , autoServerTx   = autoWith   genInput
-    , autoStatus     = autoWithRandom   
+    , autoStatus     = autoWithRandom
     , manualNewTx    = manualWith readInput
     , manualServerTx = manualWith readInput
     , manualStatus   = manualWithRead

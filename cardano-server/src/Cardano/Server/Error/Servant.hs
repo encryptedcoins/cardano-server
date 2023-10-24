@@ -120,7 +120,7 @@ instance (RunClient m, HasClient m (VerbWithErrors es method status ctypes a))
 -- When a Throws e comes immediately after a Throwing' es 'Snoc' the
 -- e onto the es. Otherwise, if Throws e comes before any other
 -- combinator, push it down so it is closer to the 'Verb'.
-instance HasServer (ThrowingNonterminal (Throwing es :> api :> apis)) ctx 
+instance HasServer (ThrowingNonterminal (Throwing es :> api :> apis)) ctx
     => HasServer (Throwing es :> api :> apis) ctx where
 
     type ServerT (Throwing es :> api :> apis) m =

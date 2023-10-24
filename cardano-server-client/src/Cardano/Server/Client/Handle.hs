@@ -71,7 +71,7 @@ instance Default (ClientHandle api) where
         , manualStatus   = throwManualNotImplemented StatusE
         }
         where
-            readSubmitTxArg (T.splitOn "," -> tx:wits) 
+            readSubmitTxArg (T.splitOn "," -> tx:wits)
                 = pure $ SubmitTxReqBody tx $ map (\[a,b] -> (a,b)) $ chunksOf 2 wits
 
 data NotImplementedMethodError = NotImplementedMethodError Mode ServerEndpoint
@@ -120,11 +120,11 @@ manualWithJsonFile :: forall (e :: ServerEndpoint) api.
 manualWithJsonFile filePath
     = liftIO (LBS.readFile $ T.unpack filePath) >>= either ((Proxy <$) . logSmth) (sendRequest @e) . eitherDecode
 
-sendRequest :: forall e api. 
+sendRequest :: forall e api.
     ( HasServantClientEnv
     , ClientEndpoint e api
     ) => EndpointArg e api -> ServerM api (Proxy e)
 sendRequest reqBody = Proxy <$ do
-    logMsg $ "Sending request with:\n" .< reqBody 
+    logMsg $ "Sending request with:\n" .< reqBody
     res <- liftIO (flip runClientM ?servantClientEnv $ endpointClient @e @api reqBody)
     logMsg $ "Received response:\n" <> either (T.pack . show) (T.pack . show) res

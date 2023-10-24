@@ -24,7 +24,8 @@ import           Cardano.Server.Error.CommonErrors (InternalServerError (NoWalle
 import           Cardano.Server.Input              (InputContext)
 import           Cardano.Server.Utils.Logger       (HasLogger (..), Logger, logger)
 import           Cardano.Server.WalletEncryption   (loadWallet)
-import           Control.Exception                 (throw)
+import           Control.Concurrent                (MVar, newEmptyMVar)
+import           Control.Exception                 (SomeException, throw)
 import           Control.Lens                      ((^?))
 import           Control.Monad.Catch               (MonadCatch, MonadThrow (..))
 import           Control.Monad.Except              (MonadError (throwError))
@@ -85,7 +86,18 @@ type family AuxillaryEnvOf api :: Type
 
 type InputWithContext api = (InputOf api, InputContext)
 
-type Queue api = Seq (InputWithContext api)
+data QueueElem api = QueueElem
+    { qeInput   :: InputOf api
+    , qeContext :: InputContext
+    , qeMvar    :: MVar (Either SomeException ())
+    }
+
+newQueueElem :: MonadIO m => InputWithContext api -> m (QueueElem api)
+newQueueElem (qeInput, qeContext) = do
+    qeMvar <- liftIO newEmptyMVar
+    pure QueueElem{..}
+
+type Queue api = Seq (QueueElem api)
 
 type QueueRef api = IORef (Queue api)
 

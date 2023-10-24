@@ -35,7 +35,7 @@ type UtxosApi = "utxos"
     :> Get '[JSON] CSL.TransactionUnspentOutputs
 
 data UtxosError
-    = UnparsableAddress 
+    = UnparsableAddress
     deriving (Show, Exception, Generic, ToJSON)
 
 instance IsCardanoServerError UtxosError where
