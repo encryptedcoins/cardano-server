@@ -23,13 +23,15 @@ import           Cardano.Server.Error              (Envelope)
 import           Cardano.Server.Error.CommonErrors (InternalServerError (NoWalletProvided))
 import           Cardano.Server.Input              (InputContext)
 import           Cardano.Server.Utils.Logger       (HasLogger (..), Logger, logger)
+import           Cardano.Server.Utils.Wait         (waitTime)
 import           Cardano.Server.WalletEncryption   (loadWallet)
+import           Control.Concurrent.Async          (async, wait)
 import           Control.Exception                 (throw)
 import           Control.Lens                      ((^?))
 import           Control.Monad.Catch               (MonadCatch, MonadThrow (..))
 import           Control.Monad.Except              (MonadError (throwError))
 import           Control.Monad.Extra               (join, whenM)
-import           Control.Monad.IO.Class            (MonadIO)
+import           Control.Monad.IO.Class            (MonadIO (..))
 import           Control.Monad.Reader              (MonadReader, ReaderT (ReaderT, runReaderT), asks, local)
 import           Data.Aeson                        (fromJSON)
 import qualified Data.Aeson                        as J
@@ -93,6 +95,12 @@ class HasStatusEndpoint api where
 
 type StatusHandler api = StatusEndpointReqBodyOf api -> ServerM api (Envelope (StatusEndpointErrorsOf api) (StatusEndpointResOf api))
 
+class HasVersionEndpoint api where
+    type VersionEndpointResOf api :: Type
+    versionHandler :: VersionHandler api
+
+type VersionHandler api = ServerM api (VersionEndpointResOf api)
+
 data ServerHandle api = ServerHandle
     { shDefaultCI              :: ChainIndex
     , shAuxiliaryEnv           :: AuxillaryEnvOf api
@@ -101,6 +109,7 @@ data ServerHandle api = ServerHandle
     , shServerIdle             :: ServerM api ()
     , shProcessRequest         :: TxApiRequestOf api -> ServerM api (InputWithContext api)
     , shStatusHandler          :: StatusHandler api
+    , shVersionHandler         :: VersionHandler api
     }
 
 data Env api = Env
@@ -127,7 +136,10 @@ txEndpointsTxBuilders :: InputOf api -> ServerM api [TransactionBuilder ()]
 txEndpointsTxBuilders input = asks (shTxEndpointsTxBuilders . envServerHandle) >>= ($ input)
 
 serverIdle :: ServerM api ()
-serverIdle = join $ asks $ shServerIdle . envServerHandle
+serverIdle = do
+    delay <- liftIO $ async $ waitTime 2
+    join $ asks $ shServerIdle . envServerHandle
+    liftIO $ wait delay
 
 txEndpointProcessRequest :: TxApiRequestOf api -> ServerM api (InputWithContext api)
 txEndpointProcessRequest req = asks (shProcessRequest . envServerHandle) >>= ($ req)
@@ -141,7 +153,10 @@ getNetworkId = asks $ pNetworkId . envLedgerParams
 getAuxillaryEnv :: ServerM api (AuxillaryEnvOf api)
 getAuxillaryEnv = asks $ shAuxiliaryEnv . envServerHandle
 
-loadEnv :: HasCallStack => Config -> ServerHandle api -> IO (Env api)
+loadEnv :: HasCallStack
+  => Config
+  -> ServerHandle api
+  -> IO (Env api)
 loadEnv Config{..} ServerHandle{..} = do
     envQueueRef  <- newIORef empty
     envWallet    <- sequence $ loadWallet <$> cWalletFile

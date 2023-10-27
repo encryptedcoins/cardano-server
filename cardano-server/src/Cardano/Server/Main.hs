@@ -23,15 +23,16 @@ import           Cardano.Server.Endpoints.Tx.New      (NewTxApi, newTxHandler)
 import           Cardano.Server.Endpoints.Tx.Server   (ServerTxApi, processQueue, serverTxHandler)
 import           Cardano.Server.Endpoints.Tx.Submit   (SubmitTxApi, submitTxHandler)
 import           Cardano.Server.Endpoints.Utxos       (UtxosApi, utxosHandler)
+import           Cardano.Server.Endpoints.Version     (VersionApi, serverVersionHandler)
 import           Cardano.Server.Error.Class           (IsCardanoServerError)
 import           Cardano.Server.Error.CommonErrors    (ConnectionError (..))
-import           Cardano.Server.Internal              (Env (..), HasStatusEndpoint (..), InputOf, ServerHandle (..), ServerM (..),
+import           Cardano.Server.Internal              (Env (..), HasStatusEndpoint (..), HasVersionEndpoint (..), InputOf, ServerHandle (..), ServerM (..),
                                                        TxApiRequestOf, envLoggerFilePath, loadEnv, runServerM)
 import           Cardano.Server.Tx                    (checkForCleanUtxos)
 import           Cardano.Server.Utils.Logger          (logMsg, (.<))
 import           Control.Concurrent                   (forkIO)
 import           Control.Exception                    (Handler (Handler), catches)
-import           Control.Monad.Reader                 (ReaderT (runReaderT), asks)
+import           Control.Monad.Reader                 (ReaderT (runReaderT), asks, ask)
 import qualified Data.Text.Encoding                   as T
 import qualified Data.Text.IO                         as T
 import           Network.HTTP.Client                  (path)
@@ -45,22 +46,35 @@ import           Servant                              (Application, Proxy (..), 
 import qualified Servant
 import           System.IO                            (BufferMode (LineBuffering), hSetBuffering, stdout)
 
-type ServerApi txApiReqBody txApiError statusApiReqBody statusApiErrors statusApiRes
+type ServerApi
+  txApiReqBody
+  txApiError
+  statusApiReqBody
+  statusApiErrors
+  statusApiRes
+  versionRes
     = PingApi
     :<|> UtxosApi
     :<|> NewTxApi txApiReqBody txApiError
     :<|> SubmitTxApi txApiError
     :<|> ServerTxApi txApiReqBody txApiError
     :<|> StatusApi statusApiErrors statusApiReqBody statusApiRes
+    :<|> VersionApi versionRes
 
-type instance TxApiRequestOf (ServerApi reqBody _ _ _ _) = reqBody
-type instance TxApiErrorOf (ServerApi _ txApiError _ _ _) = txApiError
+type instance TxApiRequestOf (ServerApi reqBody _ _ _ _ _) = reqBody
+type instance TxApiErrorOf (ServerApi _ txApiError _ _ _ _) = txApiError
 
-instance HasStatusEndpoint (ServerApi r e statusReqBody statusErrors statusRes) where
-    type StatusEndpointErrorsOf (ServerApi _ _ _ statusErrors _) = statusErrors
-    type StatusEndpointReqBodyOf (ServerApi _ _ statusReqBody _ _) = statusReqBody
-    type StatusEndpointResOf (ServerApi _ _ _ _ statusRes) = statusRes
+instance HasStatusEndpoint (ServerApi r e statusReqBody statusErrors statusRes v) where
+    type StatusEndpointErrorsOf (ServerApi _ _ _ statusErrors _ _) = statusErrors
+    type StatusEndpointReqBodyOf (ServerApi _ _ statusReqBody _ _ _) = statusReqBody
+    type StatusEndpointResOf (ServerApi _ _ _ _ statusRes _) = statusRes
     statusHandler reqBody = asks (shStatusHandler . envServerHandle) >>= ($ reqBody)
+
+instance HasVersionEndpoint (ServerApi r e sReq sErr sRes versionRes) where
+    type VersionEndpointResOf (ServerApi _ _ _ _ _ versionRes) = versionRes
+    versionHandler = do
+      r <- ask
+      shVersionHandler . envServerHandle $ r
 
 type ServerApi' api
     = ServerApi
@@ -69,6 +83,7 @@ type ServerApi' api
     (StatusEndpointReqBodyOf api)
     (StatusEndpointErrorsOf api)
     (StatusEndpointResOf api)
+    (VersionEndpointResOf api)
 
 type ServerConstraints api =
     ( Servant.HasServer (ServerApi' api) '[]
@@ -76,6 +91,7 @@ type ServerConstraints api =
     , Show (InputOf api)
     , Show (TxApiRequestOf api)
     , Show (StatusEndpointReqBodyOf api)
+    , Show (VersionEndpointResOf api)
     )
 
 server :: forall api. ServerConstraints api
@@ -87,11 +103,15 @@ server
     :<|> submitTxHandler
     :<|> serverTxHandler
     :<|> commonStatusHandler
+    :<|> serverVersionHandler
 
 serverAPI :: forall api. Proxy (ServerApi' api)
 serverAPI = Proxy @(ServerApi' api)
 
-runServer :: ServerConstraints api => Config -> ServerHandle api -> IO ()
+runServer :: ServerConstraints api
+  => Config
+  -> ServerHandle api
+  -> IO ()
 runServer c sh = (`catches` errorHanlders) $ loadEnv c sh >>= runServer'
     where
         errorHanlders = [Handler connectionErroH]
@@ -125,5 +145,5 @@ corsWithContentType = cors (const $ Just policy)
     where policy = simpleCorsResourcePolicy { corsRequestHeaders = ["Content-Type"] }
 
 mkApp :: forall api. ServerConstraints api => Env api -> Application
-mkApp env 
+mkApp env
     = corsWithContentType $ serve (serverAPI @api) $ hoistServer (serverAPI @api) ((`runReaderT` env) . unServerM) server

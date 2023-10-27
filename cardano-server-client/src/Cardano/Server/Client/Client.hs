@@ -48,12 +48,14 @@ runClientWithOpts c sh ClientHandle{..} CommonOptions{..} = handleNotImplemented
         (Auto     i, SubmitTxE) -> void $ autoSumbitTx     i
         (Auto     i, ServerTxE) -> void $ autoServerTx     i
         (Auto     i, StatusE  ) -> void $ autoStatus       i
+        (Auto     i, VersionE ) -> void $ autoVersion      i
         (Manual txt, PingE    ) -> void $ manualPing     txt
         (Manual txt, UtxosE   ) -> void $ manualUtxos    txt
         (Manual txt, NewTxE   ) -> void $ manualNewTx    txt
         (Manual txt, SubmitTxE) -> void $ manualSubmitTx txt
         (Manual txt, ServerTxE) -> void $ manualServerTx txt
         (Manual txt, StatusE  ) -> void $ manualStatus   txt
+        (Manual txt, VersionE ) -> void $ manualVersion   txt
     where
         withGreetings = (logMsg "Starting client..." >>)
         handleNotImplementedMethods = handle $ \(NotImplementedMethodError mode endpoint) ->
