@@ -45,7 +45,7 @@ import           PlutusAppsExtra.IO.ChainIndex.Kupo   (getKupoResponsesAt)
 import           PlutusAppsExtra.IO.Time              (currentTime)
 import           PlutusAppsExtra.IO.Wallet            (balanceTx, getWalletAddr, signTx, submitTxConfirmed)
 import           PlutusAppsExtra.Types.Tx             (TransactionBuilder, TxConstructor (..), mkTxConstructor,
-                                                       selectTxConstructor)
+                                                       selectTxConstructor, txBuilderRequirements)
 import           PlutusAppsExtra.Utils.Address        (addressToKeyHashes)
 import           PlutusAppsExtra.Utils.Kupo           (filterCleanKupoResponses)
 import           PlutusTx                             (BuiltinData)
@@ -62,7 +62,8 @@ mkBalanceTx :: [Address]
             -> [TransactionBuilder ()]
             -> ServerM api CardanoTx
 mkBalanceTx addressesTracked context txs = do
-    utxosTracked <- mconcatMapM getUtxosAt addressesTracked
+    reqs         <- liftIO $ txBuilderRequirements txs
+    utxosTracked <- mconcatMapM (getUtxosAt reqs) addressesTracked
     ct           <- liftIO currentTime
     ledgerParams <- asks envLedgerParams
     collateral   <- asks envCollateral
@@ -106,7 +107,7 @@ mkTx addressesTracked ctx txs = mkTxErrorH $ do
 checkForCleanUtxos :: ServerM api ()
 checkForCleanUtxos = mkTxErrorH $ do
     addr       <- getWalletAddr
-    cleanUtxos <- getWalletAddr >>= liftIO . getKupoResponsesAt <&> length . filterCleanKupoResponses
+    cleanUtxos <- length . filterCleanUtxos <$> getWalletUtxos mempty
     minUtxos   <- asks envMinUtxosNumber
     maxUtxos   <- asks envMaxUtxosNumber
     when (cleanUtxos < minUtxos) $ do

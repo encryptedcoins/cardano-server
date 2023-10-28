@@ -24,6 +24,7 @@ import           Data.Maybe                    (fromMaybe)
 import           Data.Text                     (Text)
 import           GHC.Generics                  (Generic)
 import           PlutusAppsExtra.IO.ChainIndex (getUtxosAt)
+import           PlutusAppsExtra.Types.Tx      (allRequirements)
 import           PlutusAppsExtra.Utils.Address (bech32ToAddress)
 import           Servant                       (Get, JSON, ReqBody, (:>))
 
@@ -50,4 +51,4 @@ utxosHandler addrTxt = toEnvelope $ do
     let !addr = fromMaybe (throw UnparsableAddress) $ bech32ToAddress addrTxt
     networkId <- getNetworkId
     fromMaybe (throw CslConversionError) . toCSL . (, networkId) .
-        either mempty id <$> try @_ @SomeException (getUtxosAt addr)
+        either mempty id <$> try @_ @SomeException (getUtxosAt allRequirements addr)

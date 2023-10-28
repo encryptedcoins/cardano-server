@@ -54,6 +54,7 @@ data ServerEndpoint
     | SubmitTxE
     | ServerTxE
     | StatusE
+    | VersionE
     deriving Eq
 
 instance Read ServerEndpoint where
@@ -64,6 +65,7 @@ instance Read ServerEndpoint where
         "submitTx" -> [(SubmitTxE, "")]
         "serverTx" -> [(ServerTxE, "")]
         "status"   -> [(StatusE  , "")]
+        "version"  -> [(VersionE  , "")]
         _          -> []
 
 instance Show ServerEndpoint where
@@ -74,6 +76,7 @@ instance Show ServerEndpoint where
         SubmitTxE -> "submitTx"
         ServerTxE -> "serverTx"
         StatusE   -> "status"
+        VersionE  -> "version"
 
 instance FromJSON ServerEndpoint where
     parseJSON = J.withText "ServerEndpoint" $ \case
@@ -83,4 +86,5 @@ instance FromJSON ServerEndpoint where
         "submitTx" -> pure SubmitTxE
         "serverTx" -> pure ServerTxE
         "status"   -> pure StatusE
+        "version"  -> pure VersionE
         _          -> mzero

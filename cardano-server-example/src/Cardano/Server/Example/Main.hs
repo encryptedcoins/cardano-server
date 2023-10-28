@@ -34,6 +34,7 @@ type ExampleApi
     Bool                                -- RequestBody of status enpoint
     '[ExampleStatusEndpointError]       -- Errors of status endpoint
     Text                                -- Result of status endpoint
+    Text                                -- Result of version endpoint
 
 type instance InputOf        ExampleApi = [BuiltinByteString]
 type instance AuxillaryEnvOf ExampleApi = ()
@@ -55,6 +56,7 @@ exampleServerHandle = ServerHandle
         processRequest                  -- How to extract input from request in tx endpoints
         statusEndpointHandler           -- Handler of status endpoint
         checkStatusEndpoint             -- How to check if status endpoint is alive.
+        versionEndpointHandler          -- Handler of version endpoint
     where
         processRequest (bbs, ctx) = do
             let hasDuplicates = length bbs /= length (nub bbs)
@@ -84,3 +86,7 @@ checkStatusEndpoint = do
     env <- mkServerClientEnv
     res <- liftIO $ runClientM (statusC @ExampleApi True) env
     either throwM (const $ pure $ Right ()) res
+
+versionEndpointHandler :: ServerM ExampleApi Text
+versionEndpointHandler =
+    pure "This is an example of a status endpoint."

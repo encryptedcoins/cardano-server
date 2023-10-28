@@ -33,20 +33,20 @@ source-repository-package
 source-repository-package
   type: git
   location: https://github.com/encryptedcoins/plutus-apps-extra
-  tag: 369b7a6c26c40a0e662842e5d54d63038c938212
+  tag: e33ef5e62ac7ae1f0bab28f9a8f31cbceb2088f4
   subdir:
     plutus-apps-extra
 
 source-repository-package
   type: git
   location: https://github.com/encryptedcoins/csl-types.git
-  tag: v1
+  tag: 0587b018a1cd905c129cc1420b7a2027ee988e8e
 
 source-repository-package
   type: git
   location: https://github.com/input-output-hk/plutus-apps
-  tag: 21fa2b794bacbf51994c5607173a7f85166e4af2
-  subdir: 
+  tag: 68efca7eda4afd1c14698adf697d70acb5a489e2
+  subdir:
     cardano-node-emulator
     cardano-streaming
     doc
