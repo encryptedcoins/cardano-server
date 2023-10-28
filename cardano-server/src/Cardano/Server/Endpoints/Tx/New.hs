@@ -77,5 +77,5 @@ newTxHandler req = withMetric "newTx request processing" $ toEnvelope $ do
             start  <- liftIO Time.getCurrentTime
             res    <- ma
             finish <- res `seq` liftIO Time.getCurrentTime
-            logMsg $ msg <> " finished in " .< Time.diffUTCTime start finish
+            logMsg $ msg <> " finished in " .< Time.diffUTCTime finish start
             pure res
