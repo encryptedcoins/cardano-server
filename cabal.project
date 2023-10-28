@@ -33,7 +33,7 @@ source-repository-package
 source-repository-package
   type: git
   location: https://github.com/encryptedcoins/plutus-apps-extra
-  tag: f858081520bbdb16875f01567e9624527ba2246f
+  tag: e33ef5e62ac7ae1f0bab28f9a8f31cbceb2088f4
   subdir:
     plutus-apps-extra
 

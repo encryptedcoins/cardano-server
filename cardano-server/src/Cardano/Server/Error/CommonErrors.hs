@@ -42,9 +42,9 @@ instance IsCardanoServerError MkTxError where
 instance IsCardanoServerError BalanceExternalTxError where
     errStatus _ = toEnum 422
     errMsg e = "The requested transaction could not be built. Reason: " <> case e of
-        MakeUnbalancedTxError _ _
+        MakeUnbalancedTxError{}
             -> "Unable to build an UnbalancedTx."
-        NonBabbageEraChangeAddress _
+        NonBabbageEraChangeAddress{}
             -> "Change address is not from Babbage era."
         MakeUtxoProviderError err _
             -> "Unable to extract an utxoProvider from wallet outputs:\n" .< err
@@ -53,11 +53,11 @@ instance IsCardanoServerError BalanceExternalTxError where
 
 instance IsCardanoServerError SubmitTxToLocalNodeError where
     errStatus = \case
-        NoConnectionToLocalNode -> toEnum 503
-        _                       -> toEnum 422
+        NoConnectionToLocalNode{} -> toEnum 503
+        FailedSumbit{}            -> toEnum 422
     errMsg = \case
-        NoConnectionToLocalNode -> "Server local node is currently unavailable."
-        FailedSumbit err        -> "An error occurred while sending tx to local node. Reason: " .< err
+        NoConnectionToLocalNode{} -> "Server local node is currently unavailable."
+        FailedSumbit err          -> "An error occurred while sending tx to local node. Reason: " .< err
 
 data CslError 
     = CslConversionError

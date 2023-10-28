@@ -41,13 +41,12 @@ import qualified Plutus.V2.Ledger.Api                 as P
 import           PlutusAppsExtra.Constraints.Balance  (balanceExternalTx)
 import           PlutusAppsExtra.Constraints.OffChain (useAsCollateralTx', utxoProducedPublicKeyTx)
 import           PlutusAppsExtra.IO.ChainIndex        (getUtxosAt)
-import           PlutusAppsExtra.IO.ChainIndex.Kupo   (getKupoUtxosAt)
 import           PlutusAppsExtra.IO.Time              (currentTime)
-import           PlutusAppsExtra.IO.Wallet            (balanceTx, getWalletAddr, signTx, submitTxConfirmed)
+import           PlutusAppsExtra.IO.Wallet            (balanceTx, getWalletAddr, getWalletUtxos, signTx, submitTxConfirmed)
 import           PlutusAppsExtra.Types.Tx             (TransactionBuilder, TxConstructor (..), mkTxConstructor,
-                                                       selectTxConstructor)
+                                                       selectTxConstructor, txBuilderRequirements)
 import           PlutusAppsExtra.Utils.Address        (addressToKeyHashes)
-import           PlutusAppsExtra.Utils.ChainIndex     (filterCleanKupoUtxos)
+import           PlutusAppsExtra.Utils.ChainIndex     (filterCleanUtxos)
 import           PlutusTx                             (BuiltinData)
 import qualified PlutusTx.AssocMap                    as PAM
 import           PlutusTx.Builtins.Class              (ToBuiltin (..))
@@ -61,7 +60,8 @@ mkBalanceTx :: [Address]
             -> [TransactionBuilder ()]
             -> ServerM api CardanoTx
 mkBalanceTx addressesTracked context txs = do
-    utxosTracked <- mconcatMapM getUtxosAt addressesTracked
+    reqs         <- liftIO $ txBuilderRequirements txs
+    utxosTracked <- mconcatMapM (getUtxosAt reqs) addressesTracked
     ct           <- liftIO currentTime
     ledgerParams <- asks envLedgerParams
     collateral   <- asks envCollateral
@@ -105,7 +105,7 @@ mkTx addressesTracked ctx txs = mkTxErrorH $ do
 checkForCleanUtxos :: ServerM api ()
 checkForCleanUtxos = mkTxErrorH $ do
     addr       <- getWalletAddr
-    cleanUtxos <- length . filterCleanKupoUtxos <$> getKupoUtxosAt addr
+    cleanUtxos <- length . filterCleanUtxos <$> getWalletUtxos mempty
     minUtxos   <- asks envMinUtxosNumber
     maxUtxos   <- asks envMaxUtxosNumber
     when (cleanUtxos < minUtxos) $ do
