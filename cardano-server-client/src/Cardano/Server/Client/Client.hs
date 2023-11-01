@@ -2,6 +2,7 @@
 {-# LANGUAGE DataKinds           #-}
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE ImplicitParams      #-}
+{-# LANGUAGE NumericUnderscores  #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE PolyKinds           #-}
 {-# LANGUAGE RecordWildCards     #-}
@@ -19,12 +20,13 @@ import           Control.Exception              (handle)
 import           Control.Monad.IO.Class         (MonadIO (..))
 import           Control.Monad.Reader           (void)
 import qualified Data.Text                      as T
-import           Network.HTTP.Client            (defaultManagerSettings, newManager)
+import           Network.HTTP.Client            (ManagerSettings (managerResponseTimeout), defaultManagerSettings, newManager,
+                                                 responseTimeoutMicro)
 import           Servant.Client                 (BaseUrl (BaseUrl), ClientEnv (..), Scheme (Http), defaultMakeClientRequest)
 
 createServantClientEnv :: Config -> IO ClientEnv
 createServantClientEnv Config{..} = do
-    manager     <- newManager defaultManagerSettings
+    manager     <- newManager defaultManagerSettings {managerResponseTimeout = responseTimeoutMicro 120_000_000}
     pure $ ClientEnv
         manager
         (BaseUrl Http (T.unpack cHost) cPort "")
