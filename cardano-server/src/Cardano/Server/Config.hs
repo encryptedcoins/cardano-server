@@ -7,19 +7,17 @@
 
 module Cardano.Server.Config where
 
-import           Cardano.Api                   (NetworkId (..))
+import           Cardano.Api                    (NetworkId (..))
 import           Control.Monad
-import           Data.Aeson                    (FromJSON (..),
-                                                eitherDecodeFileStrict,
-                                                genericParseJSON)
-import qualified Data.Aeson                    as J
-import           Data.Aeson.Casing             (aesonPrefix, snakeCase)
-import           Data.Text                     (Text)
-import           GHC.Generics                  (Generic)
-import           GHC.Stack                     (HasCallStack)
-import           Ledger                        (TxOutRef)
-import           PlutusAppsExtra.IO.Blockfrost (BfToken)
-import           PlutusAppsExtra.IO.ChainIndex (ChainIndex)
+import           Data.Aeson                     (FromJSON (..), eitherDecodeFileStrict, genericParseJSON)
+import qualified Data.Aeson                     as J
+import           Data.Aeson.Casing              (aesonPrefix, snakeCase)
+import           Data.Text                      (Text)
+import           GHC.Generics                   (Generic)
+import           GHC.Stack                      (HasCallStack)
+import           Ledger                         (TxOutRef)
+import           PlutusAppsExtra.Api.Blockfrost (BfToken)
+import           PlutusAppsExtra.IO.ChainIndex  (ChainIndex)
 
 data Config = Config
     { cHost                   :: Text

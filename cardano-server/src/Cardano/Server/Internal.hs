@@ -47,7 +47,7 @@ import qualified Data.Text                         as T
 import           GHC.Stack                         (HasCallStack)
 import           Ledger                            (Address, NetworkId, TxOutRef)
 import           Network.HTTP.Client               (defaultManagerSettings, newManager)
-import qualified PlutusAppsExtra.IO.Blockfrost     as BF
+import qualified PlutusAppsExtra.Api.Blockfrost    as BF
 import           PlutusAppsExtra.IO.ChainIndex     (ChainIndex, HasChainIndex (..))
 import           PlutusAppsExtra.IO.Wallet         (HasWallet (..), RestoredWallet)
 import           PlutusAppsExtra.Types.Tx          (TransactionBuilder)

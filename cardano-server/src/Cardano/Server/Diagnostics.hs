@@ -24,7 +24,7 @@ import           Control.Monad.IO.Class                (MonadIO (..))
 import           Control.Monad.Reader                  (asks)
 import           Data.Data                             (Proxy (..))
 import           Data.Text                             (Text)
-import qualified PlutusAppsExtra.IO.ChainIndex.Kupo    as Kupo
+import qualified PlutusAppsExtra.Api.Kupo              as Kupo
 import qualified PlutusAppsExtra.IO.Node               as Node
 import qualified PlutusAppsExtra.IO.Wallet             as Wallet
 import qualified PlutusAppsExtra.Utils.Kupo            as Kupo

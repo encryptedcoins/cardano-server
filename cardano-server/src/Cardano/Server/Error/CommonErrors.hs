@@ -16,7 +16,7 @@ module Cardano.Server.Error.CommonErrors
 import           Cardano.Server.Error.Class           (IsCardanoServerError (errMsg, errStatus))
 import           Cardano.Server.Utils.Logger          ((.<))
 import           Control.Exception                    (Exception)
-import           PlutusAppsExtra.IO.ChainIndex.Kupo   (pattern KupoConnectionError)
+import           PlutusAppsExtra.Api.Kupo             (pattern KupoConnectionError)
 import           PlutusAppsExtra.IO.ChainIndex.Plutus (pattern PlutusChainIndexConnectionError)
 import           PlutusAppsExtra.IO.Wallet            (pattern WalletApiConnectionError)
 import           PlutusAppsExtra.Types.Error          (BalanceExternalTxError (..), ConnectionError (..), MkTxError (..),
