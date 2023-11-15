@@ -42,7 +42,8 @@ import           PlutusAppsExtra.Constraints.Balance  (balanceExternalTx)
 import           PlutusAppsExtra.Constraints.OffChain (useAsCollateralTx', utxoProducedPublicKeyTx)
 import           PlutusAppsExtra.IO.ChainIndex        (getUtxosAt)
 import           PlutusAppsExtra.IO.Time              (currentTime)
-import           PlutusAppsExtra.IO.Wallet            (balanceTx, getWalletAddr, getWalletUtxos, signTx, submitTxConfirmed)
+import           PlutusAppsExtra.IO.Wallet            (balanceTx, getWalletAddr, getWalletUtxos)
+import qualified PlutusAppsExtra.IO.Wallet
 import           PlutusAppsExtra.Types.Tx             (TransactionBuilder, TxConstructor (..), mkTxConstructor,
                                                        selectTxConstructor, txBuilderRequirements)
 import           PlutusAppsExtra.Utils.Address        (addressToKeyHashes)
@@ -82,25 +83,44 @@ mkBalanceTx addressesTracked context txs = do
       InputContextServer {}   -> balanceTx ledgerParams lookups cons
       InputContextClient {..} -> balanceExternalTx ledgerParams inputWalletUTXO inputChangeAddress lookups cons
 
-mkTx :: [Address]
+signTx :: [Address]
      -> InputContext
      -> [TransactionBuilder ()]
      -> ServerM api CardanoTx
-mkTx addressesTracked ctx txs = mkTxErrorH $ do
+signTx addressesTracked ctx txs = mkTxErrorH $ do
         balancedTx <- mkBalanceTx addressesTracked ctx txs
         logPretty balancedTx
         logMsg "Signing..."
-        signedTx <- signTx balancedTx
+        signedTx <- PlutusAppsExtra.IO.Wallet.signTx balancedTx
         logPretty signedTx
-        logMsg "Submitting..."
-        handle submitH $ submitTxConfirmed signedTx
-        logMsg "Submited."
         return signedTx
+
+submitTx :: [Address]
+     -> InputContext
+     -> [TransactionBuilder ()]
+     -> ServerM api CardanoTx
+submitTx addressesTracked ctx txs = mkTxErrorH $ do
+        signedTx <- signTx addressesTracked ctx txs
+        logMsg "Submitting..."
+        PlutusAppsExtra.IO.Wallet.submitTx signedTx
+        return signedTx
+
+awaitTxConfirmed :: CardanoTx -> ServerM api CardanoTx
+awaitTxConfirmed ctx = mkTxErrorH $ do
+        handle submitH $ PlutusAppsExtra.IO.Wallet.awaitTxConfirmed ctx
+        logMsg "Submited."
+        return ctx
     where
         -- | Otherwise we get error on successful submit.
         submitH = \case
             ConnectionError _ NoResponseDataReceived -> pure ()
             err -> throwM err
+
+mkTx :: [Address]
+     -> InputContext
+     -> [TransactionBuilder ()]
+     -> ServerM api CardanoTx
+mkTx addressesTracked ctx txs = submitTx addressesTracked ctx txs >>= awaitTxConfirmed
 
 checkForCleanUtxos :: ServerM api ()
 checkForCleanUtxos = mkTxErrorH $ do
