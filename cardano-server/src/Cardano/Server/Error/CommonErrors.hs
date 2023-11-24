@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveAnyClass    #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes        #-}
 {-# LANGUAGE PatternSynonyms   #-}
 {-# OPTIONS_GHC -Wno-orphans   #-}
 
@@ -11,10 +12,11 @@ module Cardano.Server.Error.CommonErrors
     , MkTxError (..)
     , SubmitTxToLocalNodeError (..)
     , CslError (..)
+    , logCriticalExceptions
     ) where
 
 import           Cardano.Server.Error.Class           (IsCardanoServerError (errMsg, errStatus))
-import           Cardano.Server.Utils.Logger          ((.<))
+import           Cardano.Server.Utils.Logger          ((.<), HasLogger, logMsg)
 import           Control.Exception                    (Exception)
 import           PlutusAppsExtra.Api.Kupo             (pattern KupoConnectionError)
 import           PlutusAppsExtra.IO.ChainIndex.Plutus (pattern PlutusChainIndexConnectionError)
@@ -67,3 +69,10 @@ instance IsCardanoServerError CslError where
     errStatus _ = toEnum 422
     errMsg  = \case
         CslConversionError -> "An error occurred while converting plutus data to csl."
+
+-- This function helps to skip non-critical exceptions (most of them are related to warp/wai) and log only critical ones
+logCriticalExceptions :: forall e m. (Exception e, HasLogger m) => e -> m ()
+logCriticalExceptions e
+    | show e == "Warp: Client closed connection prematurely" = pure ()
+    | show e == "Thread killed by timeout manager"           = pure ()
+    | otherwise = logMsg $ "Unhandled exception:\n" .< e

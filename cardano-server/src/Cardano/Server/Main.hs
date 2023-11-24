@@ -26,7 +26,7 @@ import           Cardano.Server.Endpoints.Tx.Submit   (SubmitTxApi, submitTxHand
 import           Cardano.Server.Endpoints.Utxos       (UtxosApi, utxosHandler)
 import           Cardano.Server.Endpoints.Version     (VersionApi, serverVersionHandler)
 import           Cardano.Server.Error.Class           (IsCardanoServerError)
-import           Cardano.Server.Error.CommonErrors    (ConnectionError (..))
+import           Cardano.Server.Error.CommonErrors    (ConnectionError (..), logCriticalExceptions)
 import           Cardano.Server.Internal              (Env (..), HasStatusEndpoint (..), HasVersionEndpoint (..), InputOf, ServerHandle (..), ServerM (..),
                                                        TxApiRequestOf, envLoggerFilePath, loadEnv, runServerM)
 import           Cardano.Server.Tx                    (checkForCleanUtxos)
@@ -141,13 +141,12 @@ runServer' env = do
                    Warp.defaultSettings
         logReceivedRequest req status _ = runServerM env $
             logMsg $ "Received request:\n" .< req <> "\nStatus:\n" .< status
-        logException e = runServerM env $
-            logMsg $ "Unhandled exception:\n" .< e
+        logException = logCriticalExceptions
 
 corsWithContentType :: Wai.Middleware
 corsWithContentType = cors (const $ Just policy)
-    where policy = simpleCorsResourcePolicy 
-            { corsRequestHeaders = ["Content-Type"] 
+    where policy = simpleCorsResourcePolicy
+            { corsRequestHeaders = ["Content-Type"]
             }
 
 mkApp :: forall api. ServerConstraints api => Env api -> Application
