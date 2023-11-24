@@ -9,12 +9,13 @@
 
 module Cardano.Server.Tx where
 
+import           Cardano.Node.Emulator                (Params)
 import           Cardano.Server.Error                 (ConnectionError (ConnectionError), MkTxError (..), throwMaybe)
 import           Cardano.Server.Input                 (InputContext (..))
 import           Cardano.Server.Internal              (Env (..), ServerM)
-import           Cardano.Server.Utils.Logger          (logMsg, logPretty, logSmth)
+import           Cardano.Server.Utils.Logger          (HasLogger, logMsg, logPretty, logSmth)
 import           Control.Lens                         ((^?))
-import           Control.Monad.Catch                  (Handler (..), MonadThrow (..), catches, handle)
+import           Control.Monad.Catch                  (Handler (..), MonadCatch, MonadThrow (..), catches, handle)
 import           Control.Monad.Extra                  (guard, mconcatMapM, void, when)
 import           Control.Monad.IO.Class               (MonadIO (..))
 import           Control.Monad.Reader                 (asks)
@@ -40,9 +41,9 @@ import           Plutus.V2.Ledger.Api                 (CurrencySymbol (..), Toke
 import qualified Plutus.V2.Ledger.Api                 as P
 import           PlutusAppsExtra.Constraints.Balance  (balanceExternalTx)
 import           PlutusAppsExtra.Constraints.OffChain (useAsCollateralTx', utxoProducedPublicKeyTx)
-import           PlutusAppsExtra.IO.ChainIndex        (getUtxosAt)
+import           PlutusAppsExtra.IO.ChainIndex        (HasChainIndex, getUtxosAt)
 import           PlutusAppsExtra.IO.Time              (currentTime)
-import           PlutusAppsExtra.IO.Wallet            (balanceTx, getWalletAddr, getWalletUtxos)
+import           PlutusAppsExtra.IO.Wallet            (HasWallet, balanceTx, getWalletAddr, getWalletUtxos)
 import qualified PlutusAppsExtra.IO.Wallet
 import           PlutusAppsExtra.Types.Tx             (TransactionBuilder, TxConstructor (..), mkTxConstructor,
                                                        selectTxConstructor, txBuilderRequirements)
@@ -56,16 +57,27 @@ import           Servant.Client                       (ClientError (FailureRespo
 import           Text.Hex                             (decodeHex)
 import           Text.Read                            (readMaybe)
 
-mkBalanceTx :: [Address]
-            -> InputContext
-            -> [TransactionBuilder ()]
-            -> ServerM api CardanoTx
+type MkTxConstrains m = (MonadIO m, MonadCatch m, HasLogger m, HasWallet m, HasChainIndex m, HasMkTxEnv m)
+
+class HasMkTxEnv m where
+    getCollateral   :: m (Maybe TxOutRef)
+    getLedgerParams :: m Params
+
+instance HasMkTxEnv (ServerM api) where
+    getCollateral   = asks envCollateral
+    getLedgerParams = asks envLedgerParams
+
+mkBalanceTx :: MkTxConstrains m
+    => [Address]
+    -> InputContext
+    -> [TransactionBuilder ()]
+    -> m CardanoTx
 mkBalanceTx addressesTracked context txs = do
     reqs         <- liftIO $ txBuilderRequirements txs
     utxosTracked <- mconcatMapM (getUtxosAt reqs) addressesTracked
     ct           <- liftIO currentTime
-    ledgerParams <- asks envLedgerParams
-    collateral   <- asks envCollateral
+    ledgerParams <- getLedgerParams
+    collateral   <- getCollateral
     let utxos = utxosTracked `Map.union` inputUTXO context
         txs'  = map (useAsCollateralTx' collateral >>) txs
     let constrInit = mkTxConstructor ct utxos
@@ -80,32 +92,34 @@ mkBalanceTx addressesTracked context txs = do
 
     logMsg "Balancing..."
     case context of
-      InputContextServer {}   -> balanceTx ledgerParams lookups cons
-      InputContextClient {..} -> balanceExternalTx ledgerParams inputWalletUTXO inputChangeAddress lookups cons
+        InputContextServer {}   -> balanceTx ledgerParams lookups cons
+        InputContextClient {..} -> balanceExternalTx ledgerParams inputWalletUTXO inputChangeAddress lookups cons
 
-signTx :: [Address]
-     -> InputContext
-     -> [TransactionBuilder ()]
-     -> ServerM api CardanoTx
+signTx :: MkTxConstrains m
+    => [Address]
+    -> InputContext
+    -> [TransactionBuilder ()]
+    -> m CardanoTx
 signTx addressesTracked ctx txs = mkTxErrorH $ do
-        balancedTx <- mkBalanceTx addressesTracked ctx txs
-        logPretty balancedTx
-        logMsg "Signing..."
-        signedTx <- PlutusAppsExtra.IO.Wallet.signTx balancedTx
-        logPretty signedTx
-        return signedTx
+    balancedTx <- mkBalanceTx addressesTracked ctx txs
+    logPretty balancedTx
+    logMsg "Signing..."
+    signedTx <- PlutusAppsExtra.IO.Wallet.signTx balancedTx
+    logPretty signedTx
+    return signedTx
 
-submitTx :: [Address]
-     -> InputContext
-     -> [TransactionBuilder ()]
-     -> ServerM api CardanoTx
+submitTx :: MkTxConstrains m
+    => [Address]
+    -> InputContext
+    -> [TransactionBuilder ()]
+    -> m CardanoTx
 submitTx addressesTracked ctx txs = mkTxErrorH $ do
-        signedTx <- signTx addressesTracked ctx txs
-        logMsg "Submitting..."
-        PlutusAppsExtra.IO.Wallet.submitTx signedTx
-        return signedTx
+    signedTx <- signTx addressesTracked ctx txs
+    logMsg "Submitting..."
+    PlutusAppsExtra.IO.Wallet.submitTx signedTx
+    return signedTx
 
-awaitTxConfirmed :: CardanoTx -> ServerM api CardanoTx
+awaitTxConfirmed :: MkTxConstrains m => CardanoTx -> m CardanoTx
 awaitTxConfirmed ctx = mkTxErrorH $ do
         handle submitH $ PlutusAppsExtra.IO.Wallet.awaitTxConfirmed ctx
         logMsg "Submited."
@@ -116,10 +130,11 @@ awaitTxConfirmed ctx = mkTxErrorH $ do
             ConnectionError _ NoResponseDataReceived -> pure ()
             err -> throwM err
 
-mkTx :: [Address]
-     -> InputContext
-     -> [TransactionBuilder ()]
-     -> ServerM api CardanoTx
+mkTx :: MkTxConstrains m
+    => [Address]
+    -> InputContext
+    -> [TransactionBuilder ()]
+    -> m CardanoTx
 mkTx addressesTracked ctx txs = submitTx addressesTracked ctx txs >>= awaitTxConfirmed
 
 checkForCleanUtxos :: ServerM api ()
@@ -132,7 +147,7 @@ checkForCleanUtxos = mkTxErrorH $ do
         logMsg $ "Address doesn't has enough clean UTXO's: " <> (T.pack . show $ minUtxos - cleanUtxos)
         void $ mkWalletTxOutRefs addr (maxUtxos - cleanUtxos)
 
-mkWalletTxOutRefs :: Address -> Int -> ServerM api [TxOutRef]
+mkWalletTxOutRefs :: MkTxConstrains m => Address -> Int -> m [TxOutRef]
 mkWalletTxOutRefs addr n = do
     (pkh, scr) <- throwMaybe (CantExtractKeyHashesFromAddress addr) $ addressToKeyHashes addr
     let txBuilder = mapM_ (const $ utxoProducedPublicKeyTx pkh scr (fromCardanoValue $ C.lovelaceValueOf 10_000_000) Nothing) [1..n]
@@ -140,7 +155,7 @@ mkWalletTxOutRefs addr n = do
     let refs = Map.keys . CardanoAPI.unspentOutputsTx $ signedTx
     pure refs
 
-mkTxErrorH :: ServerM api a -> ServerM api a
+mkTxErrorH :: MkTxConstrains m => m a -> m a
 mkTxErrorH = (`catches` [clientErrorH])
     where
         clientErrorH = Handler $ \case
