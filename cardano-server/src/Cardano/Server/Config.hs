@@ -1,5 +1,8 @@
+{-# LANGUAGE ConstraintKinds    #-}
+{-# LANGUAGE DeriveAnyClass     #-}
 {-# LANGUAGE DeriveGeneric      #-}
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE ImplicitParams     #-}
 {-# LANGUAGE KindSignatures     #-}
 {-# LANGUAGE LambdaCase         #-}
 {-# LANGUAGE OverloadedStrings  #-}
@@ -9,7 +12,7 @@ module Cardano.Server.Config where
 
 import           Cardano.Api                    (NetworkId (..))
 import           Control.Monad
-import           Data.Aeson                     (FromJSON (..), eitherDecodeFileStrict, genericParseJSON)
+import           Data.Aeson                     (FromJSON (..), ToJSON, eitherDecodeFileStrict, genericParseJSON)
 import qualified Data.Aeson                     as J
 import           Data.Aeson.Casing              (aesonPrefix, snakeCase)
 import           Data.Text                      (Text)
@@ -22,6 +25,7 @@ import           PlutusAppsExtra.IO.ChainIndex  (ChainIndex)
 data Config = Config
     { cHost                   :: Text
     , cPort                   :: Int
+    , cHyperTextProtocol      :: HyperTextProtocol
     , cMinUtxosNumber         :: Int
     , cMaxUtxosNumber         :: Int
     , cDiagnosticsInterval    :: Maybe Int
@@ -42,6 +46,11 @@ instance FromJSON Config where
 
 decodeOrErrorFromFile :: (HasCallStack, FromJSON a) => FilePath -> IO a
 decodeOrErrorFromFile = fmap (either error id) . eitherDecodeFileStrict
+
+data HyperTextProtocol = HTTP | HTTPS FilePath FilePath -- Certificate and key files
+    deriving (Show, Eq, Generic, FromJSON, ToJSON)
+
+type HasHyperTextProtocol = ?protocol :: HyperTextProtocol
 
 ------------------------------------------------------------------- Endpoints -------------------------------------------------------------------
 

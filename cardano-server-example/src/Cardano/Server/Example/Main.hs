@@ -2,6 +2,7 @@
 {-# LANGUAGE DataKinds            #-}
 {-# LANGUAGE DeriveAnyClass       #-}
 {-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE ImplicitParams       #-}
 {-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE ScopedTypeVariables  #-}
 {-# LANGUAGE TypeApplications     #-}
@@ -11,7 +12,7 @@
 module Cardano.Server.Example.Main where
 
 import           Cardano.Server.Client.Internal  (statusC)
-import           Cardano.Server.Config           (decodeOrErrorFromFile)
+import           Cardano.Server.Config           (decodeOrErrorFromFile, Config (cHyperTextProtocol))
 import           Cardano.Server.Error            (Envelope, IsCardanoServerError (..), toEnvelope)
 import           Cardano.Server.Example.OffChain (testMintTx)
 import           Cardano.Server.Input            (InputContext)
@@ -66,6 +67,7 @@ exampleServerHandle = ServerHandle
 runExampleServer :: FilePath -> IO ()
 runExampleServer configFp = do
     config <- decodeOrErrorFromFile configFp
+    let ?protocol = cHyperTextProtocol config
     runServer config exampleServerHandle
 
 data ExampleStatusEndpointError = ExampleStatusEndpointError

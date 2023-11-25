@@ -10,7 +10,7 @@ module Cardano.Server.Test.Internal where
 
 import           Cardano.Server.Client.Client  (createServantClientEnv)
 import           Cardano.Server.Client.Handle  (HasServantClientEnv)
-import           Cardano.Server.Config         (Config (cWalletFile), decodeOrErrorFromFile)
+import           Cardano.Server.Config         (Config (cHyperTextProtocol, cWalletFile), decodeOrErrorFromFile)
 import           Cardano.Server.Error          (parseErrorText)
 import           Cardano.Server.Internal       (ServerHandle, envLogger, loadEnv)
 import           Cardano.Server.Main           (ServerConstraints, runServer')
@@ -29,14 +29,15 @@ import           PlutusAppsExtra.IO.ChainIndex (ChainIndex (Kupo), HasChainIndex
 import           PlutusAppsExtra.IO.Wallet     (HasWallet (..), RestoredWallet, getWalletAda, restoreWalletFromFile)
 import           Servant.Client                (ClientError (FailureResponse), ClientM,
                                                 ResponseF (responseBody, responseStatusCode), runClientM)
-import           Test.Hspec                    (Expectation, Spec, expectationFailure, hspec, shouldBe, shouldSatisfy, it)
+import           Test.Hspec                    (Expectation, Spec, expectationFailure, hspec, it, shouldBe, shouldSatisfy)
 
 withCardanoServer :: ServerConstraints api => FilePath -> ServerHandle api -> Integer -> (HasServantClientEnv => Spec) -> IO ()
 withCardanoServer configFp sHandle minAdaInWallet specs = do
     config <- decodeOrErrorFromFile configFp
     env <- loadEnv config sHandle
     sce <- createServantClientEnv config
-    let ?servantClientEnv = sce
+    let ?protocol = cHyperTextProtocol config
+        ?servantClientEnv = sce
     walletHasEnouhgAda <- checkWalletHasMinAda $ fromJust $ cWalletFile config
     bracket
         (liftIO $ C.forkIO $ runServer' env{envLogger = mutedLogger})

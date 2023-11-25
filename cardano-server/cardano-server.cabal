@@ -103,4 +103,5 @@ library
       wai                                    -any,
       wai-cors                               -any,
       warp                                   -any,
+      warp-tls                               -any,
     hs-source-dirs: src

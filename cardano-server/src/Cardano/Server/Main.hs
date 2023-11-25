@@ -3,6 +3,7 @@
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE ImplicitParams        #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE PatternSynonyms       #-}
 {-# LANGUAGE QuantifiedConstraints #-}
@@ -15,7 +16,7 @@
 
 module Cardano.Server.Main where
 
-import           Cardano.Server.Config                (Config)
+import           Cardano.Server.Config                (Config (cHyperTextProtocol), HasHyperTextProtocol, HyperTextProtocol (..))
 import           Cardano.Server.Diagnostics           (doDiagnostics)
 import           Cardano.Server.Endpoints.Ping        (PingApi, pingHandler)
 import           Cardano.Server.Endpoints.Status      (StatusApi, commonStatusHandler)
@@ -27,20 +28,22 @@ import           Cardano.Server.Endpoints.Utxos       (UtxosApi, utxosHandler)
 import           Cardano.Server.Endpoints.Version     (VersionApi, serverVersionHandler)
 import           Cardano.Server.Error.Class           (IsCardanoServerError)
 import           Cardano.Server.Error.CommonErrors    (ConnectionError (..), logCriticalExceptions)
-import           Cardano.Server.Internal              (Env (..), HasStatusEndpoint (..), HasVersionEndpoint (..), InputOf, ServerHandle (..), ServerM (..),
-                                                       TxApiRequestOf, envLoggerFilePath, loadEnv, runServerM)
+import           Cardano.Server.Internal              (Env (..), HasStatusEndpoint (..), HasVersionEndpoint (..), InputOf,
+                                                       ServerHandle (..), ServerM (..), TxApiRequestOf, envLoggerFilePath,
+                                                       loadEnv, runServerM)
 import           Cardano.Server.Tx                    (checkForCleanUtxos)
 import           Cardano.Server.Utils.Logger          (logMsg, (.<))
 import           Cardano.Server.Utils.Wait            (waitTime)
 import           Control.Concurrent                   (forkIO)
 import           Control.Exception                    (Handler (Handler), catches)
 import           Control.Monad.IO.Class               (MonadIO (..))
-import           Control.Monad.Reader                 (ReaderT (runReaderT), asks, ask)
+import           Control.Monad.Reader                 (ReaderT (runReaderT), ask, asks)
 import qualified Data.Text.Encoding                   as T
 import qualified Data.Text.IO                         as T
 import           Network.HTTP.Client                  (path)
 import qualified Network.Wai                          as Wai
 import qualified Network.Wai.Handler.Warp             as Warp
+import qualified Network.Wai.Handler.WarpTLS          as Warp
 import           Network.Wai.Middleware.Cors          (CorsResourcePolicy (..), cors, simpleCorsResourcePolicy)
 import           PlutusAppsExtra.Api.Kupo             (pattern KupoConnectionError)
 import           PlutusAppsExtra.IO.ChainIndex.Plutus (pattern PlutusChainIndexConnectionError)
@@ -111,11 +114,9 @@ server
 serverAPI :: forall api. Proxy (ServerApi' api)
 serverAPI = Proxy @(ServerApi' api)
 
-runServer :: ServerConstraints api
-  => Config
-  -> ServerHandle api
-  -> IO ()
-runServer c sh = (`catches` errorHanlders) $ loadEnv c sh >>= runServer'
+runServer :: ServerConstraints api => Config -> ServerHandle api -> IO ()
+runServer c sh = let ?protocol = cHyperTextProtocol c
+                 in (`catches` errorHanlders) $ loadEnv c sh >>= runServer'
     where
         errorHanlders = [Handler connectionErroH]
         connectionErroH e = T.putStrLn $ (<> " is unavailable.") $ case e of
@@ -124,12 +125,15 @@ runServer c sh = (`catches` errorHanlders) $ loadEnv c sh >>= runServer'
             WalletApiConnectionError{}        -> "Cardano wallet"
             ConnectionError req _             -> T.decodeUtf8 $ path req
 
-runServer' :: ServerConstraints api => Env api -> IO ()
+runServer' :: (ServerConstraints api, HasHyperTextProtocol) => Env api -> IO ()
 runServer' env = do
-        hSetBuffering stdout LineBuffering
-        forkIO $ processQueue env
-        prepareServer
-        Warp.runSettings settings $ mkApp env {envLoggerFilePath = Just "server.log"}
+    hSetBuffering stdout LineBuffering
+    forkIO $ processQueue env
+    prepareServer
+    let app = mkApp env {envLoggerFilePath = Just "server.log"}
+    case ?protocol of
+        HTTP               -> Warp.runSettings settings app
+        HTTPS sertFp keyFp -> Warp.runTLS (Warp.tlsSettings sertFp keyFp) settings app
     where
         prepareServer = runServerM env $ do
             logMsg "Starting server..."
