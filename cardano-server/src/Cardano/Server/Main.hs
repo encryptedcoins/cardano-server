@@ -145,7 +145,7 @@ runServer' env = do
                    Warp.defaultSettings
         logReceivedRequest req status _ = runServerM env $
             logMsg $ "Received request:\n" .< req <> "\nStatus:\n" .< status
-        logException = logCriticalExceptions
+        logException = runServerM env . logCriticalExceptions
 
 corsWithContentType :: Wai.Middleware
 corsWithContentType = cors (const $ Just policy)

@@ -15,13 +15,14 @@ module Cardano.Server.Error
     , CslError (..)
 
     -- Other helpers functions
+    , logCriticalExceptions
     , parseErrorText
     , throwMaybe
     , throwEither
     ) where
 
 import           Cardano.Server.Error.Class        (IsCardanoServerError (..), parseErrorText)
-import           Cardano.Server.Error.CommonErrors (CslError (..))
+import           Cardano.Server.Error.CommonErrors (CslError (..), logCriticalExceptions)
 import           Cardano.Server.Error.Servant      (Envelope, Throws)
 import           Cardano.Server.Error.ToEnvelope   (toEnvelope)
 import           PlutusAppsExtra.Types.Error       (BalanceExternalTxError (..), ConnectionError (..), MkTxError (..),
