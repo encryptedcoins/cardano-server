@@ -117,10 +117,12 @@ server
 serverAPI :: forall api. Proxy (ServerApi' api)
 serverAPI = Proxy @(ServerApi' api)
 
-runServer :: ServerConstraints api => Config -> ServerHandle api -> IO ()
-runServer c sh = let ?protocol = cHyperTextProtocol c
-                     ?creds    = embedCreds
-                 in (`catches` errorHanlders) $ loadEnv c sh >>= runServer'
+runServer :: (ServerConstraints api, HasHyperTextProtocol) => Config -> ServerHandle api -> IO ()
+runServer c sh = 
+    -- let ?protocol = cHyperTextProtocol c
+                    --  ?creds    = embedCreds
+                --  in 
+                    (`catches` errorHanlders) $ loadEnv c sh >>= runServer'
     where
         errorHanlders = [Handler connectionErroH]
         connectionErroH e = T.putStrLn $ (<> " is unavailable.") $ case e of
