@@ -13,7 +13,7 @@ module Cardano.Server.Client.Client where
 import           Cardano.Server.Client.Handle   (ClientHandle (..), NotImplementedMethodError (..))
 import           Cardano.Server.Client.Internal (Mode (..))
 import           Cardano.Server.Client.Opts     (CommonOptions (..), runWithOpts)
-import           Cardano.Server.Config          (Config (..), ServerEndpoint (..))
+import           Cardano.Server.Config          (Config (..), ServerEndpoint (..), HyperTextProtocol (..))
 import           Cardano.Server.Internal        (ServerHandle, loadEnv, runServerM, setLoggerFilePath)
 import           Cardano.Server.Utils.Logger    (logMsg, (.<))
 import           Control.Exception              (handle)
@@ -22,16 +22,21 @@ import           Control.Monad.Reader           (void)
 import qualified Data.Text                      as T
 import           Network.HTTP.Client            (ManagerSettings (managerResponseTimeout), defaultManagerSettings, newManager,
                                                  responseTimeoutMicro)
-import           Servant.Client                 (BaseUrl (BaseUrl), ClientEnv (..), Scheme (Http), defaultMakeClientRequest)
+import           Servant.Client                 (BaseUrl (BaseUrl), ClientEnv (..), Scheme (Http, Https), defaultMakeClientRequest)
 
 createServantClientEnv :: Config -> IO ClientEnv
 createServantClientEnv Config{..} = do
     manager     <- newManager defaultManagerSettings {managerResponseTimeout = responseTimeoutMicro 120_000_000}
     pure $ ClientEnv
         manager
-        (BaseUrl Http (T.unpack cHost) cPort "")
+        (BaseUrl scheme (T.unpack cHost) cPort "")
         Nothing
         defaultMakeClientRequest
+    where
+        scheme = case cHyperTextProtocol of
+            HTTP  -> Http
+            HTTPS -> Https
+
 
 -- | When client options ~ CommonOptions
 runClient :: Config -> ServerHandle api -> ClientHandle api -> IO ()
