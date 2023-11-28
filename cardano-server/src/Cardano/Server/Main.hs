@@ -40,7 +40,7 @@ import           Control.Exception                    (Handler (Handler), catche
 import           Control.Monad.IO.Class               (MonadIO (..))
 import           Control.Monad.Reader                 (ReaderT (runReaderT), ask, asks)
 import           Data.ByteString                      (ByteString)
-import           Data.FileEmbed                       (embedFileIfExists)
+import           Data.FileEmbed                       (embedFileIfExists, makeRelativeToProject)
 import qualified Data.Text.Encoding                   as T
 import qualified Data.Text.IO                         as T
 import           Network.HTTP.Client                  (path)
@@ -158,8 +158,8 @@ runServer' env = do
 -- Embed https cert and key files on compilation
 embedCreds :: Maybe (ByteString, ByteString)
 embedCreds =
-    let keyCred  = $(embedFileIfExists "key.pem")
-        certCred = $(embedFileIfExists "certificate.pem")
+    let keyCred  = $(makeRelativeToProject "key.pem" >>= embedFileIfExists)
+        certCred = $(makeRelativeToProject "certificate.pem" >>= embedFileIfExists)
     in (,) <$> certCred <*> keyCred
 
 corsWithContentType :: Wai.Middleware
