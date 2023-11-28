@@ -78,6 +78,7 @@ library
       directory                              -any,
       exceptions                             -any,
       extra                                  -any,
+      file-embed                             -any,
       filepath                               -any,
       hex-text                               -any,
       http-types                             -any,

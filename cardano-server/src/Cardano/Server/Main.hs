@@ -9,6 +9,7 @@
 {-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
@@ -38,6 +39,8 @@ import           Control.Concurrent                   (forkIO)
 import           Control.Exception                    (Handler (Handler), catches)
 import           Control.Monad.IO.Class               (MonadIO (..))
 import           Control.Monad.Reader                 (ReaderT (runReaderT), ask, asks)
+import           Data.ByteString                      (ByteString)
+import           Data.FileEmbed                       (embedFileIfExists)
 import qualified Data.Text.Encoding                   as T
 import qualified Data.Text.IO                         as T
 import           Network.HTTP.Client                  (path)
@@ -116,6 +119,7 @@ serverAPI = Proxy @(ServerApi' api)
 
 runServer :: ServerConstraints api => Config -> ServerHandle api -> IO ()
 runServer c sh = let ?protocol = cHyperTextProtocol c
+                     ?creds    = embedCreds
                  in (`catches` errorHanlders) $ loadEnv c sh >>= runServer'
     where
         errorHanlders = [Handler connectionErroH]
@@ -132,8 +136,12 @@ runServer' env = do
     prepareServer
     let app = mkApp env {envLoggerFilePath = Just "server.log"}
     case ?protocol of
-        HTTP               -> Warp.runSettings settings app
-        HTTPS sertFp keyFp -> Warp.runTLS (Warp.tlsSettings sertFp keyFp) settings app
+        HTTP  -> Warp.runSettings settings app
+        HTTPS -> case ?creds of
+            Just (cert, key) -> Warp.runTLS (Warp.tlsSettingsMemory cert key) settings app
+            Nothing          -> error "No creds given to run with HTTPS. \
+                                      \Add key.pem and certificate.pem file before compilation. \
+                                      \If this error doesn't go away, try running `cabal clean` first."
     where
         prepareServer = runServerM env $ do
             logMsg "Starting server..."
@@ -146,6 +154,13 @@ runServer' env = do
         logReceivedRequest req status _ = runServerM env $
             logMsg $ "Received request:\n" .< req <> "\nStatus:\n" .< status
         logException = runServerM env . logCriticalExceptions
+
+-- Embed https cert and key files on compilation
+embedCreds :: Maybe (ByteString, ByteString)
+embedCreds =
+    let keyCred  = $(embedFileIfExists "key.pem")
+        certCred = $(embedFileIfExists "certificate.pem")
+    in (,) <$> certCred <*> keyCred
 
 corsWithContentType :: Wai.Middleware
 corsWithContentType = cors (const $ Just policy)

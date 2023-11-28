@@ -15,6 +15,7 @@ import           Control.Monad
 import           Data.Aeson                     (FromJSON (..), ToJSON, eitherDecodeFileStrict, genericParseJSON)
 import qualified Data.Aeson                     as J
 import           Data.Aeson.Casing              (aesonPrefix, snakeCase)
+import           Data.ByteString                (ByteString)
 import           Data.Text                      (Text)
 import           GHC.Generics                   (Generic)
 import           GHC.Stack                      (HasCallStack)
@@ -47,10 +48,10 @@ instance FromJSON Config where
 decodeOrErrorFromFile :: (HasCallStack, FromJSON a) => FilePath -> IO a
 decodeOrErrorFromFile = fmap (either error id) . eitherDecodeFileStrict
 
-data HyperTextProtocol = HTTP | HTTPS FilePath FilePath -- Certificate and key files
+data HyperTextProtocol = HTTP | HTTPS
     deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
-type HasHyperTextProtocol = ?protocol :: HyperTextProtocol
+type HasHyperTextProtocol = (?protocol :: HyperTextProtocol, ?creds :: Maybe (ByteString, ByteString))
 
 ------------------------------------------------------------------- Endpoints -------------------------------------------------------------------
 

@@ -37,6 +37,7 @@ withCardanoServer configFp sHandle minAdaInWallet specs = do
     env <- loadEnv config sHandle
     sce <- createServantClientEnv config
     let ?protocol = cHyperTextProtocol config
+        ?creds    = Nothing
         ?servantClientEnv = sce
     walletHasEnouhgAda <- checkWalletHasMinAda $ fromJust $ cWalletFile config
     bracket
