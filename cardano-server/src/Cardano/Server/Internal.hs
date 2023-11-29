@@ -211,16 +211,20 @@ setLoggerFilePath fp = local (\Env{..} -> Env{envLoggerFilePath = Just fp, ..})
 checkEndpointAvailability :: ServerEndpoint -> ServerM api ()
 checkEndpointAvailability endpoint = whenM (asks ((endpoint `notElem`) . envActiveEndpoints)) $ throwError err404
 
+mkServantClientEnv :: MonadIO m => Int -> Text -> HyperTextProtocol -> m Servant.ClientEnv
+mkServantClientEnv port host protocol = do
+    manager <- liftIO $ newManager $ case protocol of
+        HTTP  -> defaultManagerSettings
+        HTTPS -> tlsManagerSettings
+    pure $ Servant.ClientEnv
+        manager
+        (Servant.BaseUrl (schemeFromProtocol protocol) (T.unpack host) port "")
+        Nothing
+        Servant.defaultMakeClientRequest
+
 mkServerClientEnv :: ServerM api Servant.ClientEnv
 mkServerClientEnv = do
-        port     <- asks envPort
-        host     <- asks envHost
-        protocol <- asks envHyperTextProtocol
-        manager <- liftIO $ newManager $ case protocol of
-            HTTP  -> defaultManagerSettings
-            HTTPS -> tlsManagerSettings
-        pure $ Servant.ClientEnv
-            manager
-            (Servant.BaseUrl (schemeFromProtocol protocol) (T.unpack host) port "")
-            Nothing
-            Servant.defaultMakeClientRequest
+    port     <- asks envPort
+    host     <- asks envHost
+    protocol <- asks envHyperTextProtocol
+    mkServantClientEnv port host protocol
