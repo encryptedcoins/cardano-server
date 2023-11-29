@@ -6,6 +6,7 @@
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE LambdaCase                 #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE RankNTypes                 #-}
@@ -18,7 +19,7 @@
 module Cardano.Server.Internal where
 
 import           Cardano.Node.Emulator             (Params (..), pParamsFromProtocolParams)
-import           Cardano.Server.Config             (Config (..), ServerEndpoint, decodeOrErrorFromFile)
+import           Cardano.Server.Config             (Config (..), HyperTextProtocol (..), ServerEndpoint, decodeOrErrorFromFile, schemeFromProtocol)
 import           Cardano.Server.Error              (Envelope)
 import           Cardano.Server.Error.CommonErrors (InternalServerError (NoWalletProvided))
 import           Cardano.Server.Input              (InputContext)
@@ -132,6 +133,7 @@ data ServerHandle api = ServerHandle
 data Env api = Env
     { envPort                  :: Int
     , envHost                  :: Text
+    , envHyperTextProtocol     :: HyperTextProtocol
     , envQueueRef              :: QueueRef api
     , envWallet                :: Maybe RestoredWallet
     , envBfToken               :: Maybe BF.BfToken
@@ -187,6 +189,7 @@ loadEnv Config{..} ServerHandle{..} = do
             _                   -> error "There is no slot config in chain index config file."
     let envPort                = cPort
         envHost                = cHost
+        envHyperTextProtocol   = cHyperTextProtocol
         envMinUtxosNumber      = cMinUtxosNumber
         envMaxUtxosNumber      = cMaxUtxosNumber
         envDiagnosticsInterval = fromMaybe 300 cDiagnosticsInterval
@@ -209,11 +212,12 @@ checkEndpointAvailability endpoint = whenM (asks ((endpoint `notElem`) . envActi
 
 mkServerClientEnv :: ServerM api Servant.ClientEnv
 mkServerClientEnv = do
-    port    <- asks envPort
-    host    <- asks envHost
-    manager <- liftIO $ newManager defaultManagerSettings
-    pure $ Servant.ClientEnv
-        manager
-        (Servant.BaseUrl Servant.Http (T.unpack host) port "")
-        Nothing
-        Servant.defaultMakeClientRequest
+        port     <- asks envPort
+        host     <- asks envHost
+        protocol <- asks envHyperTextProtocol
+        manager <- liftIO $ newManager defaultManagerSettings
+        pure $ Servant.ClientEnv
+            manager
+            (Servant.BaseUrl (schemeFromProtocol protocol) (T.unpack host) port "")
+            Nothing
+            Servant.defaultMakeClientRequest

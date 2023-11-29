@@ -22,6 +22,7 @@ import           GHC.Stack                      (HasCallStack)
 import           Ledger                         (TxOutRef)
 import           PlutusAppsExtra.Api.Blockfrost (BfToken)
 import           PlutusAppsExtra.IO.ChainIndex  (ChainIndex)
+import qualified Servant.Client                 as Servant
 
 data Config = Config
     { cHost                   :: Text
@@ -52,6 +53,11 @@ data HyperTextProtocol = HTTP | HTTPS
     deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
 type HasHyperTextProtocol = (?protocol :: HyperTextProtocol, ?creds :: Maybe (ByteString, ByteString))
+
+schemeFromProtocol :: HyperTextProtocol -> Servant.Scheme
+schemeFromProtocol = \case
+    HTTP  -> Servant.Http
+    HTTPS -> Servant.Https
 
 ------------------------------------------------------------------- Endpoints -------------------------------------------------------------------
 
