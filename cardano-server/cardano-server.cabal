@@ -87,6 +87,7 @@ library
       memory                                 -any,
       mtl                                    -any,
       http-client                            -any,
+      http-client-tls                        -any,
       plutus-apps-extra                      -any,
       plutus-ledger                          -any,
       plutus-ledger-api                      -any,

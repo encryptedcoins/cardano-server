@@ -48,6 +48,7 @@ import qualified Data.Text                         as T
 import           GHC.Stack                         (HasCallStack)
 import           Ledger                            (Address, NetworkId, TxOutRef)
 import           Network.HTTP.Client               (defaultManagerSettings, newManager)
+import           Network.HTTP.Client.TLS           (tlsManagerSettings)
 import qualified PlutusAppsExtra.Api.Blockfrost    as BF
 import           PlutusAppsExtra.IO.ChainIndex     (ChainIndex, HasChainIndex (..))
 import           PlutusAppsExtra.IO.Wallet         (HasWallet (..), RestoredWallet)
@@ -215,7 +216,9 @@ mkServerClientEnv = do
         port     <- asks envPort
         host     <- asks envHost
         protocol <- asks envHyperTextProtocol
-        manager <- liftIO $ newManager defaultManagerSettings
+        manager <- liftIO $ newManager $ case protocol of
+            HTTP  -> defaultManagerSettings
+            HTTPS -> tlsManagerSettings
         pure $ Servant.ClientEnv
             manager
             (Servant.BaseUrl (schemeFromProtocol protocol) (T.unpack host) port "")
