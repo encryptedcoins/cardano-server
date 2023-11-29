@@ -66,7 +66,6 @@ library
       aeson                                  -any,
       aeson-casing                           -any,
       async                                  -any,
-      ansi-terminal                          -any,
       bytestring                             -any,
       cardano-addresses                      -any,
       cardano-api                            -any,
