@@ -17,7 +17,7 @@
 
 module Cardano.Server.Main where
 
-import           Cardano.Server.Config                (Config (cHyperTextProtocol), HasHyperTextProtocol, HyperTextProtocol (..))
+import           Cardano.Server.Config                (HasHyperTextProtocol, HyperTextProtocol (..), Config)
 import           Cardano.Server.Diagnostics           (doDiagnostics)
 import           Cardano.Server.Endpoints.Ping        (PingApi, pingHandler)
 import           Cardano.Server.Endpoints.Status      (StatusApi, commonStatusHandler)
@@ -40,7 +40,7 @@ import           Control.Exception                    (Handler (Handler), catche
 import           Control.Monad.IO.Class               (MonadIO (..))
 import           Control.Monad.Reader                 (ReaderT (runReaderT), ask, asks)
 import           Data.ByteString                      (ByteString)
-import           Data.FileEmbed                       (embedFileIfExists, makeRelativeToProject)
+import           Data.FileEmbed                       (embedFileIfExists)
 import qualified Data.Text.Encoding                   as T
 import qualified Data.Text.IO                         as T
 import           Network.HTTP.Client                  (path)
@@ -118,11 +118,7 @@ serverAPI :: forall api. Proxy (ServerApi' api)
 serverAPI = Proxy @(ServerApi' api)
 
 runServer :: (ServerConstraints api, HasHyperTextProtocol) => Config -> ServerHandle api -> IO ()
-runServer c sh = 
-    -- let ?protocol = cHyperTextProtocol c
-                    --  ?creds    = embedCreds
-                --  in 
-                    (`catches` errorHanlders) $ loadEnv c sh >>= runServer'
+runServer c sh = (`catches` errorHanlders) $ loadEnv c sh >>= runServer'
     where
         errorHanlders = [Handler connectionErroH]
         connectionErroH e = T.putStrLn $ (<> " is unavailable.") $ case e of
@@ -160,8 +156,8 @@ runServer' env = do
 -- Embed https cert and key files on compilation
 embedCreds :: Maybe (ByteString, ByteString)
 embedCreds =
-    let keyCred  = $(makeRelativeToProject "key.pem" >>= embedFileIfExists)
-        certCred = $(makeRelativeToProject "certificate.pem" >>= embedFileIfExists)
+    let keyCred  = $(embedFileIfExists "../key.pem" )
+        certCred = $(embedFileIfExists "../certificate.pem")
     in (,) <$> certCred <*> keyCred
 
 corsWithContentType :: Wai.Middleware
