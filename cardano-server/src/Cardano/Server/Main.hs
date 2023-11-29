@@ -37,10 +37,12 @@ import           Cardano.Server.Utils.Logger          (logMsg, (.<))
 import           Cardano.Server.Utils.Wait            (waitTime)
 import           Control.Concurrent                   (forkIO)
 import           Control.Exception                    (Handler (Handler), catches)
+import           Control.Monad                        (when)
 import           Control.Monad.IO.Class               (MonadIO (..))
 import           Control.Monad.Reader                 (ReaderT (runReaderT), ask, asks)
 import           Data.ByteString                      (ByteString)
-import           Data.FileEmbed                       (embedFileIfExists, makeRelativeToProject)
+import           Data.FileEmbed                       (embedFileIfExists)
+import           Data.Maybe                           (isNothing)
 import qualified Data.Text.Encoding                   as T
 import qualified Data.Text.IO                         as T
 import           Network.HTTP.Client                  (path)
@@ -53,6 +55,7 @@ import           PlutusAppsExtra.IO.ChainIndex.Plutus (pattern PlutusChainIndexC
 import           PlutusAppsExtra.IO.Wallet            (pattern WalletApiConnectionError)
 import           Servant                              (Application, Proxy (..), ServerT, hoistServer, serve, type (:<|>) (..))
 import qualified Servant
+import qualified System.Console.ANSI                  as ANSI
 import           System.IO                            (BufferMode (LineBuffering), hSetBuffering, stdout)
 
 type ServerApi
@@ -117,12 +120,13 @@ server
 serverAPI :: forall api. Proxy (ServerApi' api)
 serverAPI = Proxy @(ServerApi' api)
 
-runServer :: (ServerConstraints api, HasHyperTextProtocol) => Config -> ServerHandle api -> IO ()
-runServer c sh = 
-    -- let ?protocol = cHyperTextProtocol c
-                    --  ?creds    = embedCreds
-                --  in 
-                    (`catches` errorHanlders) $ loadEnv c sh >>= runServer'
+{-# INLINABLE runServer #-}
+runServer :: (ServerConstraints api) => Config -> ServerHandle api -> IO ()
+runServer c sh = do
+        creds <- embedCreds
+        let ?protocol = cHyperTextProtocol c
+            ?creds    = creds
+        (`catches` errorHanlders) $ loadEnv c sh >>= runServer'
     where
         errorHanlders = [Handler connectionErroH]
         connectionErroH e = T.putStrLn $ (<> " is unavailable.") $ case e of
@@ -158,11 +162,16 @@ runServer' env = do
         logException = runServerM env . logCriticalExceptions
 
 -- Embed https cert and key files on compilation
-embedCreds :: Maybe (ByteString, ByteString)
-embedCreds =
-    let keyCred  = $(makeRelativeToProject "key.pem" >>= embedFileIfExists)
-        certCred = $(makeRelativeToProject "certificate.pem" >>= embedFileIfExists)
-    in (,) <$> certCred <*> keyCred
+{-# INLINABLE embedCreds #-}
+embedCreds :: IO (Maybe (ByteString, ByteString))
+embedCreds = do
+    let keyCred  = $(embedFileIfExists "../key.pem")
+        certCred = $(embedFileIfExists "../certificate.pem")
+        creds    = (,) <$> certCred <*> keyCred
+    when (isNothing creds) $ do
+        ANSI.setSGR [ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.Red]
+        putStrLn "Warning: No HTTPS creds found."
+    pure creds
 
 corsWithContentType :: Wai.Middleware
 corsWithContentType = cors (const $ Just policy)
