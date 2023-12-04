@@ -2,3 +2,5 @@
 dist-newstyle
 logs/*
 cardano-server-test/test/configuration/wallets/*
+certificate.pem
+key.pem
