@@ -17,7 +17,7 @@
 
 module Cardano.Server.Main where
 
-import           Cardano.Server.Config                (HasHyperTextProtocol, HyperTextProtocol (..), Config)
+import           Cardano.Server.Config                (HasCreds, HyperTextProtocol (..), Config, Creds)
 import           Cardano.Server.Diagnostics           (doDiagnostics)
 import           Cardano.Server.Endpoints.Ping        (PingApi, pingHandler)
 import           Cardano.Server.Endpoints.Status      (StatusApi, commonStatusHandler)
@@ -39,7 +39,6 @@ import           Control.Concurrent                   (forkIO)
 import           Control.Exception                    (Handler (Handler), catches)
 import           Control.Monad.IO.Class               (MonadIO (..))
 import           Control.Monad.Reader                 (ReaderT (runReaderT), ask, asks)
-import           Data.ByteString                      (ByteString)
 import           Data.FileEmbed                       (embedFileIfExists)
 import qualified Data.Text.Encoding                   as T
 import qualified Data.Text.IO                         as T
@@ -117,7 +116,7 @@ server
 serverAPI :: forall api. Proxy (ServerApi' api)
 serverAPI = Proxy @(ServerApi' api)
 
-runServer :: (ServerConstraints api, HasHyperTextProtocol) => Config -> ServerHandle api -> IO ()
+runServer :: (ServerConstraints api, HasCreds) => Config -> ServerHandle api -> IO ()
 runServer c sh = (`catches` errorHanlders) $ loadEnv c sh >>= runServer'
     where
         errorHanlders = [Handler connectionErroH]
@@ -127,13 +126,13 @@ runServer c sh = (`catches` errorHanlders) $ loadEnv c sh >>= runServer'
             WalletApiConnectionError{}        -> "Cardano wallet"
             ConnectionError req _             -> T.decodeUtf8 $ path req
 
-runServer' :: (ServerConstraints api, HasHyperTextProtocol) => Env api -> IO ()
+runServer' :: (ServerConstraints api, HasCreds) => Env api -> IO ()
 runServer' env = do
     hSetBuffering stdout LineBuffering
     forkIO $ processQueue env
     prepareServer
     let app = mkApp env {envLoggerFilePath = Just "server.log"}
-    case ?protocol of
+    case envHyperTextProtocol env of
         HTTP  -> Warp.runSettings settings app
         HTTPS -> case ?creds of
             Just (cert, key) -> Warp.runTLS (Warp.tlsSettingsMemory cert key) settings app
@@ -154,7 +153,7 @@ runServer' env = do
         logException = runServerM env . logCriticalExceptions
 
 -- Embed https cert and key files on compilation
-embedCreds :: Maybe (ByteString, ByteString)
+embedCreds :: Creds
 embedCreds =
     let keyCred  = $(embedFileIfExists "../key.pem" )
         certCred = $(embedFileIfExists "../certificate.pem")

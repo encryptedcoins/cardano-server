@@ -8,11 +8,10 @@
 
 module Cardano.Server.Test.Internal where
 
-import           Cardano.Server.Client.Client  (createServantClientEnv)
 import           Cardano.Server.Client.Handle  (HasServantClientEnv)
-import           Cardano.Server.Config         (Config (cHyperTextProtocol, cWalletFile), decodeOrErrorFromFile)
+import           Cardano.Server.Config         (Config (..), decodeOrErrorFromFile)
 import           Cardano.Server.Error          (parseErrorText)
-import           Cardano.Server.Internal       (ServerHandle, envLogger, loadEnv)
+import           Cardano.Server.Internal       (ServerHandle, envLogger, mkServantClientEnv, loadEnv)
 import           Cardano.Server.Main           (ServerConstraints, runServer')
 import           Cardano.Server.Utils.Logger   (mutedLogger)
 import           Cardano.Server.Utils.Wait     (waitTime)
@@ -34,10 +33,10 @@ import           Test.Hspec                    (Expectation, Spec, expectationFa
 withCardanoServer :: ServerConstraints api => FilePath -> ServerHandle api -> Integer -> (HasServantClientEnv => Spec) -> IO ()
 withCardanoServer configFp sHandle minAdaInWallet specs = do
     config <- decodeOrErrorFromFile configFp
+    let ?creds = Nothing
     env <- loadEnv config sHandle
-    sce <- createServantClientEnv config
+    sce <- mkServantClientEnv (cPort config) (cHost config) (cHyperTextProtocol config)
     let ?protocol = cHyperTextProtocol config
-        ?creds    = Nothing
         ?servantClientEnv = sce
     walletHasEnouhgAda <- checkWalletHasMinAda $ fromJust $ cWalletFile config
     bracket
@@ -58,7 +57,6 @@ instance HasChainIndex (ReaderT RestoredWallet IO) where
 
 instance HasWallet (ReaderT RestoredWallet IO) where
     getRestoredWallet = ask
-
 
 shoudlFailWithStatus :: (Show a, HasServantClientEnv) => ClientM a -> Int -> Expectation
 shoudlFailWithStatus ma s = runClientM ma ?servantClientEnv >>= \case

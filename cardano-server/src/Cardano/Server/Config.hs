@@ -52,7 +52,9 @@ decodeOrErrorFromFile = fmap (either error id) . eitherDecodeFileStrict
 data HyperTextProtocol = HTTP | HTTPS
     deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
-type HasHyperTextProtocol = (?protocol :: HyperTextProtocol, ?creds :: Maybe (ByteString, ByteString))
+type Creds = Maybe (ByteString, ByteString)
+
+type HasCreds = ?creds :: Creds
 
 schemeFromProtocol :: HyperTextProtocol -> Servant.Scheme
 schemeFromProtocol = \case

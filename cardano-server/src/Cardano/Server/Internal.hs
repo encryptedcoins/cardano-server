@@ -6,7 +6,7 @@
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE LambdaCase                 #-}
+{-# LANGUAGE ImplicitParams             #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE RankNTypes                 #-}
@@ -19,7 +19,8 @@
 module Cardano.Server.Internal where
 
 import           Cardano.Node.Emulator             (Params (..), pParamsFromProtocolParams)
-import           Cardano.Server.Config             (Config (..), HyperTextProtocol (..), ServerEndpoint, decodeOrErrorFromFile, schemeFromProtocol)
+import           Cardano.Server.Config             (Config (..), Creds, HasCreds, HyperTextProtocol (..), ServerEndpoint,
+                                                    decodeOrErrorFromFile, schemeFromProtocol)
 import           Cardano.Server.Error              (Envelope)
 import           Cardano.Server.Error.CommonErrors (InternalServerError (NoWalletProvided))
 import           Cardano.Server.Input              (InputContext)
@@ -32,12 +33,13 @@ import           Control.Exception                 (SomeException, throw)
 import           Control.Lens                      ((^?))
 import           Control.Monad.Catch               (MonadCatch, MonadThrow (..))
 import           Control.Monad.Except              (MonadError (throwError))
-import           Control.Monad.Extra               (join, whenM)
+import           Control.Monad.Extra               (join, whenM, liftM3)
 import           Control.Monad.IO.Class            (MonadIO (..))
 import           Control.Monad.Reader              (MonadReader, ReaderT (ReaderT, runReaderT), asks, local)
 import           Data.Aeson                        (fromJSON)
 import qualified Data.Aeson                        as J
 import           Data.Aeson.Lens                   (key)
+import           Data.Default                      (Default (def))
 import           Data.Functor                      ((<&>))
 import           Data.IORef                        (IORef, newIORef)
 import           Data.Kind                         (Type)
@@ -47,8 +49,13 @@ import           Data.Text                         (Text)
 import qualified Data.Text                         as T
 import           GHC.Stack                         (HasCallStack)
 import           Ledger                            (Address, NetworkId, TxOutRef)
+import           Network.Connection                (TLSSettings (TLSSettings))
 import           Network.HTTP.Client               (defaultManagerSettings, newManager)
-import           Network.HTTP.Client.TLS           (tlsManagerSettings)
+import           Network.HTTP.Client.TLS           (mkManagerSettings)
+import           Network.TLS                       (ClientHooks (onCertificateRequest, onServerCertificate),
+                                                    ClientParams (clientHooks, clientSupported), Supported (supportedCiphers),
+                                                    credentialLoadX509FromMemory, defaultParamsClient)
+import           Network.TLS.Extra.Cipher          (ciphersuite_default)
 import qualified PlutusAppsExtra.Api.Blockfrost    as BF
 import           PlutusAppsExtra.IO.ChainIndex     (ChainIndex, HasChainIndex (..))
 import           PlutusAppsExtra.IO.Wallet         (HasWallet (..), RestoredWallet)
@@ -56,6 +63,7 @@ import           PlutusAppsExtra.Types.Tx          (TransactionBuilder)
 import           Servant                           (Handler, err404)
 import qualified Servant
 import qualified Servant.Client                    as Servant
+
 
 newtype ServerM api a = ServerM {unServerM :: ReaderT (Env api) Handler a}
      deriving newtype
@@ -135,6 +143,7 @@ data Env api = Env
     { envPort                  :: Int
     , envHost                  :: Text
     , envHyperTextProtocol     :: HyperTextProtocol
+    , envCreds                 :: Creds
     , envQueueRef              :: QueueRef api
     , envWallet                :: Maybe RestoredWallet
     , envBfToken               :: Maybe BF.BfToken
@@ -175,7 +184,7 @@ getNetworkId = asks $ pNetworkId . envLedgerParams
 getAuxillaryEnv :: ServerM api (AuxillaryEnvOf api)
 getAuxillaryEnv = asks $ shAuxiliaryEnv . envServerHandle
 
-loadEnv :: HasCallStack
+loadEnv :: (HasCallStack, HasCreds)
   => Config
   -> ServerHandle api
   -> IO (Env api)
@@ -191,6 +200,7 @@ loadEnv Config{..} ServerHandle{..} = do
     let envPort                = cPort
         envHost                = cHost
         envHyperTextProtocol   = cHyperTextProtocol
+        envCreds               = ?creds
         envMinUtxosNumber      = cMinUtxosNumber
         envMaxUtxosNumber      = cMaxUtxosNumber
         envDiagnosticsInterval = fromMaybe 300 cDiagnosticsInterval
@@ -211,20 +221,33 @@ setLoggerFilePath fp = local (\Env{..} -> Env{envLoggerFilePath = Just fp, ..})
 checkEndpointAvailability :: ServerEndpoint -> ServerM api ()
 checkEndpointAvailability endpoint = whenM (asks ((endpoint `notElem`) . envActiveEndpoints)) $ throwError err404
 
-mkServantClientEnv :: MonadIO m => Int -> Text -> HyperTextProtocol -> m Servant.ClientEnv
+mkServantClientEnv :: (MonadIO m, HasCreds) => Int -> Text -> HyperTextProtocol -> m Servant.ClientEnv
 mkServantClientEnv port host protocol = do
-    manager <- liftIO $ newManager $ case protocol of
-        HTTP  -> defaultManagerSettings
-        HTTPS -> tlsManagerSettings
+    manager <- liftIO $ newManager $ case (protocol, ?creds) of
+        (HTTP, _)                     -> defaultManagerSettings
+        (HTTPS, Nothing)              -> mkManagerSettings def def
+        (HTTPS, Just (certBs, keyBs)) -> mkManagerSettingsWithCreds certBs keyBs
     pure $ Servant.ClientEnv
         manager
         (Servant.BaseUrl (schemeFromProtocol protocol) (T.unpack host) port "")
         Nothing
         Servant.defaultMakeClientRequest
+    where
+        mkManagerSettingsWithCreds certBs keyBs = do
+            let creds = either error Just $ credentialLoadX509FromMemory certBs keyBs
+                hooks = def
+                    { onCertificateRequest = \_ -> return creds
+                    , onServerCertificate  = \_ _ _ _ -> return []
+                    }
+                clientParams = (defaultParamsClient (T.unpack host)  "")
+                    { clientHooks     = hooks
+                    , clientSupported = def { supportedCiphers = ciphersuite_default }
+                    }
+                tlsSettings = TLSSettings clientParams
+            mkManagerSettings tlsSettings Nothing
 
 mkServerClientEnv :: ServerM api Servant.ClientEnv
 mkServerClientEnv = do
-    port     <- asks envPort
-    host     <- asks envHost
-    protocol <- asks envHyperTextProtocol
-    mkServantClientEnv port host protocol
+    creds <- asks envCreds
+    let ?creds = creds
+    join $ liftM3 mkServantClientEnv (asks envPort) (asks envHost) (asks envHyperTextProtocol)
