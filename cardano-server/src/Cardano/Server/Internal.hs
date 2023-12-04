@@ -20,7 +20,7 @@ module Cardano.Server.Internal where
 
 import           Cardano.Node.Emulator             (Params (..), pParamsFromProtocolParams)
 import           Cardano.Server.Config             (Config (..), Creds, HasCreds, HyperTextProtocol (..), ServerEndpoint,
-                                                    decodeOrErrorFromFile, schemeFromProtocol)
+                                                    decodeOrErrorFromFile, schemeFromProtocol, CardanoServerConfig (..))
 import           Cardano.Server.Error              (Envelope)
 import           Cardano.Server.Error.CommonErrors (InternalServerError (NoWalletProvided))
 import           Cardano.Server.Input              (InputContext)
@@ -159,6 +159,11 @@ data Env api = Env
     , envServerHandle          :: ServerHandle api
     , envDiagnosticsInterval   :: Int
     }
+
+instance CardanoServerConfig (Env api) where
+    configHost = envHost
+    configPort = envPort
+    configHyperTextProtocol = envHyperTextProtocol
 
 serverTrackedAddresses :: ServerM api [Address]
 serverTrackedAddresses = join $ asks $ shGetTrackedAddresses . envServerHandle

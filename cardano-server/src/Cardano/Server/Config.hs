@@ -61,6 +61,18 @@ schemeFromProtocol = \case
     HTTP  -> Servant.Http
     HTTPS -> Servant.Https
 
+------------------------------------------------------------------- Class -------------------------------------------------------------------
+
+class CardanoServerConfig c where
+    configHost              :: c -> Text
+    configPort              :: c -> Int
+    configHyperTextProtocol :: c -> HyperTextProtocol
+
+instance CardanoServerConfig Config where
+    configHost = cHost
+    configPort = cPort
+    configHyperTextProtocol = cHyperTextProtocol
+
 ------------------------------------------------------------------- Endpoints -------------------------------------------------------------------
 
 data ServerEndpoint
