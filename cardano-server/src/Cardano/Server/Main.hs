@@ -50,7 +50,7 @@ import           Network.Wai.Middleware.Cors          (CorsResourcePolicy (..), 
 import           PlutusAppsExtra.Api.Kupo             (pattern KupoConnectionError)
 import           PlutusAppsExtra.IO.ChainIndex.Plutus (pattern PlutusChainIndexConnectionError)
 import           PlutusAppsExtra.IO.Wallet            (pattern WalletApiConnectionError)
-import           Servant                              (Application, Proxy (..), ServerT, hoistServer, serve, type (:<|>) (..))
+import           Servant                              (Proxy (..), ServerT, hoistServer, serve, type (:<|>) (..))
 import qualified Servant
 import           System.IO                            (BufferMode (LineBuffering), hSetBuffering, stdout)
 
@@ -177,7 +177,3 @@ corsWithContentType = cors (const $ Just policy)
     where policy = simpleCorsResourcePolicy
             { corsRequestHeaders = ["Content-Type"]
             }
-
-mkApp :: forall api. ServerConstraints api => Env api -> Application
-mkApp env
-    = corsWithContentType $ serve (serverAPI @api) $ hoistServer (serverAPI @api) ((`runReaderT` env) . unServerM) server
