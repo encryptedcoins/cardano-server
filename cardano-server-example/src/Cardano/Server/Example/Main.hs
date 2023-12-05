@@ -12,11 +12,12 @@
 module Cardano.Server.Example.Main where
 
 import           Cardano.Server.Client.Internal  (statusC)
-import           Cardano.Server.Config           (decodeOrErrorFromFile, Config (cHyperTextProtocol))
+import           Cardano.Server.Config           (decodeOrErrorFromFile)
 import           Cardano.Server.Error            (Envelope, IsCardanoServerError (..), toEnvelope)
 import           Cardano.Server.Example.OffChain (testMintTx)
 import           Cardano.Server.Input            (InputContext)
-import           Cardano.Server.Internal         (AuxillaryEnvOf, InputOf, ServerHandle (ServerHandle), ServerM, mkServerClientEnv)
+import           Cardano.Server.Internal         (AuxillaryEnvOf, InputOf, ServerHandle (ServerHandle), ServerM,
+                                                  mkServerClientEnv)
 import           Cardano.Server.Main             (ServerApi, embedCreds, runServer)
 import           Control.Monad                   (when)
 import           Control.Monad.Catch             (Exception, MonadThrow (throwM))
@@ -67,8 +68,7 @@ exampleServerHandle = ServerHandle
 runExampleServer :: FilePath -> IO ()
 runExampleServer configFp = do
     config <- decodeOrErrorFromFile configFp
-    let ?protocol = cHyperTextProtocol config
-        ?creds    = embedCreds
+    let ?creds    = embedCreds
     runServer config exampleServerHandle
 
 data ExampleStatusEndpointError = ExampleStatusEndpointError
@@ -92,4 +92,4 @@ checkStatusEndpoint = do
 
 versionEndpointHandler :: ServerM ExampleApi Text
 versionEndpointHandler =
-    pure "This is an example of a status endpoint."
+    pure "This is an example of a version endpoint."

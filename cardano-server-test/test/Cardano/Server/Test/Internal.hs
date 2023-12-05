@@ -36,8 +36,7 @@ withCardanoServer configFp sHandle minAdaInWallet specs = do
     let ?creds = Nothing
     env <- loadEnv config sHandle
     sce <- mkServantClientEnv (cPort config) (cHost config) (cHyperTextProtocol config)
-    let ?protocol = cHyperTextProtocol config
-        ?servantClientEnv = sce
+    let ?servantClientEnv = sce
     walletHasEnouhgAda <- checkWalletHasMinAda $ fromJust $ cWalletFile config
     bracket
         (liftIO $ C.forkIO $ runServer' env{envLogger = mutedLogger})
