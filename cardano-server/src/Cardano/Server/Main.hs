@@ -161,9 +161,8 @@ runCardanoServer config runApp serverApp beforeMainLoop = do
             logMsg $ "Received request:\n" .< req <> "\nStatus:\n" .< status
         logException = runHandler . runApp . logCriticalExceptions
         noCredsMsg = "No creds given to run with HTTPS. \
-                     \If you want to test something on localhost with HTTPS then\
-                     \add key.pem and certificate.pem file before compilation. \
-                     \If this error doesn't go away, try running `cabal clean` first."
+                     \Add key.pem and certificate.pem file before compilation. \
+                     \If this message doesn't go away, try running `cabal clean` first."
 
 -- Embed https cert and key files on compilation
 embedCreds :: Creds
