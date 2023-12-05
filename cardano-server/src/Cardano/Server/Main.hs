@@ -148,7 +148,7 @@ runCardanoServer config runApp serverApp beforeMainLoop = do
     case (configHyperTextProtocol config, ?creds) of
         (HTTP, _)                 -> Warp.runSettings settings app
         (HTTPS, Just (cert, key)) -> Warp.runTLS (Warp.tlsSettingsMemory cert key) settings app
-        (HTTPS, Nothing)          -> putStrLn noCredsMsg >> Warp.runTLS defaultTlsSettings settings app
+        (HTTPS, Nothing)          -> error noCredsMsg
     where
         app = corsWithContentType $ serve (Proxy @api) $ hoistServer (Proxy @api) runApp serverApp
         runHandler = fmap (either throw id) . Servant.runHandler
