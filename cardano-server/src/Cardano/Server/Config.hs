@@ -50,7 +50,7 @@ decodeOrErrorFromFile :: (HasCallStack, FromJSON a) => FilePath -> IO a
 decodeOrErrorFromFile = fmap (either error id) . eitherDecodeFileStrict
 
 data HyperTextProtocol = HTTP | HTTPS
-    deriving (Show, Eq, Generic, FromJSON, ToJSON)
+    deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
 
 type Creds = Maybe (ByteString, ByteString)
 
