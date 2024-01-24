@@ -1,19 +1,29 @@
+{-# LANGUAGE DeriveAnyClass    #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms   #-}
 {-# LANGUAGE RankNTypes        #-}
 
 module Cardano.Server.Error.Class where
 
-import           Control.Lens              ((^?))
-import           Control.Monad.Catch       (Exception)
-import           Data.Aeson                (KeyValue ((.=)))
-import qualified Data.Aeson                as J
-import           Data.Aeson.Lens           (_String, key)
-import qualified Data.ByteString.Lazy      as LBS
-import           Data.Text                 (Text)
-import qualified Data.Text                 as T
-import           Network.HTTP.Types        (Status)
+import           Cardano.Server.Utils.Logger          (HasLogger, logMsg, (.<))
+import           Control.Exception                    (Exception, SomeException)
+import           Control.Lens                         ((^?))
+import           Data.Aeson                           (KeyValue ((.=)))
+import qualified Data.Aeson                           as J
+import           Data.Aeson.Lens                      (_String, key)
+import qualified Data.ByteString.Lazy                 as LBS
+import           Data.Text                            (Text)
+import qualified Data.Text                            as T
+import           Network.HTTP.Types                   (Status)
 import qualified Network.HTTP.Types.Header
+import           PlutusAppsExtra.Api.Kupo             (pattern KupoConnectionError)
+import           PlutusAppsExtra.IO.ChainIndex.Plutus (pattern PlutusChainIndexConnectionError)
+import           PlutusAppsExtra.IO.Wallet            (pattern WalletApiConnectionError)
+import           PlutusAppsExtra.Types.Error          (BalanceExternalTxError (..), ConnectionError (..), MkTxError (..),
+                                                       SubmitTxToLocalNodeError (..))
 import qualified Servant
+
 
 class Exception e => IsCardanoServerError e where
 
@@ -83,3 +93,60 @@ statusTextFromStatus s = case fromEnum s of
         _   -> ""
     where
         getStatusText = T.pack . Servant.errReasonPhrase
+
+instance IsCardanoServerError SomeException where
+    errStatus _ = toEnum 500
+    errMsg e = "Unhandled exception:\n" .< e
+
+data InternalServerError
+    = NoWalletProvided
+    deriving (Show, Exception)
+
+instance IsCardanoServerError ConnectionError where
+    errStatus _ = toEnum 503
+    errMsg = \case
+        PlutusChainIndexConnectionError{} -> toMsg "Caradno chain index API"
+        KupoConnectionError{}             -> toMsg "Kupo chain index API"
+        WalletApiConnectionError{}        -> toMsg "Cardano wallet API"
+        _                                 -> toMsg "Some external API"
+        where toMsg = (<> " is currently unavailable. Try again later.")
+
+instance IsCardanoServerError MkTxError where
+    errStatus _ = toEnum 422
+    errMsg e = "The requested transaction could not be built. Reason:" .< e
+
+instance IsCardanoServerError BalanceExternalTxError where
+    errStatus _ = toEnum 422
+    errMsg e = "The requested transaction could not be built. Reason: " <> case e of
+        MakeUnbalancedTxError{}
+            -> "Unable to build an UnbalancedTx."
+        NonBabbageEraChangeAddress{}
+            -> "Change address is not from Babbage era."
+        MakeUtxoProviderError err _
+            -> "Unable to extract an utxoProvider from wallet outputs:\n" .< err
+        MakeAutoBalancedTxError err _
+            -> "Unable to build an auto balanced tx:\n" .< err
+
+instance IsCardanoServerError SubmitTxToLocalNodeError where
+    errStatus = \case
+        NoConnectionToLocalNode{} -> toEnum 503
+        FailedSumbit{}            -> toEnum 422
+    errMsg = \case
+        NoConnectionToLocalNode{} -> "Server local node is currently unavailable."
+        FailedSumbit err          -> "An error occurred while sending tx to local node. Reason: " .< err
+
+data CslError
+    = CslConversionError
+    deriving (Show, Exception)
+
+instance IsCardanoServerError CslError where
+    errStatus _ = toEnum 422
+    errMsg  = \case
+        CslConversionError -> "An error occurred while converting plutus data to csl."
+
+-- This function helps to skip non-critical exceptions (most of them are related to warp/wai) and log only critical ones
+logCriticalExceptions :: forall e m. (Exception e, HasLogger m) => e -> m ()
+logCriticalExceptions e
+    | show e == "Warp: Client closed connection prematurely" = pure ()
+    | show e == "Thread killed by timeout manager"           = pure ()
+    | otherwise = logMsg $ "Unhandled exception:\n" .< e

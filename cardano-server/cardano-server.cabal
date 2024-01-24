@@ -49,7 +49,6 @@ library
       Cardano.Server.Endpoints.Version
       Cardano.Server.Error
       Cardano.Server.Error.Class
-      Cardano.Server.Error.CommonErrors
       Cardano.Server.Error.Servant
       Cardano.Server.Error.ToEnvelope
       Cardano.Server.Error.Utils

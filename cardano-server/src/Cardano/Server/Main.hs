@@ -27,8 +27,7 @@ import           Cardano.Server.Endpoints.Tx.Server   (ServerTxApi, processQueue
 import           Cardano.Server.Endpoints.Tx.Submit   (SubmitTxApi, submitTxHandler)
 import           Cardano.Server.Endpoints.Utxos       (UtxosApi, utxosHandler)
 import           Cardano.Server.Endpoints.Version     (VersionApi, serverVersionHandler)
-import           Cardano.Server.Error.Class           (IsCardanoServerError)
-import           Cardano.Server.Error.CommonErrors    (ConnectionError (..), logCriticalExceptions)
+import           Cardano.Server.Error                 (ConnectionError (..), logCriticalExceptions, IsCardanoServerError)
 import           Cardano.Server.Internal              (Env (..), HasStatusEndpoint (..), HasVersionEndpoint (..), InputOf,
                                                        ServerHandle (..), ServerM (..), TxApiRequestOf, loadEnv, runServerM)
 import           Cardano.Server.Tx                    (checkForCleanUtxos)
@@ -44,7 +43,6 @@ import qualified Data.Text.IO                         as T
 import           Network.HTTP.Client                  (path)
 import qualified Network.Wai                          as Wai
 import qualified Network.Wai.Handler.Warp             as Warp
-import           Network.Wai.Handler.WarpTLS          (defaultTlsSettings)
 import qualified Network.Wai.Handler.WarpTLS          as Warp
 import           Network.Wai.Middleware.Cors          (CorsResourcePolicy (..), cors, simpleCorsResourcePolicy)
 import           PlutusAppsExtra.Api.Kupo             (pattern KupoConnectionError)
@@ -129,7 +127,7 @@ runServer c sh = (`catches` errorHanlders) $ loadEnv c sh >>= runServer'
 runServer' :: forall api. (ServerConstraints api, HasCreds) => Env api -> IO ()
 runServer' env = runCardanoServer @(ServerApi' api) env runApp server beforeMainLoop
     where
-        runApp :: forall a. ServerM api a -> Servant.Handler a
+        runApp :: ServerM api a -> Servant.Handler a
         runApp = (`runReaderT` env) . unServerM
         beforeMainLoop = do
             liftIO $ forkIO $ processQueue env

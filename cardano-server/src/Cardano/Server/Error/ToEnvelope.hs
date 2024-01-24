@@ -20,6 +20,7 @@ import           Cardano.Server.Error.Class   (IsCardanoServerError, toServantEr
 import           Cardano.Server.Error.Servant (Envelope (..))
 import           Cardano.Server.Error.Utils   (All)
 import           Cardano.Server.Utils.Logger  (HasLogger, logSmth)
+import           Control.Exception            (SomeException)
 import           Control.Monad.Catch          (MonadCatch, handle)
 import           Control.Monad.Except         (MonadError)
 import           Data.Kind                    (Type)
@@ -33,7 +34,7 @@ class All IsCardanoServerError es => WithErrorHandlers (es :: [Type]) where
     withErrorHandlers :: (MonadCatch m,  HasLogger m, MonadError ServerError m) => m (Envelope es' a) -> m (Envelope es' a)
 
 instance WithErrorHandlers '[] where
-    withErrorHandlers = handle throwError
+    withErrorHandlers = handle $ \(e :: SomeException) -> logSmth e >> throwError (toServantError e)
 
 instance (All IsCardanoServerError (e ': es), WithErrorHandlers es) => WithErrorHandlers (e ': es) where
     withErrorHandlers = handle reThrow . withErrorHandlers @es
