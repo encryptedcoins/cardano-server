@@ -47,7 +47,7 @@ import qualified Network.Wai.Handler.WarpTLS          as Warp
 import           Network.Wai.Middleware.Cors          (CorsResourcePolicy (..), cors, simpleCorsResourcePolicy)
 import           PlutusAppsExtra.Api.Kupo             (pattern KupoConnectionError)
 import           PlutusAppsExtra.IO.ChainIndex.Plutus (pattern PlutusChainIndexConnectionError)
-import           PlutusAppsExtra.IO.Wallet            (pattern WalletApiConnectionError)
+import           PlutusAppsExtra.IO.Wallet.Cardano    (pattern CardanoWalletApiConnectionError)
 import           Servant                              (Proxy (..), ServerT, hoistServer, serve, type (:<|>) (..))
 import qualified Servant
 import           System.IO                            (BufferMode (LineBuffering), hSetBuffering, stdout)
@@ -121,7 +121,7 @@ runServer c sh = (`catches` errorHanlders) $ loadEnv c sh >>= runServer'
         connectionErroH e = T.putStrLn $ (<> " is unavailable.") $ case e of
             PlutusChainIndexConnectionError{} -> "Cardano chain index"
             KupoConnectionError{}             -> "Kupo chain index"
-            WalletApiConnectionError{}        -> "Cardano wallet"
+            CardanoWalletApiConnectionError{} -> "Cardano wallet"
             ConnectionError req _             -> T.decodeUtf8 $ path req
 
 runServer' :: forall api. (ServerConstraints api, HasCreds) => Env api -> IO ()

@@ -25,7 +25,7 @@ import           Control.Monad.IO.Class          (MonadIO (..))
 import           Data.List                       (nub, sort)
 import           Data.Text                       (Text)
 import           Plutus.V2.Ledger.Api            (BuiltinByteString)
-import           PlutusAppsExtra.IO.ChainIndex   (ChainIndex (..))
+import           PlutusAppsExtra.IO.ChainIndex   (ChainIndexProvider (..))
 import           PlutusAppsExtra.IO.Wallet       (getWalletAddr)
 import           Servant.Client                  (runClientM)
 

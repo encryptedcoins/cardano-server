@@ -41,9 +41,8 @@ import           Plutus.V2.Ledger.Api                 (CurrencySymbol (..), Toke
 import qualified Plutus.V2.Ledger.Api                 as P
 import           PlutusAppsExtra.Constraints.Balance  (balanceExternalTx)
 import           PlutusAppsExtra.Constraints.OffChain (useAsCollateralTx', utxoProducedPublicKeyTx)
-import           PlutusAppsExtra.IO.ChainIndex        (HasChainIndex, getUtxosAt)
+import           PlutusAppsExtra.IO.ChainIndex        (getUtxosAt)
 import           PlutusAppsExtra.IO.Time              (currentTime)
-import           PlutusAppsExtra.IO.Wallet            (HasWallet, balanceTx, getWalletAddr, getWalletUtxos)
 import qualified PlutusAppsExtra.IO.Wallet
 import           PlutusAppsExtra.Types.Tx             (TransactionBuilder, TxConstructor (..), mkTxConstructor,
                                                        selectTxConstructor, txBuilderRequirements)
@@ -56,8 +55,10 @@ import           Prettyprinter                        (Doc, Pretty (..), hang, v
 import           Servant.Client                       (ClientError (FailureResponse), ResponseF (..))
 import           Text.Hex                             (decodeHex)
 import           Text.Read                            (readMaybe)
+import qualified PlutusAppsExtra.IO.Tx
+import PlutusAppsExtra.IO.Tx (HasTxProvider)
 
-type MkTxConstrains m = (MonadIO m, MonadCatch m, HasLogger m, HasWallet m, HasChainIndex m, HasMkTxEnv m)
+type MkTxConstrains m = (MonadIO m, MonadCatch m, HasLogger m, HasTxProvider m, HasMkTxEnv m)
 
 class HasMkTxEnv m where
     getCollateral   :: m (Maybe TxOutRef)
@@ -92,7 +93,7 @@ mkBalanceTx addressesTracked context txs = do
 
     logMsg "Balancing..."
     case context of
-        InputContextServer {}   -> balanceTx ledgerParams lookups cons
+        InputContextServer {}   -> PlutusAppsExtra.IO.Tx.balanceTx ledgerParams lookups cons
         InputContextClient {..} -> balanceExternalTx ledgerParams inputWalletUTXO inputChangeAddress lookups cons
 
 signTx :: MkTxConstrains m
@@ -104,7 +105,7 @@ signTx addressesTracked ctx txs = mkTxErrorH $ do
     balancedTx <- mkBalanceTx addressesTracked ctx txs
     logPretty balancedTx
     logMsg "Signing..."
-    signedTx <- PlutusAppsExtra.IO.Wallet.signTx balancedTx
+    signedTx <- PlutusAppsExtra.IO.Tx.signTx balancedTx
     logPretty signedTx
     return signedTx
 
@@ -116,12 +117,12 @@ submitTx :: MkTxConstrains m
 submitTx addressesTracked ctx txs = mkTxErrorH $ do
     signedTx <- signTx addressesTracked ctx txs
     logMsg "Submitting..."
-    PlutusAppsExtra.IO.Wallet.submitTx signedTx
+    PlutusAppsExtra.IO.Tx.submitTx signedTx
     return signedTx
 
 awaitTxConfirmed :: MkTxConstrains m => CardanoTx -> m CardanoTx
 awaitTxConfirmed ctx = mkTxErrorH $ do
-        handle submitH $ PlutusAppsExtra.IO.Wallet.awaitTxConfirmed ctx
+        handle submitH $ PlutusAppsExtra.IO.Tx.awaitTxConfirmed ctx
         logMsg "Submited."
         return ctx
     where
@@ -139,13 +140,17 @@ mkTx addressesTracked ctx txs = submitTx addressesTracked ctx txs >>= awaitTxCon
 
 checkForCleanUtxos :: ServerM api ()
 checkForCleanUtxos = mkTxErrorH $ do
-    addr       <- getWalletAddr
-    cleanUtxos <- length . filterCleanUtxos <$> getWalletUtxos mempty
+    logMsg "Checking for clean utxos..."
+    addr       <- PlutusAppsExtra.IO.Wallet.getWalletAddr
+    logMsg "Got wallet address."
+    cleanUtxos <- length . filterCleanUtxos <$> PlutusAppsExtra.IO.Wallet.getWalletUtxos mempty
     minUtxos   <- asks envMinUtxosNumber
     maxUtxos   <- asks envMaxUtxosNumber
+    logMsg "Got utxos."
     when (cleanUtxos < minUtxos) $ do
         logMsg $ "Address doesn't has enough clean UTXO's: " <> (T.pack . show $ minUtxos - cleanUtxos)
         void $ mkWalletTxOutRefs addr (maxUtxos - cleanUtxos)
+    logMsg "Finished checking for clean utxos."
 
 mkWalletTxOutRefs :: MkTxConstrains m => Address -> Int -> m [TxOutRef]
 mkWalletTxOutRefs addr n = do

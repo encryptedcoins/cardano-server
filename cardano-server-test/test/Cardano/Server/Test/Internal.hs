@@ -8,27 +8,31 @@
 
 module Cardano.Server.Test.Internal where
 
-import           Cardano.Server.Client.Handle  (HasServantClientEnv)
-import           Cardano.Server.Config         (Config (..), decodeOrErrorFromFile)
-import           Cardano.Server.Error          (parseErrorText)
-import           Cardano.Server.Internal       (ServerHandle, envLogger, mkServantClientEnv, loadEnv)
-import           Cardano.Server.Main           (ServerConstraints, runServer')
-import           Cardano.Server.Utils.Logger   (mutedLogger)
-import           Cardano.Server.Utils.Wait     (waitTime)
-import qualified Control.Concurrent            as C
-import           Control.Exception             (bracket)
-import           Control.Monad                 (unless)
-import           Control.Monad.IO.Class        (MonadIO (..))
-import           Control.Monad.Reader          (ReaderT (runReaderT), ask)
-import           Data.Aeson                    (decode)
-import           Data.Either                   (isRight)
-import           Data.Maybe                    (fromJust)
-import           Data.Text                     (Text)
-import           PlutusAppsExtra.IO.ChainIndex (ChainIndex (Kupo), HasChainIndex (..))
-import           PlutusAppsExtra.IO.Wallet     (HasWallet (..), RestoredWallet, getWalletAda, restoreWalletFromFile)
-import           Servant.Client                (ClientError (FailureResponse), ClientM,
-                                                ResponseF (responseBody, responseStatusCode), runClientM)
-import           Test.Hspec                    (Expectation, Spec, expectationFailure, hspec, it, shouldBe, shouldSatisfy)
+import           Cardano.Api                        (NetworkId (Testnet), NetworkMagic (NetworkMagic))
+import           Cardano.Server.Client.Handle       (HasServantClientEnv)
+import           Cardano.Server.Config              (Config (..), decodeOrErrorFromFile)
+import           Cardano.Server.Error               (parseErrorText)
+import           Cardano.Server.Internal            (ServerHandle, envLogger, loadEnv, mkServantClientEnv)
+import           Cardano.Server.Main                (ServerConstraints, runServer')
+import           Cardano.Server.Utils.Logger        (mutedLogger)
+import           Cardano.Server.Utils.Wait          (waitTime)
+import qualified Control.Concurrent                 as C
+import           Control.Exception                  (bracket)
+import           Control.Monad                      (unless)
+import           Control.Monad.IO.Class             (MonadIO (..))
+import           Control.Monad.Reader               (ReaderT (runReaderT), ask)
+import           Data.Aeson                         (decode)
+import           Data.Either                        (isRight)
+import           Data.Maybe                         (fromJust)
+import           Data.Text                          (Text)
+import           PlutusAppsExtra.IO.ChainIndex      (ChainIndexProvider (..), HasChainIndexProvider (..))
+import qualified PlutusAppsExtra.IO.ChainIndex.Kupo as Kupo
+import           PlutusAppsExtra.IO.Wallet          (HasWalletProvider (getWalletProvider), WalletProvider (Cardano), getWalletAda)
+import           PlutusAppsExtra.IO.Wallet.Internal (HasWallet (..), RestoredWallet, restoreWalletFromFile)
+import           PlutusAppsExtra.Utils.Network      (HasNetworkId (..))
+import           Servant.Client                     (ClientError (FailureResponse), ClientM, ResponseF (responseBody, responseStatusCode),
+                                                     runClientM)
+import           Test.Hspec                         (Expectation, Spec, expectationFailure, hspec, it, shouldBe, shouldSatisfy)
 
 withCardanoServer :: ServerConstraints api => FilePath -> ServerHandle api -> Integer -> (HasServantClientEnv => Spec) -> IO ()
 withCardanoServer configFp sHandle minAdaInWallet specs = do
@@ -51,11 +55,19 @@ withCardanoServer configFp sHandle minAdaInWallet specs = do
             w <- restoreWalletFromFile fp
             (>= fromInteger minAdaInWallet) <$> runReaderT getWalletAda w
 
-instance HasChainIndex (ReaderT RestoredWallet IO) where
-    getChainIndex = pure Kupo
+instance HasNetworkId (ReaderT RestoredWallet IO) where
+    getNetworkId = pure $ Testnet (NetworkMagic 1)
+
+instance HasChainIndexProvider (ReaderT RestoredWallet IO) where
+    getChainIndexProvider = pure Kupo
+    getUtxosAt reqs addr = liftIO $ Kupo.getUtxosAt reqs addr
+    getUnspentTxOutFromRef reqs txOutRef = liftIO $ Kupo.getUnspentTxOutFromRef reqs txOutRef
 
 instance HasWallet (ReaderT RestoredWallet IO) where
     getRestoredWallet = ask
+
+instance HasWalletProvider (ReaderT RestoredWallet IO) where
+    getWalletProvider = pure Cardano
 
 shoudlFailWithStatus :: (Show a, HasServantClientEnv) => ClientM a -> Int -> Expectation
 shoudlFailWithStatus ma s = runClientM ma ?servantClientEnv >>= \case

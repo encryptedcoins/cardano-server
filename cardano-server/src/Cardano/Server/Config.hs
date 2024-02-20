@@ -20,9 +20,10 @@ import           Data.Text                      (Text)
 import           GHC.Generics                   (Generic)
 import           GHC.Stack                      (HasCallStack)
 import           Ledger                         (TxOutRef)
-import           PlutusAppsExtra.Api.Blockfrost (BfToken)
-import           PlutusAppsExtra.IO.ChainIndex  (ChainIndex)
+import           PlutusAppsExtra.IO.ChainIndex  (ChainIndexProvider)
 import qualified Servant.Client                 as Servant
+import PlutusAppsExtra.IO.Wallet (WalletProvider)
+import PlutusAppsExtra.IO.Tx (TxProvider)
 
 data Config = Config
     { cHost                   :: Text
@@ -36,10 +37,13 @@ data Config = Config
     , cAuxiliaryEnvFile       :: FilePath
     , cNodeFilePath           :: FilePath
     , cWalletFile             :: Maybe FilePath
-    , cBfToken                :: Maybe BfToken
+    , cBfTokenFilePath        :: Maybe FilePath
+    , cMaestroTokenFilePath   :: Maybe FilePath
     , cNetworkId              :: NetworkId
     , cCollateral             :: Maybe TxOutRef
-    , cChainIndex             :: Maybe ChainIndex
+    , cWalletProvider         :: Maybe WalletProvider
+    , cChainIndexProvider     :: Maybe ChainIndexProvider
+    , cTxProvider             :: Maybe TxProvider
     , cActiveEndpoints        :: [ServerEndpoint]
     } deriving (Show, Generic)
 

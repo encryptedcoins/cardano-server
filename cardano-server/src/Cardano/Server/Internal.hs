@@ -18,50 +18,57 @@
 
 module Cardano.Server.Internal where
 
-import           Cardano.Node.Emulator             (Params (..), pParamsFromProtocolParams)
-import           Cardano.Server.Config             (Config (..), Creds, HasCreds, HyperTextProtocol (..), ServerEndpoint,
-                                                    decodeOrErrorFromFile, schemeFromProtocol, CardanoServerConfig (..))
-import           Cardano.Server.Error              (Envelope, InternalServerError (..))
-import           Cardano.Server.Input              (InputContext)
-import           Cardano.Server.Utils.Logger       (HasLogger (..), Logger, logger)
-import           Cardano.Server.Utils.Wait         (waitTime)
-import           Cardano.Server.WalletEncryption   (loadWallet)
-import           Control.Concurrent                (MVar, newEmptyMVar)
-import           Control.Concurrent.Async          (async, wait)
-import           Control.Exception                 (SomeException, throw)
-import           Control.Lens                      ((^?))
-import           Control.Monad.Catch               (MonadCatch, MonadThrow (..))
-import           Control.Monad.Except              (MonadError (throwError))
-import           Control.Monad.Extra               (join, whenM, liftM3)
-import           Control.Monad.IO.Class            (MonadIO (..))
-import           Control.Monad.Reader              (MonadReader, ReaderT (ReaderT, runReaderT), asks, local)
-import           Data.Aeson                        (fromJSON)
-import qualified Data.Aeson                        as J
-import           Data.Aeson.Lens                   (key)
-import           Data.Default                      (Default (def))
-import           Data.Functor                      ((<&>))
-import           Data.IORef                        (IORef, newIORef)
-import           Data.Kind                         (Type)
-import           Data.Maybe                        (fromMaybe)
-import           Data.Sequence                     (Seq, empty)
-import           Data.Text                         (Text)
-import qualified Data.Text                         as T
-import           GHC.Stack                         (HasCallStack)
-import           Ledger                            (Address, NetworkId, TxOutRef)
-import           Network.Connection                (TLSSettings (TLSSettings))
-import           Network.HTTP.Client               (defaultManagerSettings, newManager)
-import           Network.HTTP.Client.TLS           (mkManagerSettings)
-import           Network.TLS                       (ClientHooks (onCertificateRequest, onServerCertificate),
-                                                    ClientParams (clientHooks, clientSupported), Supported (supportedCiphers),
-                                                    credentialLoadX509FromMemory, defaultParamsClient)
-import           Network.TLS.Extra.Cipher          (ciphersuite_default)
-import qualified PlutusAppsExtra.Api.Blockfrost    as BF
-import           PlutusAppsExtra.IO.ChainIndex     (ChainIndex, HasChainIndex (..))
-import           PlutusAppsExtra.IO.Wallet         (HasWallet (..), RestoredWallet)
-import           PlutusAppsExtra.Types.Tx          (TransactionBuilder)
-import           Servant                           (Handler, err404)
+import           Cardano.Node.Emulator              (Params (..), pParamsFromProtocolParams)
+import           Cardano.Server.Config              (CardanoServerConfig (..), Config (..), Creds, HasCreds, HyperTextProtocol (..),
+                                                     ServerEndpoint, decodeOrErrorFromFile, schemeFromProtocol)
+import           Cardano.Server.Error               (Envelope, InternalServerError (..))
+import           Cardano.Server.Input               (InputContext)
+import           Cardano.Server.Utils.Logger        (HasLogger (..), Logger, logger)
+import           Cardano.Server.Utils.Wait          (waitTime)
+import           Cardano.Server.WalletEncryption    (loadWallet)
+import           Control.Concurrent                 (MVar, newEmptyMVar)
+import           Control.Concurrent.Async           (async, wait)
+import           Control.Exception                  (SomeException, throw)
+import           Control.Lens                       ((^?))
+import           Control.Monad.Catch                (MonadCatch, MonadThrow (..))
+import           Control.Monad.Except               (MonadError (throwError))
+import           Control.Monad.Extra                (join, liftM3, whenM)
+import           Control.Monad.IO.Class             (MonadIO (..))
+import           Control.Monad.Reader               (MonadReader, ReaderT (ReaderT, runReaderT), asks, local)
+import           Data.Aeson                         (fromJSON)
+import qualified Data.Aeson                         as J
+import           Data.Aeson.Lens                    (key)
+import           Data.Default                       (Default (def))
+import           Data.Functor                       ((<&>))
+import           Data.IORef                         (IORef, newIORef)
+import           Data.Kind                          (Type)
+import           Data.Maybe                         (fromMaybe)
+import           Data.Sequence                      (Seq, empty)
+import           Data.Text                          (Text)
+import qualified Data.Text                          as T
+import           GHC.Stack                          (HasCallStack)
+import           Ledger                             (Address, NetworkId, TxOutRef)
+import           Network.Connection                 (TLSSettings (TLSSettings))
+import           Network.HTTP.Client                (defaultManagerSettings, newManager)
+import           Network.HTTP.Client.TLS            (mkManagerSettings)
+import           Network.TLS                        (ClientHooks (onCertificateRequest, onServerCertificate),
+                                                     ClientParams (clientHooks, clientSupported), Supported (supportedCiphers),
+                                                     credentialLoadX509FromMemory, defaultParamsClient)
+import           Network.TLS.Extra.Cipher           (ciphersuite_default)
+import qualified PlutusAppsExtra.Api.Blockfrost     as BF
+import           PlutusAppsExtra.Api.Maestro        (MaestroToken, MonadMaestro (..))
+import           PlutusAppsExtra.IO.ChainIndex      (ChainIndexProvider, HasChainIndexProvider (..))
+import           PlutusAppsExtra.IO.Tx              (HasTxProvider (..), TxProvider)
+import qualified PlutusAppsExtra.IO.Tx              as Tx
+import           PlutusAppsExtra.IO.Wallet          (HasWalletProvider (..), WalletProvider)
+import qualified PlutusAppsExtra.IO.Wallet          as Wallet
+import           PlutusAppsExtra.IO.Wallet.Internal (HasWallet (..), RestoredWallet)
+import           PlutusAppsExtra.Types.Tx           (TransactionBuilder)
+import           PlutusAppsExtra.Utils.Network      (HasNetworkId)
+import qualified PlutusAppsExtra.Utils.Network      as Network
+import           Servant                            (Handler, err404)
 import qualified Servant
-import qualified Servant.Client                    as Servant
+import qualified Servant.Client                     as Servant
 
 
 newtype ServerM api a = ServerM {unServerM :: ReaderT (Env api) Handler a}
@@ -83,11 +90,23 @@ instance HasLogger (ServerM api) where
     getLogger = asks envLogger
     getLoggerFilePath = asks envLoggerFilePath
 
+instance HasNetworkId (ServerM api) where
+    getNetworkId = getNetworkId
+
 instance HasWallet (ServerM api) where
     getRestoredWallet = asks envWallet <&> fromMaybe (throw NoWalletProvided)
 
-instance HasChainIndex (ServerM api) where
-    getChainIndex = asks envChainIndex
+instance HasChainIndexProvider (ServerM api) where
+    getChainIndexProvider = asks envChainIndexProvider
+
+instance MonadMaestro (ServerM api) where
+    getMaestroToken = asks envMaestroToken >>= maybe (throwM NoMaestroToken) pure
+
+instance HasWalletProvider (ServerM api) where
+    getWalletProvider = asks envWalletProvider
+
+instance HasTxProvider (ServerM api) where
+    getTxProvider = asks envTxProvider
 
 type family TxApiRequestOf api :: Type
 
@@ -127,7 +146,7 @@ class HasVersionEndpoint api where
 type VersionHandler api = ServerM api (VersionEndpointResOf api)
 
 data ServerHandle api = ServerHandle
-    { shDefaultCI              :: ChainIndex
+    { shDefaultCI              :: ChainIndexProvider
     , shAuxiliaryEnv           :: AuxillaryEnvOf api
     , shGetTrackedAddresses    :: ServerM api [Address]
     , shTxEndpointsTxBuilders  :: InputOf api -> ServerM api [TransactionBuilder ()]
@@ -146,12 +165,15 @@ data Env api = Env
     , envQueueRef              :: QueueRef api
     , envWallet                :: Maybe RestoredWallet
     , envBfToken               :: Maybe BF.BfToken
+    , envMaestroToken          :: Maybe MaestroToken
     , envMinUtxosNumber        :: Int
     , envMaxUtxosNumber        :: Int
     , envLedgerParams          :: Params
     , envCollateral            :: Maybe TxOutRef
     , envNodeFilePath          :: FilePath
-    , envChainIndex            :: ChainIndex
+    , envWalletProvider        :: WalletProvider
+    , envChainIndexProvider    :: ChainIndexProvider
+    , envTxProvider            :: TxProvider
     , envActiveEndpoints       :: [ServerEndpoint]
     , envLogger                :: Logger (ServerM api)
     , envLoggerFilePath        :: Maybe FilePath
@@ -201,6 +223,8 @@ loadEnv Config{..} ServerHandle{..} = do
         case val ^? key "cicSlotConfig" <&> fromJSON of
             Just (J.Success sc) -> pure sc
             _                   -> error "There is no slot config in chain index config file."
+    envBfToken      <- sequence $ decodeOrErrorFromFile <$> cBfTokenFilePath
+    envMaestroToken <- sequence $ decodeOrErrorFromFile <$> cMaestroTokenFilePath
     let envPort                = cPort
         envHost                = cHost
         envHyperTextProtocol   = cHyperTextProtocol
@@ -212,8 +236,9 @@ loadEnv Config{..} ServerHandle{..} = do
         envActiveEndpoints     = cActiveEndpoints
         envCollateral          = cCollateral
         envNodeFilePath        = cNodeFilePath
-        envChainIndex          = fromMaybe shDefaultCI cChainIndex
-        envBfToken             = cBfToken
+        envWalletProvider      = fromMaybe Wallet.Cardano cWalletProvider
+        envChainIndexProvider  = fromMaybe shDefaultCI cChainIndexProvider
+        envTxProvider          = fromMaybe Tx.Cardano cTxProvider
         envLogger              = logger
         envLoggerFilePath      = Nothing
         envServerHandle        = ServerHandle{..}

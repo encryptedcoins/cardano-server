@@ -21,7 +21,7 @@ import qualified Data.ByteString                     as BS
 import           Data.Functor                        ((<&>))
 import qualified Data.Text                           as T
 import           Data.Text.Class                     (ToText (toText))
-import           PlutusAppsExtra.IO.Wallet           (RestoredWallet (..))
+import           PlutusAppsExtra.IO.Wallet.Internal  (RestoredWallet (..))
 import           Test.Hspec                          (Expectation, Spec, describe, it, shouldBe)
 import           Test.QuickCheck                     (Arbitrary (arbitrary), property)
 import           Test.QuickCheck.Utf8                (genUtf8Character)

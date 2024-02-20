@@ -20,24 +20,35 @@ import qualified Cardano.Wallet.Primitive.SyncProgress as Wallet (SyncProgress (
 import           Control.Concurrent.Async              (async, wait)
 import           Control.Monad                         (forever, join, when)
 import           Control.Monad.Catch                   (Exception, MonadThrow (throwM), SomeException, handle)
+import           Control.Monad.Extra                   (whenM)
 import           Control.Monad.IO.Class                (MonadIO (..))
 import           Control.Monad.Reader                  (asks)
 import           Data.Data                             (Proxy (..))
+import           Data.Foldable.Extra                   (orM)
 import           Data.Text                             (Text)
 import qualified PlutusAppsExtra.Api.Kupo              as Kupo
+import           PlutusAppsExtra.IO.ChainIndex         (ChainIndexProvider (Plutus), HasChainIndexProvider (getChainIndexProvider))
+import qualified PlutusAppsExtra.IO.ChainIndex         as ChainIndex
 import qualified PlutusAppsExtra.IO.Node               as Node
+import           PlutusAppsExtra.IO.Tx                 (HasTxProvider (getTxProvider))
+import qualified PlutusAppsExtra.IO.Tx                 as Tx
+import           PlutusAppsExtra.IO.Wallet             (HasWalletProvider (getWalletProvider))
 import qualified PlutusAppsExtra.IO.Wallet             as Wallet
+import qualified PlutusAppsExtra.IO.Wallet.Cardano     as Wallet
 import qualified PlutusAppsExtra.Utils.Kupo            as Kupo
 import qualified Servant.Client                        as Servant
 
-doDiagnostics, nodeDiagnostics, walletDiagnostics, kupoDiagnostics, serverDiagnostics :: ServerM api ()
+doDiagnostics, nodeDiagnostics, cardanoWalletDiagnostics, kupoDiagnostics, serverDiagnostics :: ServerM api ()
 doDiagnostics = do
     i <- asks envDiagnosticsInterval
     forever $ do
         delay <- liftIO $ async $ waitTime i
-        withDiagnostics "cardano-node" nodeDiagnostics
-        withDiagnostics "cardano-wallet" walletDiagnostics
-        withDiagnostics "kupo" kupoDiagnostics
+        whenM (orM [(== Wallet.Cardano) <$> getWalletProvider, (== Tx.Cardano) <$> getTxProvider, (== Plutus) <$> getChainIndexProvider])
+            $ withDiagnostics "cardano-node" nodeDiagnostics
+        whenM ((== Wallet.Cardano) <$> getWalletProvider)
+            $ withDiagnostics "cardano-wallet" cardanoWalletDiagnostics
+        whenM ((== ChainIndex.Kupo) <$> getChainIndexProvider)
+            $ withDiagnostics "kupo" kupoDiagnostics
         withDiagnostics "server" serverDiagnostics
         liftIO $ wait delay
 
@@ -61,7 +72,7 @@ nodeDiagnostics = do
     liftIO Node.healthCheck
     logMsg "Cardano-node is alive."
 
-walletDiagnostics = do
+cardanoWalletDiagnostics = do
     res <- Wallet.getHealth
     when ((== Wallet.NotResponding) $ Wallet.getApiT $ Wallet.syncProgress res)
         $ throwM $ DiagnosticsError "Cardano-wallet sync progress: not responding."

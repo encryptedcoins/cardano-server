@@ -82,7 +82,7 @@ idleQueue st = do
     when (enoughTimePassed || firstTime) $ logMsg "No new inputs to process."
     checkForCleanUtxos
     serverIdle
-    waitTime 3
+    waitTime 60
     pure $ if enoughTimePassed then ct else st
 
 processQueueElem :: (Show (InputOf api)) => QueueRef api -> QueueElem api -> Queue api -> ServerM api ()
@@ -91,6 +91,7 @@ processQueueElem qRef QueueElem{..} elems = handle h $ do
         logMsg $ "New input to process:" .< qeInput <> "\nContext:" .< qeContext
         checkForCleanUtxos
         join $ liftM3 submitTx serverTrackedAddresses (pure qeContext) $ txEndpointsTxBuilders qeInput
+        logMsg "Submited."
         liftIO $ putMVar qeMvar $ Right ()
     where
         h = liftIO . putMVar qeMvar . Left
