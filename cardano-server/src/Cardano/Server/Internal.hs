@@ -55,7 +55,7 @@ import           Network.TLS                        (ClientHooks (onCertificateR
                                                      ClientParams (clientHooks, clientSupported), Supported (supportedCiphers),
                                                      credentialLoadX509FromMemory, defaultParamsClient)
 import           Network.TLS.Extra.Cipher           (ciphersuite_default)
-import qualified PlutusAppsExtra.Api.Blockfrost     as BF
+import           PlutusAppsExtra.Api.Blockfrost     (BlockfrostToken)
 import           PlutusAppsExtra.Api.Maestro        (MaestroToken, MonadMaestro (..))
 import           PlutusAppsExtra.IO.ChainIndex      (ChainIndexProvider, HasChainIndexProvider (..))
 import           PlutusAppsExtra.IO.Tx              (HasTxProvider (..), TxProvider)
@@ -164,7 +164,7 @@ data Env api = Env
     , envCreds                 :: Creds
     , envQueueRef              :: QueueRef api
     , envWallet                :: Maybe RestoredWallet
-    , envBfToken               :: Maybe BF.BfToken
+    , envBlockfrostToken       :: Maybe BlockfrostToken
     , envMaestroToken          :: Maybe MaestroToken
     , envMinUtxosNumber        :: Int
     , envMaxUtxosNumber        :: Int
@@ -223,8 +223,8 @@ loadEnv Config{..} ServerHandle{..} = do
         case val ^? key "cicSlotConfig" <&> fromJSON of
             Just (J.Success sc) -> pure sc
             _                   -> error "There is no slot config in chain index config file."
-    envBfToken      <- sequence $ decodeOrErrorFromFile <$> cBfTokenFilePath
-    envMaestroToken <- sequence $ decodeOrErrorFromFile <$> cMaestroTokenFilePath
+    envBlockfrostToken <- sequence $ decodeOrErrorFromFile <$> cBfTokenFilePath
+    envMaestroToken    <- sequence $ decodeOrErrorFromFile <$> cMaestroTokenFilePath
     let envPort                = cPort
         envHost                = cHost
         envHyperTextProtocol   = cHyperTextProtocol
