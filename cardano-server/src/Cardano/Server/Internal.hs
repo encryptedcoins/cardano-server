@@ -60,9 +60,8 @@ import           PlutusAppsExtra.Api.Maestro        (MaestroToken, MonadMaestro 
 import           PlutusAppsExtra.IO.ChainIndex      (ChainIndexProvider, HasChainIndexProvider (..))
 import           PlutusAppsExtra.IO.Tx              (HasTxProvider (..), TxProvider)
 import qualified PlutusAppsExtra.IO.Tx              as Tx
-import           PlutusAppsExtra.IO.Wallet          (HasWalletProvider (..), WalletProvider)
+import           PlutusAppsExtra.IO.Wallet          (HasWallet (..), RestoredWallet, HasWalletProvider (..), WalletProvider)
 import qualified PlutusAppsExtra.IO.Wallet          as Wallet
-import           PlutusAppsExtra.IO.Wallet.Internal (HasWallet (..), RestoredWallet)
 import           PlutusAppsExtra.Types.Tx           (TransactionBuilder)
 import           PlutusAppsExtra.Utils.Network      (HasNetworkId)
 import qualified PlutusAppsExtra.Utils.Network      as Network
