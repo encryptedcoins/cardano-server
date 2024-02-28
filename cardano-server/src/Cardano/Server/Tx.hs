@@ -142,7 +142,6 @@ checkForCleanUtxos :: ServerM api ()
 checkForCleanUtxos = mkTxErrorH $ do
     logMsg "Checking for clean utxos..."
     addr       <- PlutusAppsExtra.IO.Wallet.getWalletAddr
-    logMsg "Got wallet address."
     cleanUtxos <- length . filterCleanUtxos <$> PlutusAppsExtra.IO.Wallet.getWalletUtxos mempty
     minUtxos   <- asks envMinUtxosNumber
     maxUtxos   <- asks envMaxUtxosNumber

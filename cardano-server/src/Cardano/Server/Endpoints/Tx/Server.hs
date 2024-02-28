@@ -82,7 +82,6 @@ idleQueue st = do
     when (enoughTimePassed || firstTime) $ logMsg "No new inputs to process."
     checkForCleanUtxos
     serverIdle
-    waitTime 60
     pure $ if enoughTimePassed then ct else st
 
 processQueueElem :: (Show (InputOf api)) => QueueRef api -> QueueElem api -> Queue api -> ServerM api ()
