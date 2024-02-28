@@ -27,8 +27,7 @@ import           Data.Maybe                         (fromJust)
 import           Data.Text                          (Text)
 import           PlutusAppsExtra.IO.ChainIndex      (ChainIndexProvider (..), HasChainIndexProvider (..))
 import qualified PlutusAppsExtra.IO.ChainIndex.Kupo as Kupo
-import           PlutusAppsExtra.IO.Wallet          (HasWalletProvider (getWalletProvider), WalletProvider (Cardano), getWalletAda)
-import           PlutusAppsExtra.IO.Wallet.Internal (HasWallet (..), RestoredWallet, restoreWalletFromFile)
+import           PlutusAppsExtra.IO.Wallet          (HasWalletProvider (getWalletProvider), WalletProvider (Cardano), getWalletAda, HasWallet (..), RestoredWallet, restoreWalletFromFile)
 import           PlutusAppsExtra.Utils.Network      (HasNetworkId (..))
 import           Servant.Client                     (ClientError (FailureResponse), ClientM, ResponseF (responseBody, responseStatusCode),
                                                      runClientM)

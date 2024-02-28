@@ -38,7 +38,7 @@ import           Data.Text.Class                    (FromText (fromText), TextDe
 import qualified Data.Text.Encoding                 as T
 import qualified Data.Text.IO                       as T
 import           GHC.Generics                       (Generic)
-import           PlutusAppsExtra.IO.Wallet.Internal (RestoredWallet (..))
+import           PlutusAppsExtra.IO.Wallet          (RestoredWallet (..))
 import qualified Text.Hex                           as T
 
 data ServerWallet
