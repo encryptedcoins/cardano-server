@@ -140,16 +140,13 @@ mkTx addressesTracked ctx txs = submitTx addressesTracked ctx txs >>= awaitTxCon
 
 checkForCleanUtxos :: ServerM api ()
 checkForCleanUtxos = mkTxErrorH $ do
-    logMsg "Checking for clean utxos..."
     addr       <- PlutusAppsExtra.IO.Wallet.getWalletAddr
     cleanUtxos <- length . filterCleanUtxos <$> PlutusAppsExtra.IO.Wallet.getWalletUtxos mempty
     minUtxos   <- asks envMinUtxosNumber
     maxUtxos   <- asks envMaxUtxosNumber
-    logMsg "Got utxos."
     when (cleanUtxos < minUtxos) $ do
         logMsg $ "Address doesn't has enough clean UTXO's: " <> (T.pack . show $ minUtxos - cleanUtxos)
         void $ mkWalletTxOutRefs addr (maxUtxos - cleanUtxos)
-    logMsg "Finished checking for clean utxos."
 
 mkWalletTxOutRefs :: MkTxConstrains m => Address -> Int -> m [TxOutRef]
 mkWalletTxOutRefs addr n = do
