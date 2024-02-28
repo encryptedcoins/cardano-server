@@ -39,10 +39,10 @@ autoModeParser = Auto <$> option auto
 -------------------------------------------- Manual --------------------------------------------
 
 manualModeParser :: Parser Mode
-manualModeParser = Manual <$> strOption 
+manualModeParser = Manual <$> strOption
     (  short 'm'
-    <> long "manual" 
-    <> help "Text representation of client argument" 
-    <> value "" 
+    <> long "manual"
+    <> help "Text representation of client argument"
+    <> value ""
     <> metavar "TEXT"
     )

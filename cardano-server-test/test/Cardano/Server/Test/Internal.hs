@@ -8,11 +8,10 @@
 
 module Cardano.Server.Test.Internal where
 
-import           Cardano.Server.Client.Client  (createServantClientEnv)
 import           Cardano.Server.Client.Handle  (HasServantClientEnv)
-import           Cardano.Server.Config         (Config (cWalletFile), decodeOrErrorFromFile)
+import           Cardano.Server.Config         (Config (..), decodeOrErrorFromFile)
 import           Cardano.Server.Error          (parseErrorText)
-import           Cardano.Server.Internal       (ServerHandle, envLogger, loadEnv)
+import           Cardano.Server.Internal       (ServerHandle, envLogger, mkServantClientEnv, loadEnv)
 import           Cardano.Server.Main           (ServerConstraints, runServer')
 import           Cardano.Server.Utils.Logger   (mutedLogger)
 import           Cardano.Server.Utils.Wait     (waitTime)
@@ -29,13 +28,14 @@ import           PlutusAppsExtra.IO.ChainIndex (ChainIndex (Kupo), HasChainIndex
 import           PlutusAppsExtra.IO.Wallet     (HasWallet (..), RestoredWallet, getWalletAda, restoreWalletFromFile)
 import           Servant.Client                (ClientError (FailureResponse), ClientM,
                                                 ResponseF (responseBody, responseStatusCode), runClientM)
-import           Test.Hspec                    (Expectation, Spec, expectationFailure, hspec, shouldBe, shouldSatisfy, it)
+import           Test.Hspec                    (Expectation, Spec, expectationFailure, hspec, it, shouldBe, shouldSatisfy)
 
 withCardanoServer :: ServerConstraints api => FilePath -> ServerHandle api -> Integer -> (HasServantClientEnv => Spec) -> IO ()
 withCardanoServer configFp sHandle minAdaInWallet specs = do
     config <- decodeOrErrorFromFile configFp
+    let ?creds = Nothing
     env <- loadEnv config sHandle
-    sce <- createServantClientEnv config
+    sce <- mkServantClientEnv (cPort config) (cHost config) (cHyperTextProtocol config)
     let ?servantClientEnv = sce
     walletHasEnouhgAda <- checkWalletHasMinAda $ fromJust $ cWalletFile config
     bracket
@@ -44,7 +44,7 @@ withCardanoServer configFp sHandle minAdaInWallet specs = do
         const $ (waitTime 5 >>) $ hspec $ do
             specs
             unless walletHasEnouhgAda
-                $ it                 "The wallet has no minimum amount of ada." 
+                $ it                 "The wallet has no minimum amount of ada."
                 $ expectationFailure "This may cause some tests to fail. Please replenish your wallet and re-run the tests."
     where
         checkWalletHasMinAda fp = do
@@ -56,7 +56,6 @@ instance HasChainIndex (ReaderT RestoredWallet IO) where
 
 instance HasWallet (ReaderT RestoredWallet IO) where
     getRestoredWallet = ask
-    
 
 shoudlFailWithStatus :: (Show a, HasServantClientEnv) => ClientM a -> Int -> Expectation
 shoudlFailWithStatus ma s = runClientM ma ?servantClientEnv >>= \case

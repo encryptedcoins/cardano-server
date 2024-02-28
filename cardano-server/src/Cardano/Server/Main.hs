@@ -3,11 +3,13 @@
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE ImplicitParams        #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE PatternSynonyms       #-}
 {-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
@@ -15,7 +17,8 @@
 
 module Cardano.Server.Main where
 
-import           Cardano.Server.Config                (Config)
+import           Cardano.Server.Config                (CardanoServerConfig (..), Config, Creds, HasCreds, HyperTextProtocol (..))
+import           Cardano.Server.Diagnostics           (doDiagnostics)
 import           Cardano.Server.Endpoints.Ping        (PingApi, pingHandler)
 import           Cardano.Server.Endpoints.Status      (StatusApi, commonStatusHandler)
 import           Cardano.Server.Endpoints.Tx.Internal (TxApiErrorOf)
@@ -24,25 +27,28 @@ import           Cardano.Server.Endpoints.Tx.Server   (ServerTxApi, processQueue
 import           Cardano.Server.Endpoints.Tx.Submit   (SubmitTxApi, submitTxHandler)
 import           Cardano.Server.Endpoints.Utxos       (UtxosApi, utxosHandler)
 import           Cardano.Server.Endpoints.Version     (VersionApi, serverVersionHandler)
-import           Cardano.Server.Error.Class           (IsCardanoServerError)
-import           Cardano.Server.Error.CommonErrors    (ConnectionError (..))
-import           Cardano.Server.Internal              (Env (..), HasStatusEndpoint (..), HasVersionEndpoint (..), InputOf, ServerHandle (..), ServerM (..),
-                                                       TxApiRequestOf, envLoggerFilePath, loadEnv, runServerM)
+import           Cardano.Server.Error                 (ConnectionError (..), logCriticalExceptions, IsCardanoServerError)
+import           Cardano.Server.Internal              (Env (..), HasStatusEndpoint (..), HasVersionEndpoint (..), InputOf,
+                                                       ServerHandle (..), ServerM (..), TxApiRequestOf, loadEnv, runServerM)
 import           Cardano.Server.Tx                    (checkForCleanUtxos)
-import           Cardano.Server.Utils.Logger          (logMsg, (.<))
+import           Cardano.Server.Utils.Logger          (HasLogger, logMsg, (.<))
+import           Cardano.Server.Utils.Wait            (waitTime)
 import           Control.Concurrent                   (forkIO)
-import           Control.Exception                    (Handler (Handler), catches)
-import           Control.Monad.Reader                 (ReaderT (runReaderT), asks, ask)
+import           Control.Exception                    (Handler (Handler), catches, throw)
+import           Control.Monad.IO.Class               (MonadIO (..))
+import           Control.Monad.Reader                 (ReaderT (runReaderT), ask, asks)
+import           Data.FileEmbed                       (embedFileIfExists)
 import qualified Data.Text.Encoding                   as T
 import qualified Data.Text.IO                         as T
 import           Network.HTTP.Client                  (path)
 import qualified Network.Wai                          as Wai
 import qualified Network.Wai.Handler.Warp             as Warp
+import qualified Network.Wai.Handler.WarpTLS          as Warp
 import           Network.Wai.Middleware.Cors          (CorsResourcePolicy (..), cors, simpleCorsResourcePolicy)
-import           PlutusAppsExtra.IO.ChainIndex.Kupo   (pattern KupoConnectionError)
+import           PlutusAppsExtra.Api.Kupo             (pattern KupoConnectionError)
 import           PlutusAppsExtra.IO.ChainIndex.Plutus (pattern PlutusChainIndexConnectionError)
 import           PlutusAppsExtra.IO.Wallet            (pattern WalletApiConnectionError)
-import           Servant                              (Application, Proxy (..), ServerT, hoistServer, serve, type (:<|>) (..))
+import           Servant                              (Proxy (..), ServerT, hoistServer, serve, type (:<|>) (..))
 import qualified Servant
 import           System.IO                            (BufferMode (LineBuffering), hSetBuffering, stdout)
 
@@ -108,10 +114,7 @@ server
 serverAPI :: forall api. Proxy (ServerApi' api)
 serverAPI = Proxy @(ServerApi' api)
 
-runServer :: ServerConstraints api
-  => Config
-  -> ServerHandle api
-  -> IO ()
+runServer :: (ServerConstraints api, HasCreds) => Config -> ServerHandle api -> IO ()
 runServer c sh = (`catches` errorHanlders) $ loadEnv c sh >>= runServer'
     where
         errorHanlders = [Handler connectionErroH]
@@ -121,29 +124,53 @@ runServer c sh = (`catches` errorHanlders) $ loadEnv c sh >>= runServer'
             WalletApiConnectionError{}        -> "Cardano wallet"
             ConnectionError req _             -> T.decodeUtf8 $ path req
 
-runServer' :: ServerConstraints api => Env api -> IO ()
-runServer' env = do
-        hSetBuffering stdout LineBuffering
-        forkIO $ processQueue env
-        prepareServer
-        Warp.runSettings settings $ mkApp env {envLoggerFilePath = Just "server.log"}
+runServer' :: forall api. (ServerConstraints api, HasCreds) => Env api -> IO ()
+runServer' env = runCardanoServer @(ServerApi' api) env runApp server beforeMainLoop
     where
-        prepareServer = runServerM env $ do
+        runApp :: ServerM api a -> Servant.Handler a
+        runApp = (`runReaderT` env) . unServerM
+        beforeMainLoop = do
+            liftIO $ forkIO $ processQueue env
             logMsg "Starting server..."
+            liftIO $ forkIO $ waitTime 10 >> runServerM env doDiagnostics
             checkForCleanUtxos
+
+runCardanoServer :: forall api m c.
+    ( CardanoServerConfig c
+    , Servant.HasServer api '[]
+    , HasLogger m
+    , HasCreds
+    ) => c -> (forall a. m a -> Servant.Handler a) -> ServerT api m -> m () -> IO ()
+runCardanoServer config runApp serverApp beforeMainLoop = do
+    hSetBuffering stdout LineBuffering
+    case (configHyperTextProtocol config, ?creds) of
+        (HTTP, _)                 -> Warp.runSettings settings app
+        (HTTPS, Just (cert, key)) -> Warp.runTLS (Warp.tlsSettingsMemory cert key) settings app
+        (HTTPS, Nothing)          -> error noCredsMsg
+    where
+        app = corsWithContentType $ serve (Proxy @api) $ hoistServer (Proxy @api) runApp serverApp
+        runHandler = fmap (either throw id) . Servant.runHandler
         settings = Warp.setLogger logReceivedRequest
                  $ Warp.setOnException (const logException)
-                 $ Warp.setPort (envPort env)
+                 $ Warp.setPort (configPort config)
+                 $ Warp.setBeforeMainLoop (runHandler $ runApp beforeMainLoop)
                    Warp.defaultSettings
-        logReceivedRequest req status _ = runServerM env $
+        logReceivedRequest req status _ = runHandler $ runApp $
             logMsg $ "Received request:\n" .< req <> "\nStatus:\n" .< status
-        logException e = runServerM env $
-            logMsg $ "Unhandled exception:\n" .< e
+        logException = runHandler . runApp . logCriticalExceptions
+        noCredsMsg = "No creds given to run with HTTPS. \
+                     \Add key.pem and certificate.pem file before compilation. \
+                     \If this message doesn't go away, try running `cabal clean` first."
+
+-- Embed https cert and key files on compilation
+embedCreds :: Creds
+embedCreds =
+    let keyCred  = $(embedFileIfExists "../key.pem" )
+        certCred = $(embedFileIfExists "../certificate.pem")
+    in (,) <$> certCred <*> keyCred
 
 corsWithContentType :: Wai.Middleware
 corsWithContentType = cors (const $ Just policy)
-    where policy = simpleCorsResourcePolicy { corsRequestHeaders = ["Content-Type"] }
-
-mkApp :: forall api. ServerConstraints api => Env api -> Application
-mkApp env
-    = corsWithContentType $ serve (serverAPI @api) $ hoistServer (serverAPI @api) ((`runReaderT` env) . unServerM) server
+    where policy = simpleCorsResourcePolicy
+            { corsRequestHeaders = ["Content-Type"]
+            }

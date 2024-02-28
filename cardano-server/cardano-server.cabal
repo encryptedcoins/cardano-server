@@ -38,6 +38,7 @@ library
     import: lang
     exposed-modules:
       Cardano.Server.Config
+      Cardano.Server.Diagnostics
       Cardano.Server.Endpoints.Ping
       Cardano.Server.Endpoints.Status
       Cardano.Server.Endpoints.Tx.Internal
@@ -48,7 +49,6 @@ library
       Cardano.Server.Endpoints.Version
       Cardano.Server.Error
       Cardano.Server.Error.Class
-      Cardano.Server.Error.CommonErrors
       Cardano.Server.Error.Servant
       Cardano.Server.Error.ToEnvelope
       Cardano.Server.Error.Utils
@@ -69,6 +69,8 @@ library
       cardano-addresses                      -any,
       cardano-api                            -any,
       cardano-node-emulator                  -any,
+      cardano-wallet-core                    -any,
+      connection                             -any,
       containers                             -any,
       cryptonite                             -any,
       csl-types                              -any,
@@ -76,6 +78,7 @@ library
       directory                              -any,
       exceptions                             -any,
       extra                                  -any,
+      file-embed                             -any,
       filepath                               -any,
       hex-text                               -any,
       http-types                             -any,
@@ -84,6 +87,7 @@ library
       memory                                 -any,
       mtl                                    -any,
       http-client                            -any,
+      http-client-tls                        -any,
       plutus-apps-extra                      -any,
       plutus-ledger                          -any,
       plutus-ledger-api                      -any,
@@ -98,7 +102,9 @@ library
       text                                   -any,
       text-class                             -any,
       time                                   -any,
+      tls                                    -any,
       wai                                    -any,
       wai-cors                               -any,
       warp                                   -any,
+      warp-tls                               -any,
     hs-source-dirs: src

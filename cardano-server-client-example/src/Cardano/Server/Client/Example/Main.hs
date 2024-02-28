@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds            #-}
+{-# LANGUAGE ImplicitParams       #-}
 {-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE TupleSections        #-}
 {-# LANGUAGE TypeFamilies         #-}
@@ -11,6 +12,7 @@ import           Cardano.Server.Client.Handle (ClientHandle (..), autoWith, auto
 import           Cardano.Server.Config        (decodeOrErrorFromFile)
 import           Cardano.Server.Example.Main  (ExampleApi, exampleServerHandle)
 import           Cardano.Server.Input         (InputContext)
+import           Cardano.Server.Main          (embedCreds)
 import           Control.Monad                (replicateM)
 import           Control.Monad.IO.Class       (MonadIO (liftIO))
 import           Data.Default                 (Default (def))
@@ -24,13 +26,14 @@ import           System.Random                (randomIO, randomRIO)
 runExampleClient :: FilePath -> IO ()
 runExampleClient configFp = do
     config <- decodeOrErrorFromFile configFp
+    let ?creds = embedCreds
     runClient config exampleServerHandle exampleClientHandle
 
 exampleClientHandle :: ClientHandle ExampleApi
 exampleClientHandle = def
     { autoNewTx      = autoWith   genInput
     , autoServerTx   = autoWith   genInput
-    , autoStatus     = autoWithRandom   
+    , autoStatus     = autoWithRandom
     , manualNewTx    = manualWith readInput
     , manualServerTx = manualWith readInput
     , manualStatus   = manualWithRead

@@ -102,7 +102,6 @@ instance ( Show (StatusEndpointReqBodyOf api)
     type EndpointRes 'StatusE api = StatusEndpointResOf api
     endpointClient                = statusC @api
 
-
 instance ( Show (VersionEndpointResOf api)
          , HasClient ClientM (Get '[JSON] (VersionEndpointResOf api))
          ) => ClientEndpoint 'VersionE api where

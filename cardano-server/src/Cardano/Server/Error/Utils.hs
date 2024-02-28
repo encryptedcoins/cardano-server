@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeOperators  #-}
 
 module Cardano.Server.Error.Utils where
-    
+
 import           Data.Kind (Constraint, Type)
 
 type family All (constr :: Type -> Constraint) (xs :: [Type]) :: Constraint where

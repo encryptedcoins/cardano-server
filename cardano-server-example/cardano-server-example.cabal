@@ -38,6 +38,7 @@ library
     build-depends:
       base                          >= 4.9 && < 5,
       cardano-server                         -any,
+      cardano-server-client                  -any,
       cardano-ledger-alonzo                  -any,
       exceptions                             -any,
       mtl                                    -any,
@@ -48,6 +49,7 @@ library
       plutus-script-utils                    -any,
       plutus-tx                              -any,
       plutus-tx-plugin                       -any,
+      servant-client                         -any,
       text                                   -any,
     hs-source-dirs: src
 
