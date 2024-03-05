@@ -19,7 +19,7 @@ import           Network.HTTP.Types                   (Status)
 import qualified Network.HTTP.Types.Header
 import           PlutusAppsExtra.Api.Kupo             (pattern KupoConnectionError)
 import           PlutusAppsExtra.IO.ChainIndex.Plutus (pattern PlutusChainIndexConnectionError)
-import           PlutusAppsExtra.IO.Wallet            (pattern WalletApiConnectionError)
+import           PlutusAppsExtra.IO.Wallet.Cardano    (pattern CardanoWalletApiConnectionError)
 import           PlutusAppsExtra.Types.Error          (BalanceExternalTxError (..), ConnectionError (..), MkTxError (..),
                                                        SubmitTxToLocalNodeError (..))
 import qualified Servant
@@ -100,6 +100,7 @@ instance IsCardanoServerError SomeException where
 
 data InternalServerError
     = NoWalletProvided
+    | NoMaestroToken
     deriving (Show, Exception)
 
 instance IsCardanoServerError ConnectionError where
@@ -107,7 +108,7 @@ instance IsCardanoServerError ConnectionError where
     errMsg = \case
         PlutusChainIndexConnectionError{} -> toMsg "Caradno chain index API"
         KupoConnectionError{}             -> toMsg "Kupo chain index API"
-        WalletApiConnectionError{}        -> toMsg "Cardano wallet API"
+        CardanoWalletApiConnectionError{} -> toMsg "Cardano wallet API"
         _                                 -> toMsg "Some external API"
         where toMsg = (<> " is currently unavailable. Try again later.")
 

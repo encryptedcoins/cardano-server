@@ -19,13 +19,13 @@ common lang
       -Wnoncanonical-monad-instances
       -Wredundant-constraints
       -Wno-unused-do-bind
-      
+
       -- See Plutus Tx readme
       -fno-ignore-interface-pragmas
       -fno-omit-interface-pragmas
       -fno-specialise
       -fno-strictness
-      -fobject-code       
+      -fobject-code
       -fplugin-opt PlutusTx.Plugin:defer-errors
 
 library
@@ -37,6 +37,7 @@ library
   build-depends:
     base                          >= 4.9 && < 5,
     aeson                                  -any,
+    cardano-api                            -any,
     cardano-server                         -any,
     cardano-server-client                  -any,
     hspec                                  -any,
@@ -54,7 +55,7 @@ test-suite cardano-server-test
                         -fplugin-opt PlutusTx.Plugin:defer-errors
                         -Wall
   Main-Is:              Main.hs
-  Other-Modules:        
+  Other-Modules:
                         Cardano.Server.Client.OptsSpec
                         Cardano.Server.Endpoints.UtxosSpec
                         Cardano.Server.Endpoints.PingSpec
@@ -69,6 +70,7 @@ test-suite cardano-server-test
     bytestring                             -any,
     aeson                                  -any,
     cardano-addresses                      -any,
+    cardano-api                            -any,
     cardano-server                         -any,
     cardano-server-example                 -any,
     cardano-server-client                  -any,

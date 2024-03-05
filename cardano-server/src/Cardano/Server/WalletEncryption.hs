@@ -10,36 +10,36 @@
 
 module Cardano.Server.WalletEncryption where
 
-import           Cardano.Mnemonic          (MkSomeMnemonic (mkSomeMnemonic), MkSomeMnemonicError, SomeMnemonic (..),
-                                            mnemonicToText)
-import           Cardano.Server.Config     (decodeOrErrorFromFile)
-import           Control.Applicative       ((<|>))
-import           Control.Exception         (Exception, SomeException, handle)
-import           Control.Monad             ((>=>))
-import           Control.Monad.Catch       (throwM)
-import           Crypto.Cipher.AES         (AES256)
-import           Crypto.Cipher.Types       (BlockCipher (..), Cipher (cipherInit), IV, makeIV)
-import           Crypto.Error              (CryptoError (..), CryptoFailable (..))
-import qualified Crypto.Hash               as Hash
-import           Crypto.Hash.Algorithms    (MD5)
-import qualified Crypto.Random.Types       as CRT
-import           Data.Aeson                (FromJSON (..), KeyValue ((.=)), ToJSON (..), (.:))
-import qualified Data.Aeson                as J
-import           Data.Bifunctor            (Bifunctor (bimap, first))
-import           Data.ByteArray            (ByteArray)
-import qualified Data.ByteArray            as BA
-import           Data.ByteString           (ByteString)
-import qualified Data.ByteString           as BS
-import           Data.Either.Extra         (maybeToEither)
-import           Data.String               (IsString (..))
-import           Data.Text                 (Text)
-import qualified Data.Text                 as T
-import           Data.Text.Class           (FromText (fromText), TextDecodingError, ToText (toText))
-import qualified Data.Text.Encoding        as T
-import qualified Data.Text.IO              as T
-import           GHC.Generics              (Generic)
-import           PlutusAppsExtra.IO.Wallet (RestoredWallet (..))
-import qualified Text.Hex                  as T
+import           Cardano.Mnemonic                   (MkSomeMnemonic (mkSomeMnemonic), MkSomeMnemonicError, SomeMnemonic (..),
+                                                     mnemonicToText)
+import           Cardano.Server.Config              (decodeOrErrorFromFile)
+import           Control.Applicative                ((<|>))
+import           Control.Exception                  (Exception, SomeException, handle)
+import           Control.Monad                      ((>=>))
+import           Control.Monad.Catch                (throwM)
+import           Crypto.Cipher.AES                  (AES256)
+import           Crypto.Cipher.Types                (BlockCipher (..), Cipher (cipherInit), IV, makeIV)
+import           Crypto.Error                       (CryptoError (..), CryptoFailable (..))
+import qualified Crypto.Hash                        as Hash
+import           Crypto.Hash.Algorithms             (MD5)
+import qualified Crypto.Random.Types                as CRT
+import           Data.Aeson                         (FromJSON (..), KeyValue ((.=)), ToJSON (..), (.:))
+import qualified Data.Aeson                         as J
+import           Data.Bifunctor                     (Bifunctor (bimap, first))
+import           Data.ByteArray                     (ByteArray)
+import qualified Data.ByteArray                     as BA
+import           Data.ByteString                    (ByteString)
+import qualified Data.ByteString                    as BS
+import           Data.Either.Extra                  (maybeToEither)
+import           Data.String                        (IsString (..))
+import           Data.Text                          (Text)
+import qualified Data.Text                          as T
+import           Data.Text.Class                    (FromText (fromText), TextDecodingError, ToText (toText))
+import qualified Data.Text.Encoding                 as T
+import qualified Data.Text.IO                       as T
+import           GHC.Generics                       (Generic)
+import           PlutusAppsExtra.IO.Wallet          (RestoredWallet (..))
+import qualified Text.Hex                           as T
 
 data ServerWallet
     = UnEncrypted RestoredWallet
