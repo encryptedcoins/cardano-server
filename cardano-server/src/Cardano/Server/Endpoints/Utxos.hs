@@ -12,7 +12,6 @@ module Cardano.Server.Endpoints.Utxos where
 
 import qualified CSL
 import           CSL.Class                     (toCSL)
-import           Cardano.Server.Config         (ServerEndpoint (UtxosE))
 import           Cardano.Server.Error          (ConnectionError, CslError (..), Envelope,
                                                 IsCardanoServerError (errMsg, errStatus), Throws, toEnvelope)
 import           Cardano.Server.Internal       (ServerM, checkEndpointAvailability, getNetworkId)
@@ -47,7 +46,7 @@ instance IsCardanoServerError UtxosError where
 utxosHandler :: Text -> ServerM api (Envelope '[UtxosError, ConnectionError, CslError] CSL.TransactionUnspentOutputs)
 utxosHandler addrTxt = toEnvelope $ do
     logMsg $ "New utxos request received:\n" .< addrTxt
-    checkEndpointAvailability UtxosE
+    checkEndpointAvailability "Utxos"
     let !addr = fromMaybe (throw UnparsableAddress) $ bech32ToAddress addrTxt
     networkId <- getNetworkId
     fromMaybe (throw CslConversionError) . toCSL . (, networkId) .

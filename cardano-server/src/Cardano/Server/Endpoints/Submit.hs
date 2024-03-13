@@ -9,11 +9,9 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators       #-}
 
-module Cardano.Server.Endpoints.Tx.Submit where
+module Cardano.Server.Endpoints.Submit where
 
-import           Cardano.Server.Config                (ServerEndpoint (SubmitTxE))
 import           Cardano.Node.Emulator                (Params (..))
-import           Cardano.Server.Endpoints.Tx.Internal (TxApiErrorOf)
 import           Cardano.Server.Error                 (ConnectionError, Envelope, IsCardanoServerError (..),
                                                        SubmitTxToLocalNodeError, Throws, toEnvelope)
 import           Cardano.Server.Internal              (Env (..), ServerM, checkEndpointAvailability)
@@ -56,12 +54,12 @@ instance IsCardanoServerError SubmitTxApiError where
     errMsg (UnparsableTx tx)          = "Cannot parse CardanoTx from hex:" .< tx
     errMsg (UnparsableWitnesses wtns) = "Cannot parse witnesses from hex:" .< wtns
 
-submitTxHandler :: IsCardanoServerError (TxApiErrorOf api)
+submitTxHandler :: IsCardanoServerError err
     => SubmitTxReqBody
-    -> ServerM api (Envelope '[TxApiErrorOf api, SubmitTxApiError, SubmitTxToLocalNodeError, ConnectionError] NoContent)
+    -> ServerM api (Envelope '[err, SubmitTxApiError, SubmitTxToLocalNodeError, ConnectionError] NoContent)
 submitTxHandler req = toEnvelope $ do
     logMsg $ "New submitTx request received:\n" .< req
-    checkEndpointAvailability SubmitTxE
+    checkEndpointAvailability "SumbitTx"
     (ctx, wtns) <- either throwM pure $ parseSubmitTxReqBody req
     let ctx' = foldr (uncurry addCardanoTxSignature) ctx wtns
     networkId <- asks $ pNetworkId . envLedgerParams

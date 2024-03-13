@@ -20,15 +20,13 @@ module Cardano.Server.Internal where
 
 import           Cardano.Node.Emulator              (Params (..), pParamsFromProtocolParams)
 import           Cardano.Server.Config              (CardanoServerConfig (..), Config (..), Creds, HasCreds, HyperTextProtocol (..),
-                                                     ServerEndpoint, decodeOrErrorFromFile, schemeFromProtocol)
-import           Cardano.Server.Error               (Envelope, InternalServerError (..))
-import           Cardano.Server.Input               (InputContext)
+                                                     decodeOrErrorFromFile, schemeFromProtocol)
+import           Cardano.Server.Error               (InternalServerError (..))
 import           Cardano.Server.Utils.Logger        (HasLogger (..), Logger, logger)
 import           Cardano.Server.Utils.Wait          (waitTime)
 import           Cardano.Server.WalletEncryption    (loadWallet)
-import           Control.Concurrent                 (MVar, newEmptyMVar)
 import           Control.Concurrent.Async           (async, wait)
-import           Control.Exception                  (SomeException, throw)
+import           Control.Exception                  (throw)
 import           Control.Lens                       ((^?))
 import           Control.Monad.Catch                (MonadCatch, MonadThrow (..))
 import           Control.Monad.Except               (MonadError (throwError))
@@ -40,14 +38,12 @@ import qualified Data.Aeson                         as J
 import           Data.Aeson.Lens                    (key)
 import           Data.Default                       (Default (def))
 import           Data.Functor                       ((<&>))
-import           Data.IORef                         (IORef, newIORef)
 import           Data.Kind                          (Type)
 import           Data.Maybe                         (fromMaybe)
-import           Data.Sequence                      (Seq, empty)
 import           Data.Text                          (Text)
 import qualified Data.Text                          as T
 import           GHC.Stack                          (HasCallStack)
-import           Ledger                             (Address, NetworkId, TxOutRef)
+import           Ledger                             (NetworkId, TxOutRef)
 import           Network.Connection                 (TLSSettings (TLSSettings))
 import           Network.HTTP.Client                (defaultManagerSettings, newManager)
 import           Network.HTTP.Client.TLS            (mkManagerSettings)
@@ -62,12 +58,12 @@ import           PlutusAppsExtra.IO.Tx              (HasTxProvider (..), TxProvi
 import qualified PlutusAppsExtra.IO.Tx              as Tx
 import           PlutusAppsExtra.IO.Wallet          (HasWallet (..), RestoredWallet, HasWalletProvider (..), WalletProvider)
 import qualified PlutusAppsExtra.IO.Wallet          as Wallet
-import           PlutusAppsExtra.Types.Tx           (TransactionBuilder)
 import           PlutusAppsExtra.Utils.Network      (HasNetworkId)
 import qualified PlutusAppsExtra.Utils.Network      as Network
 import           Servant                            (Handler, err404)
 import qualified Servant
 import qualified Servant.Client                     as Servant
+import qualified PlutusAppsExtra.IO.ChainIndex as ChainIndex
 
 
 newtype ServerM api a = ServerM {unServerM :: ReaderT (Env api) Handler a}
@@ -107,61 +103,14 @@ instance HasWalletProvider (ServerM api) where
 instance HasTxProvider (ServerM api) where
     getTxProvider = asks envTxProvider
 
-type family TxApiRequestOf api :: Type
-
-type family InputOf api :: Type
 
 type family AuxillaryEnvOf api :: Type
-
-type InputWithContext api = (InputOf api, InputContext)
-
-data QueueElem api = QueueElem
-    { qeInput   :: InputOf api
-    , qeContext :: InputContext
-    , qeMvar    :: MVar (Either SomeException ())
-    }
-
-newQueueElem :: MonadIO m => InputWithContext api -> m (QueueElem api)
-newQueueElem (qeInput, qeContext) = do
-    qeMvar <- liftIO newEmptyMVar
-    pure QueueElem{..}
-
-type Queue api = Seq (QueueElem api)
-
-type QueueRef api = IORef (Queue api)
-
-class HasStatusEndpoint api where
-    type StatusEndpointErrorsOf  api :: [Type]
-    type StatusEndpointReqBodyOf api :: Type
-    type StatusEndpointResOf     api :: Type
-    statusHandler :: StatusHandler api
-
-type StatusHandler api = StatusEndpointReqBodyOf api -> ServerM api (Envelope (StatusEndpointErrorsOf api) (StatusEndpointResOf api))
-
-class HasVersionEndpoint api where
-    type VersionEndpointResOf api :: Type
-    versionHandler :: VersionHandler api
-
-type VersionHandler api = ServerM api (VersionEndpointResOf api)
-
-data ServerHandle api = ServerHandle
-    { shDefaultCI              :: ChainIndexProvider
-    , shAuxiliaryEnv           :: AuxillaryEnvOf api
-    , shGetTrackedAddresses    :: ServerM api [Address]
-    , shTxEndpointsTxBuilders  :: InputOf api -> ServerM api [TransactionBuilder ()]
-    , shServerIdle             :: ServerM api ()
-    , shProcessRequest         :: TxApiRequestOf api -> ServerM api (InputWithContext api)
-    , shStatusHandler          :: StatusHandler api
-    , shCheckIfStatusAlive     :: ServerM api (Either Text ())
-    , shVersionHandler         :: VersionHandler api
-    }
 
 data Env api = Env
     { envPort                  :: Int
     , envHost                  :: Text
     , envHyperTextProtocol     :: HyperTextProtocol
     , envCreds                 :: Creds
-    , envQueueRef              :: QueueRef api
     , envWallet                :: Maybe RestoredWallet
     , envBlockfrostToken       :: Maybe BlockfrostToken
     , envMaestroToken          :: Maybe MaestroToken
@@ -173,11 +122,12 @@ data Env api = Env
     , envWalletProvider        :: WalletProvider
     , envChainIndexProvider    :: ChainIndexProvider
     , envTxProvider            :: TxProvider
-    , envActiveEndpoints       :: [ServerEndpoint]
+    , envActiveEndpoints       :: [Text]
     , envLogger                :: Logger (ServerM api)
     , envLoggerFilePath        :: Maybe FilePath
-    , envServerHandle          :: ServerHandle api
     , envDiagnosticsInterval   :: Int
+    , envServerIdle            :: ServerM api ()
+    , envActiveEndpoins        :: [Text]
     }
 
 instance CardanoServerConfig (Env api) where
@@ -185,36 +135,20 @@ instance CardanoServerConfig (Env api) where
     configPort = envPort
     configHyperTextProtocol = envHyperTextProtocol
 
-serverTrackedAddresses :: ServerM api [Address]
-serverTrackedAddresses = join $ asks $ shGetTrackedAddresses . envServerHandle
-
-txEndpointsTxBuilders :: InputOf api -> ServerM api [TransactionBuilder ()]
-txEndpointsTxBuilders input = asks (shTxEndpointsTxBuilders . envServerHandle) >>= ($ input)
-
 serverIdle :: ServerM api ()
 serverIdle = do
     delay <- liftIO $ async $ waitTime 2
-    join $ asks $ shServerIdle . envServerHandle
+    join $ asks envServerIdle
     liftIO $ wait delay
-
-txEndpointProcessRequest :: TxApiRequestOf api -> ServerM api (InputWithContext api)
-txEndpointProcessRequest req = asks (shProcessRequest . envServerHandle) >>= ($ req)
-
-getQueueRef :: ServerM api (QueueRef api)
-getQueueRef = asks envQueueRef
 
 getNetworkId :: ServerM api NetworkId
 getNetworkId = asks $ pNetworkId . envLedgerParams
 
-getAuxillaryEnv :: ServerM api (AuxillaryEnvOf api)
-getAuxillaryEnv = asks $ shAuxiliaryEnv . envServerHandle
-
 loadEnv :: (HasCallStack, HasCreds)
   => Config
-  -> ServerHandle api
+  -> ServerM api ()
   -> IO (Env api)
-loadEnv Config{..} ServerHandle{..} = do
-    envQueueRef  <- newIORef empty
+loadEnv Config{..} idle = do
     envWallet    <- sequence $ loadWallet <$> cWalletFile
     pp <- decodeOrErrorFromFile cProtocolParametersFile
     slotConfig <- do
@@ -236,17 +170,18 @@ loadEnv Config{..} ServerHandle{..} = do
         envCollateral          = cCollateral
         envNodeFilePath        = cNodeFilePath
         envWalletProvider      = fromMaybe Wallet.Cardano cWalletProvider
-        envChainIndexProvider  = fromMaybe shDefaultCI cChainIndexProvider
+        envChainIndexProvider  = fromMaybe ChainIndex.Kupo cChainIndexProvider
         envTxProvider          = fromMaybe Tx.Cardano cTxProvider
         envLogger              = logger
         envLoggerFilePath      = Nothing
-        envServerHandle        = ServerHandle{..}
+        envServerIdle          = idle
+        envActiveEndpoins      = cActiveEndpoints
     pure Env{..}
 
 setLoggerFilePath :: FilePath -> ServerM api a -> ServerM api a
 setLoggerFilePath fp = local (\Env{..} -> Env{envLoggerFilePath = Just fp, ..})
 
-checkEndpointAvailability :: ServerEndpoint -> ServerM api ()
+checkEndpointAvailability :: Text -> ServerM api ()
 checkEndpointAvailability endpoint = whenM (asks ((endpoint `notElem`) . envActiveEndpoints)) $ throwError err404
 
 mkServantClientEnv :: (MonadIO m, HasCreds) => Int -> Text -> HyperTextProtocol -> m Servant.ClientEnv
