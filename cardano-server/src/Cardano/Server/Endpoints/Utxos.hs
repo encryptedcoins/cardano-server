@@ -2,7 +2,9 @@
 {-# LANGUAGE DataKinds         #-}
 {-# LANGUAGE DeriveAnyClass    #-}
 {-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE LambdaCase        #-}
+{-# LANGUAGE MonoLocalBinds    #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TupleSections     #-}
 {-# LANGUAGE TypeApplications  #-}
@@ -12,9 +14,10 @@ module Cardano.Server.Endpoints.Utxos where
 
 import qualified CSL
 import           CSL.Class                     (toCSL)
-import           Cardano.Server.Error          (ConnectionError, CslError (..), Envelope,
-                                                IsCardanoServerError (errMsg, errStatus), Throws, toEnvelope)
-import           Cardano.Server.Internal       (ServerM, checkEndpointAvailability, getNetworkId)
+import           Cardano.Server.Error          (ConnectionError, CslError (..), Envelope, IsCardanoServerError (errMsg, errStatus), Throws,
+                                                toEnvelope)
+import           Cardano.Server.Internal       (ServerM, checkEndpointAvailability)
+import           Cardano.Server.Tx             (MkTxConstrains)
 import           Cardano.Server.Utils.Logger   (logMsg, (.<))
 import           Control.Exception             (Exception (..), SomeException, throw)
 import           Control.Monad.Catch           (try)
@@ -25,6 +28,7 @@ import           GHC.Generics                  (Generic)
 import           PlutusAppsExtra.IO.ChainIndex (getUtxosAt)
 import           PlutusAppsExtra.Types.Tx      (allRequirements)
 import           PlutusAppsExtra.Utils.Address (bech32ToAddress)
+import           PlutusAppsExtra.Utils.Network (HasNetworkId (..))
 import           Servant                       (Get, JSON, ReqBody, (:>))
 
 type UtxosApi = "utxos"
@@ -43,7 +47,7 @@ instance IsCardanoServerError UtxosError where
     errMsg = \case
         UnparsableAddress -> "Incorrect wallet address."
 
-utxosHandler :: Text -> ServerM api (Envelope '[UtxosError, ConnectionError, CslError] CSL.TransactionUnspentOutputs)
+utxosHandler :: MkTxConstrains (ServerM api) => Text -> ServerM api (Envelope '[UtxosError, ConnectionError, CslError] CSL.TransactionUnspentOutputs)
 utxosHandler addrTxt = toEnvelope $ do
     logMsg $ "New utxos request received:\n" .< addrTxt
     checkEndpointAvailability "Utxos"

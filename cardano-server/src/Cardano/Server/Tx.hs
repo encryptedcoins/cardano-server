@@ -1,24 +1,27 @@
-{-# LANGUAGE ConstraintKinds    #-}
-{-# LANGUAGE FlexibleContexts   #-}
-{-# LANGUAGE LambdaCase         #-}
-{-# LANGUAGE NumericUnderscores #-}
-{-# LANGUAGE OverloadedStrings  #-}
-{-# LANGUAGE RecordWildCards    #-}
-{-# LANGUAGE TypeApplications   #-}
-{-# LANGUAGE ViewPatterns       #-}
+{-# LANGUAGE ConstraintKinds      #-}
+{-# LANGUAGE DataKinds            #-}
+{-# LANGUAGE FlexibleContexts     #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE LambdaCase           #-}
+{-# LANGUAGE MonoLocalBinds       #-}
+{-# LANGUAGE NumericUnderscores   #-}
+{-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE RecordWildCards      #-}
+{-# LANGUAGE TypeApplications     #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ViewPatterns         #-}
 
 module Cardano.Server.Tx where
 
 import           Cardano.Node.Emulator                (Params)
 import           Cardano.Server.Error                 (ConnectionError (ConnectionError), MkTxError (..), throwMaybe)
 import           Cardano.Server.Input                 (InputContext (..))
-import           Cardano.Server.Internal              (Env (..), ServerM)
+import           Cardano.Server.Internal              (AppT, AuxillaryEnvOf, getAuxillaryEnv)
 import           Cardano.Server.Utils.Logger          (HasLogger, logMsg, logPretty, logSmth)
 import           Control.Lens                         ((^?))
 import           Control.Monad.Catch                  (Handler (..), MonadCatch, MonadThrow (..), catches, handle)
-import           Control.Monad.Extra                  (guard, mconcatMapM, void, when)
+import           Control.Monad.Extra                  (guard, mconcatMapM, when)
 import           Control.Monad.IO.Class               (MonadIO (..))
-import           Control.Monad.Reader                 (asks)
 import           Control.Monad.State                  (execState)
 import           Data.Aeson                           (decode)
 import qualified Data.Aeson                           as J
@@ -30,6 +33,7 @@ import qualified Data.Map                             as Map
 import           Data.Maybe                           (fromJust, isNothing, mapMaybe)
 import qualified Data.Set                             as Set
 import qualified Data.Text                            as T
+import           GHC.Records                          (HasField (..))
 import           Ledger                               (Address, TxOutRef)
 import           Ledger.Tx.CardanoAPI                 as CardanoAPI (CardanoTx, fromCardanoValue, unspentOutputsTx)
 import           Ledger.Tx.Constraints                (ScriptLookups (..), TxConstraints (..))
@@ -43,9 +47,11 @@ import           PlutusAppsExtra.Constraints.Balance  (balanceExternalTx)
 import           PlutusAppsExtra.Constraints.OffChain (useAsCollateralTx', utxoProducedPublicKeyTx)
 import           PlutusAppsExtra.IO.ChainIndex        (getUtxosAt)
 import           PlutusAppsExtra.IO.Time              (currentTime)
+import           PlutusAppsExtra.IO.Tx                (HasTxProvider)
+import qualified PlutusAppsExtra.IO.Tx
 import qualified PlutusAppsExtra.IO.Wallet
-import           PlutusAppsExtra.Types.Tx             (TransactionBuilder, TxConstructor (..), mkTxConstructor,
-                                                       selectTxConstructor, txBuilderRequirements)
+import           PlutusAppsExtra.Types.Tx             (TransactionBuilder, TxConstructor (..), mkTxConstructor, selectTxConstructor,
+                                                       txBuilderRequirements)
 import           PlutusAppsExtra.Utils.Address        (addressToKeyHashes)
 import           PlutusAppsExtra.Utils.ChainIndex     (filterCleanUtxos)
 import           PlutusTx                             (BuiltinData)
@@ -55,18 +61,22 @@ import           Prettyprinter                        (Doc, Pretty (..), hang, v
 import           Servant.Client                       (ClientError (FailureResponse), ResponseF (..))
 import           Text.Hex                             (decodeHex)
 import           Text.Read                            (readMaybe)
-import qualified PlutusAppsExtra.IO.Tx
-import PlutusAppsExtra.IO.Tx (HasTxProvider)
 
-type MkTxConstrains m = (MonadIO m, MonadCatch m, HasLogger m, HasTxProvider m, HasMkTxEnv m)
+type MkTxConstrains m = (MonadIO m, MonadCatch m, HasLogger m, HasTxProvider m, HasCollateral m, HasProtocolParams m)
 
-class HasMkTxEnv m where
-    getCollateral   :: m (Maybe TxOutRef)
-    getLedgerParams :: m Params
+class HasCollateral m where
+    getCollateral :: m (Maybe TxOutRef)
 
-instance HasMkTxEnv (ServerM api) where
-    getCollateral   = asks envCollateral
-    getLedgerParams = asks envLedgerParams
+instance (Monad m, HasField "envCollateral" (AuxillaryEnvOf api) (Maybe TxOutRef))
+    => HasCollateral (AppT api m) where
+    getCollateral = getField @"envCollateral" <$> getAuxillaryEnv
+
+class HasProtocolParams m where
+    getProtocolParams :: m Params
+
+instance (Monad m, HasField "envProtocolParams" (AuxillaryEnvOf api) Params)
+    => HasProtocolParams (AppT api m) where
+    getProtocolParams = getField @"envProtocolParams" <$> getAuxillaryEnv
 
 mkBalanceTx :: MkTxConstrains m
     => [Address]
@@ -77,7 +87,7 @@ mkBalanceTx addressesTracked context txs = do
     reqs         <- liftIO $ txBuilderRequirements txs
     utxosTracked <- mconcatMapM (getUtxosAt reqs) addressesTracked
     ct           <- liftIO currentTime
-    ledgerParams <- getLedgerParams
+    ledgerParams <- getProtocolParams
     collateral   <- getCollateral
     let utxos = utxosTracked `Map.union` inputUTXO context
         txs'  = map (useAsCollateralTx' collateral >>) txs
@@ -138,15 +148,22 @@ mkTx :: MkTxConstrains m
     -> m CardanoTx
 mkTx addressesTracked ctx txs = submitTx addressesTracked ctx txs >>= awaitTxConfirmed
 
-checkForCleanUtxos :: ServerM api ()
+checkForCleanUtxos ::
+    ( Monad m
+    , MkTxConstrains (AppT api m)
+    , HasField "envMinUtxosNumber" (AuxillaryEnvOf api) Int
+    , HasField "envMaxUtxosNumber" (AuxillaryEnvOf api) Int
+    ) => AppT api m ()
 checkForCleanUtxos = mkTxErrorH $ do
-    addr       <- PlutusAppsExtra.IO.Wallet.getWalletAddr
     cleanUtxos <- length . filterCleanUtxos <$> PlutusAppsExtra.IO.Wallet.getWalletUtxos mempty
-    minUtxos   <- asks envMinUtxosNumber
-    maxUtxos   <- asks envMaxUtxosNumber
+    minUtxos   <- getField @"envMinUtxosNumber" <$> getAuxillaryEnv
+    maxUtxos   <- getField @"envMaxUtxosNumber" <$> getAuxillaryEnv
     when (cleanUtxos < minUtxos) $ do
-        logMsg $ "Address doesn't has enough clean UTXO's: " <> (T.pack . show $ minUtxos - cleanUtxos)
-        void $ mkWalletTxOutRefs addr (maxUtxos - cleanUtxos)
+        logMsg $ "Address doesn't has enough clean UTXO's. Need "
+            <> (T.pack . show $ minUtxos - cleanUtxos)
+            <> " more."
+        addr         <- PlutusAppsExtra.IO.Wallet.getWalletAddr
+        mkWalletTxOutRefs addr (maxUtxos - cleanUtxos) >>= logSmth
 
 mkWalletTxOutRefs :: MkTxConstrains m => Address -> Int -> m [TxOutRef]
 mkWalletTxOutRefs addr n = do

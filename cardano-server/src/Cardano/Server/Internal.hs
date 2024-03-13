@@ -12,128 +12,92 @@
 {-# LANGUAGE RankNTypes                 #-}
 {-# LANGUAGE RecordWildCards            #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
+{-# LANGUAGE StandaloneDeriving         #-}
 {-# LANGUAGE TypeApplications           #-}
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE UndecidableInstances       #-}
+{-# OPTIONS_GHC -Wno-redundant-constraints #-}
 
 module Cardano.Server.Internal where
 
-import           Cardano.Node.Emulator              (Params (..), pParamsFromProtocolParams)
-import           Cardano.Server.Config              (CardanoServerConfig (..), Config (..), Creds, HasCreds, HyperTextProtocol (..),
-                                                     decodeOrErrorFromFile, schemeFromProtocol)
-import           Cardano.Server.Error               (InternalServerError (..))
-import           Cardano.Server.Utils.Logger        (HasLogger (..), Logger, logger)
-import           Cardano.Server.Utils.Wait          (waitTime)
-import           Cardano.Server.WalletEncryption    (loadWallet)
-import           Control.Concurrent.Async           (async, wait)
-import           Control.Exception                  (throw)
-import           Control.Lens                       ((^?))
-import           Control.Monad.Catch                (MonadCatch, MonadThrow (..))
-import           Control.Monad.Except               (MonadError (throwError))
-import           Control.Monad.Extra                (join, liftM3, whenM)
-import           Control.Monad.IO.Class             (MonadIO (..))
-import           Control.Monad.Reader               (MonadReader, ReaderT (ReaderT, runReaderT), asks, local)
-import           Data.Aeson                         (fromJSON)
-import qualified Data.Aeson                         as J
-import           Data.Aeson.Lens                    (key)
-import           Data.Default                       (Default (def))
-import           Data.Functor                       ((<&>))
-import           Data.Kind                          (Type)
-import           Data.Maybe                         (fromMaybe)
-import           Data.Text                          (Text)
-import qualified Data.Text                          as T
-import           GHC.Stack                          (HasCallStack)
-import           Ledger                             (NetworkId, TxOutRef)
-import           Network.Connection                 (TLSSettings (TLSSettings))
-import           Network.HTTP.Client                (defaultManagerSettings, newManager)
-import           Network.HTTP.Client.TLS            (mkManagerSettings)
-import           Network.TLS                        (ClientHooks (onCertificateRequest, onServerCertificate),
-                                                     ClientParams (clientHooks, clientSupported), Supported (supportedCiphers),
-                                                     credentialLoadX509FromMemory, defaultParamsClient)
-import           Network.TLS.Extra.Cipher           (ciphersuite_default)
-import           PlutusAppsExtra.Api.Blockfrost     (BlockfrostToken)
-import           PlutusAppsExtra.Api.Maestro        (MaestroToken, MonadMaestro (..))
-import           PlutusAppsExtra.IO.ChainIndex      (ChainIndexProvider, HasChainIndexProvider (..))
-import           PlutusAppsExtra.IO.Tx              (HasTxProvider (..), TxProvider)
-import qualified PlutusAppsExtra.IO.Tx              as Tx
-import           PlutusAppsExtra.IO.Wallet          (HasWallet (..), RestoredWallet, HasWalletProvider (..), WalletProvider)
-import qualified PlutusAppsExtra.IO.Wallet          as Wallet
-import           PlutusAppsExtra.Utils.Network      (HasNetworkId)
-import qualified PlutusAppsExtra.Utils.Network      as Network
-import           Servant                            (Handler, err404)
+import           Cardano.Server.Config         (Config (..), Creds, HasCreds, HyperTextProtocol (..), schemeFromProtocol)
+import           Cardano.Server.Utils.Logger   (HasLogger (..), Logger, logger)
+import           Cardano.Server.Utils.Wait     (waitTime)
+import           Control.Concurrent.Async      (async, wait)
+import           Control.Exception             (throw)
+import           Control.Monad                 (when)
+import           Control.Monad.Catch           (MonadCatch, MonadThrow (..))
+import           Control.Monad.Except          (MonadError (throwError))
+import           Control.Monad.Extra           (join, liftM3)
+import           Control.Monad.IO.Class        (MonadIO (..))
+import           Control.Monad.Morph           (MFunctor (..))
+import           Control.Monad.Reader          (MonadReader, ReaderT (ReaderT, runReaderT), asks, local)
+import           Data.Default                  (Default (def))
+import           Data.Kind                     (Type)
+import           Data.Text                     (Text)
+import qualified Data.Text                     as T
+import           GHC.Records                   (HasField (..))
+import           GHC.Stack                     (HasCallStack)
+import           GHC.TypeLits                  (Symbol)
+import           Ledger                        (NetworkId)
+import           Network.Connection            (TLSSettings (TLSSettings))
+import           Network.HTTP.Client           (defaultManagerSettings, newManager)
+import           Network.HTTP.Client.TLS       (mkManagerSettings)
+import           Network.TLS                   (ClientHooks (onCertificateRequest, onServerCertificate),
+                                                ClientParams (clientHooks, clientSupported), Supported (supportedCiphers),
+                                                credentialLoadX509FromMemory, defaultParamsClient)
+import           Network.TLS.Extra.Cipher      (ciphersuite_default)
+import           PlutusAppsExtra.Utils.Network (HasNetworkId (..))
+import           Servant                       (Handler, err404)
 import qualified Servant
-import qualified Servant.Client                     as Servant
-import qualified PlutusAppsExtra.IO.ChainIndex as ChainIndex
+import qualified Servant.Client                as Servant
+import           UnliftIO                      (MonadUnliftIO)
 
-
-newtype ServerM api a = ServerM {unServerM :: ReaderT (Env api) Handler a}
+newtype AppT (api :: Type) (m :: Type -> Type) (a :: Type) = AppT {unAppT :: ReaderT (Env api) m a}
      deriving newtype
         ( Functor
         , Applicative
         , Monad
+        , MFunctor
         , MonadIO
         , MonadReader (Env api)
-        , MonadError Servant.ServerError
         , MonadThrow
         , MonadCatch
         )
 
+deriving instance MonadUnliftIO (AppT api IO)
+
+runAppT :: Env api -> AppT api m a -> m a
+runAppT env = (`runReaderT` env) . unAppT
+
+type ServerM api = AppT api Handler
+deriving instance MonadError Servant.ServerError (ServerM api)
+
 runServerM :: Env api -> ServerM api a -> IO a
-runServerM env = fmap (either throw id) . Servant.runHandler . (`runReaderT` env) . unServerM
+runServerM env = fmap (either throw id) . Servant.runHandler . (`runReaderT` env) . unAppT
 
-instance HasLogger (ServerM api) where
-    getLogger = asks envLogger
+instance MonadIO m => HasLogger (AppT api m) where
+    getLogger = do
+        l <- asks envLogger
+        pure $ \t -> hoist liftIO $ l t
     getLoggerFilePath = asks envLoggerFilePath
-
-instance HasNetworkId (ServerM api) where
-    getNetworkId = getNetworkId
-
-instance HasWallet (ServerM api) where
-    getRestoredWallet = asks envWallet <&> fromMaybe (throw NoWalletProvided)
-
-instance HasChainIndexProvider (ServerM api) where
-    getChainIndexProvider = asks envChainIndexProvider
-
-instance MonadMaestro (ServerM api) where
-    getMaestroToken = asks envMaestroToken >>= maybe (throwM NoMaestroToken) pure
-
-instance HasWalletProvider (ServerM api) where
-    getWalletProvider = asks envWalletProvider
-
-instance HasTxProvider (ServerM api) where
-    getTxProvider = asks envTxProvider
-
 
 type family AuxillaryEnvOf api :: Type
 
 data Env api = Env
-    { envPort                  :: Int
-    , envHost                  :: Text
-    , envHyperTextProtocol     :: HyperTextProtocol
-    , envCreds                 :: Creds
-    , envWallet                :: Maybe RestoredWallet
-    , envBlockfrostToken       :: Maybe BlockfrostToken
-    , envMaestroToken          :: Maybe MaestroToken
-    , envMinUtxosNumber        :: Int
-    , envMaxUtxosNumber        :: Int
-    , envLedgerParams          :: Params
-    , envCollateral            :: Maybe TxOutRef
-    , envNodeFilePath          :: FilePath
-    , envWalletProvider        :: WalletProvider
-    , envChainIndexProvider    :: ChainIndexProvider
-    , envTxProvider            :: TxProvider
-    , envActiveEndpoints       :: [Text]
-    , envLogger                :: Logger (ServerM api)
-    , envLoggerFilePath        :: Maybe FilePath
-    , envDiagnosticsInterval   :: Int
-    , envServerIdle            :: ServerM api ()
-    , envActiveEndpoins        :: [Text]
+    { envPort                :: Int
+    , envHost                :: Text
+    , envHyperTextProtocol   :: HyperTextProtocol
+    , envCreds               :: Creds
+    , envActiveEndpoints     :: Maybe [Text]
+    , envLogger              :: Logger (AppT api IO)
+    , envLoggerFilePath      :: Maybe FilePath
+    , envServerIdle          :: ServerM api ()
+    , envAuxilaryEnv         :: AuxillaryEnvOf api
     }
 
-instance CardanoServerConfig (Env api) where
-    configHost = envHost
-    configPort = envPort
-    configHyperTextProtocol = envHyperTextProtocol
+getAuxillaryEnv :: Monad m => AppT api m (AuxillaryEnvOf api)
+getAuxillaryEnv = asks envAuxilaryEnv
 
 serverIdle :: ServerM api ()
 serverIdle = do
@@ -141,48 +105,39 @@ serverIdle = do
     join $ asks envServerIdle
     liftIO $ wait delay
 
-getNetworkId :: ServerM api NetworkId
-getNetworkId = asks $ pNetworkId . envLedgerParams
+type EnvWith (field :: Symbol) a api = HasField field (AuxillaryEnvOf api) a
+
+getEnvField :: forall (field :: Symbol) a api m. Monad m => EnvWith field a api => AppT api m a
+getEnvField = getField @field <$> getAuxillaryEnv
+
+instance {-# OVERLAPS #-} (EnvWith "envNetworkId" NetworkId api, Monad m)
+    => HasNetworkId (AppT api m) where
+    getNetworkId = getField @"envNetworkId" <$> getAuxillaryEnv
 
 loadEnv :: (HasCallStack, HasCreds)
-  => Config
+  => Config api
+  -> AuxillaryEnvOf api
   -> ServerM api ()
   -> IO (Env api)
-loadEnv Config{..} idle = do
-    envWallet    <- sequence $ loadWallet <$> cWalletFile
-    pp <- decodeOrErrorFromFile cProtocolParametersFile
-    slotConfig <- do
-        val <- decodeOrErrorFromFile @J.Value cSlotConfigFile
-        case val ^? key "cicSlotConfig" <&> fromJSON of
-            Just (J.Success sc) -> pure sc
-            _                   -> error "There is no slot config in chain index config file."
-    envBlockfrostToken <- sequence $ decodeOrErrorFromFile <$> cBfTokenFilePath
-    envMaestroToken    <- sequence $ decodeOrErrorFromFile <$> cMaestroTokenFilePath
-    let envPort                = cPort
-        envHost                = cHost
-        envHyperTextProtocol   = cHyperTextProtocol
-        envCreds               = ?creds
-        envMinUtxosNumber      = cMinUtxosNumber
-        envMaxUtxosNumber      = cMaxUtxosNumber
-        envDiagnosticsInterval = fromMaybe 300 cDiagnosticsInterval
-        envLedgerParams        = Params slotConfig (pParamsFromProtocolParams pp) cNetworkId
-        envActiveEndpoints     = cActiveEndpoints
-        envCollateral          = cCollateral
-        envNodeFilePath        = cNodeFilePath
-        envWalletProvider      = fromMaybe Wallet.Cardano cWalletProvider
-        envChainIndexProvider  = fromMaybe ChainIndex.Kupo cChainIndexProvider
-        envTxProvider          = fromMaybe Tx.Cardano cTxProvider
-        envLogger              = logger
-        envLoggerFilePath      = Nothing
-        envServerIdle          = idle
-        envActiveEndpoins      = cActiveEndpoints
+loadEnv Config{..} envAuxilaryEnv envServerIdle = do
+    let envPort              = cPort
+        envHost              = cHost
+        envHyperTextProtocol = cHyperTextProtocol
+        envCreds             = ?creds
+        envActiveEndpoints   = cActiveEndpoints
+        envLogger            = logger
+        envLoggerFilePath    = Nothing
     pure Env{..}
 
 setLoggerFilePath :: FilePath -> ServerM api a -> ServerM api a
 setLoggerFilePath fp = local (\Env{..} -> Env{envLoggerFilePath = Just fp, ..})
 
 checkEndpointAvailability :: Text -> ServerM api ()
-checkEndpointAvailability endpoint = whenM (asks ((endpoint `notElem`) . envActiveEndpoints)) $ throwError err404
+checkEndpointAvailability endpoint = do
+        mbEndpoints <- asks envActiveEndpoints
+        maybe (pure ()) (\es -> when (check es) $ throwError err404) mbEndpoints
+    where
+        check es = endpoint `elem` es
 
 mkServantClientEnv :: (MonadIO m, HasCreds) => Int -> Text -> HyperTextProtocol -> m Servant.ClientEnv
 mkServantClientEnv port host protocol = do

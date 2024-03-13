@@ -3,6 +3,7 @@
 {-# LANGUAGE DeriveGeneric       #-}
 {-# LANGUAGE DerivingVia         #-}
 {-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE MonoLocalBinds      #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE RecordWildCards     #-}
@@ -11,23 +12,22 @@
 
 module Cardano.Server.Endpoints.Submit where
 
-import           Cardano.Node.Emulator                (Params (..))
-import           Cardano.Server.Error                 (ConnectionError, Envelope, IsCardanoServerError (..),
-                                                       SubmitTxToLocalNodeError, Throws, toEnvelope)
-import           Cardano.Server.Internal              (Env (..), ServerM, checkEndpointAvailability)
-import           Cardano.Server.Utils.Logger          (logMsg, (.<))
-import           Control.Monad.Catch                  (Exception, MonadThrow (throwM))
-import           Control.Monad.IO.Class               (MonadIO (..))
-import           Control.Monad.Reader                 (asks)
-import           Data.Aeson                           (FromJSON, ToJSON)
-import           Data.Either.Extra                    (maybeToEither)
-import           Data.Text                            (Text)
-import           GHC.Generics                         (Generic)
-import           Ledger                               (CardanoTx)
-import           Ledger.Crypto                        (PubKey, Signature)
-import           PlutusAppsExtra.IO.Node              (sumbitTxToNodeLocal)
-import           PlutusAppsExtra.Utils.Tx             (addCardanoTxSignature, textToCardanoTx, textToPubkey, textToSignature)
-import           Servant                              (JSON, NoContent (..), Post, ReqBody, (:>))
+import           Cardano.Server.Error          (ConnectionError, Envelope, IsCardanoServerError (..), SubmitTxToLocalNodeError, Throws,
+                                                toEnvelope)
+import           Cardano.Server.Internal       (ServerM, checkEndpointAvailability)
+import           Cardano.Server.Utils.Logger   (logMsg, (.<))
+import           Control.Monad.Catch           (Exception, MonadThrow (throwM))
+import           Control.Monad.IO.Class        (MonadIO (..))
+import           Data.Aeson                    (FromJSON, ToJSON)
+import           Data.Either.Extra             (maybeToEither)
+import           Data.Text                     (Text)
+import           GHC.Generics                  (Generic)
+import           Ledger                        (CardanoTx)
+import           Ledger.Crypto                 (PubKey, Signature)
+import           PlutusAppsExtra.IO.Node       (sumbitTxToNodeLocal)
+import           PlutusAppsExtra.Utils.Network (HasNetworkId (..))
+import           PlutusAppsExtra.Utils.Tx      (addCardanoTxSignature, textToCardanoTx, textToPubkey, textToSignature)
+import           Servant                       (JSON, NoContent (..), Post, ReqBody, (:>))
 
 data SubmitTxReqBody = SubmitTxReqBody
     {
@@ -54,17 +54,17 @@ instance IsCardanoServerError SubmitTxApiError where
     errMsg (UnparsableTx tx)          = "Cannot parse CardanoTx from hex:" .< tx
     errMsg (UnparsableWitnesses wtns) = "Cannot parse witnesses from hex:" .< wtns
 
-submitTxHandler :: IsCardanoServerError err
-    => SubmitTxReqBody
+submitTxHandler :: (IsCardanoServerError err, HasNetworkId (ServerM api))
+    => FilePath
+    -> SubmitTxReqBody
     -> ServerM api (Envelope '[err, SubmitTxApiError, SubmitTxToLocalNodeError, ConnectionError] NoContent)
-submitTxHandler req = toEnvelope $ do
+submitTxHandler nodeFp req = toEnvelope $ do
     logMsg $ "New submitTx request received:\n" .< req
     checkEndpointAvailability "SumbitTx"
     (ctx, wtns) <- either throwM pure $ parseSubmitTxReqBody req
     let ctx' = foldr (uncurry addCardanoTxSignature) ctx wtns
-    networkId <- asks $ pNetworkId . envLedgerParams
-    node      <- asks envNodeFilePath
-    liftIO (sumbitTxToNodeLocal node networkId ctx')
+    networkId <- getNetworkId
+    liftIO (sumbitTxToNodeLocal nodeFp networkId ctx')
     pure NoContent
 
 parseSubmitTxReqBody :: SubmitTxReqBody -> Either SubmitTxApiError (CardanoTx, [(PubKey, Signature)])

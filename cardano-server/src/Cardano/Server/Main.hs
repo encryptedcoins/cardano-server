@@ -17,17 +17,12 @@
 
 module Cardano.Server.Main where
 
-import           Cardano.Server.Config                (Creds, HasCreds,
-                                                       HyperTextProtocol (..))
-import           Cardano.Server.Diagnostics           (doDiagnostics)
-import           Cardano.Server.Error                 (ConnectionError (..),
-                                                       logCriticalExceptions)
-import           Cardano.Server.Internal              (Env (..), ServerM (..),
-                                                       runServerM)
+import           Cardano.Server.Config                (Creds, HasCreds, HyperTextProtocol (..))
+import           Cardano.Server.Error                 (ConnectionError (..), logCriticalExceptions)
+import           Cardano.Server.Internal              (Env (..), ServerM, runServerM, unAppT)
 import           Cardano.Server.Utils.Logger          (logMsg, (.<))
 import           Control.Concurrent                   (forkIO)
-import           Control.Exception                    (Handler (Handler),
-                                                       catches)
+import           Control.Exception                    (Handler (Handler), catches)
 import           Control.Monad.Reader                 (ReaderT (runReaderT))
 import           Data.FileEmbed                       (embedFileIfExists)
 import qualified Data.Text.Encoding                   as T
@@ -36,17 +31,13 @@ import           Network.HTTP.Client                  (path)
 import qualified Network.Wai                          as Wai
 import qualified Network.Wai.Handler.Warp             as Warp
 import qualified Network.Wai.Handler.WarpTLS          as Warp
-import           Network.Wai.Middleware.Cors          (CorsResourcePolicy (..),
-                                                       cors,
-                                                       simpleCorsResourcePolicy)
+import           Network.Wai.Middleware.Cors          (CorsResourcePolicy (..), cors, simpleCorsResourcePolicy)
 import           PlutusAppsExtra.Api.Kupo             (pattern KupoConnectionError)
 import           PlutusAppsExtra.IO.ChainIndex.Plutus (pattern PlutusChainIndexConnectionError)
 import           PlutusAppsExtra.IO.Wallet.Cardano    (pattern CardanoWalletApiConnectionError)
-import           Servant                              (Proxy (..), ServerT,
-                                                       hoistServer, serve)
+import           Servant                              (Proxy (..), ServerT, hoistServer, serve)
 import qualified Servant
-import           System.IO                            (BufferMode (LineBuffering),
-                                                       hSetBuffering, stdout)
+import           System.IO                            (BufferMode (LineBuffering), hSetBuffering, stdout)
 
 runCardanoServer :: forall api.
     ( Servant.HasServer api '[]
@@ -59,7 +50,8 @@ runCardanoServer env@Env{..} serverApp diagnostics beforeMainLoop = (`catches` e
         (HTTPS, Just (cert, key)) -> Warp.runTLS (Warp.tlsSettingsMemory cert key) settings app
         (HTTPS, Nothing)          -> error noCredsMsg
     where
-        app = corsWithContentType $ serve (Proxy @api) $ hoistServer (Proxy @api) (flip runReaderT env . unServerM @api) serverApp
+        app = corsWithContentType $ serve (Proxy @api)
+            $ hoistServer (Proxy @api) (flip runReaderT env . unAppT @api @Servant.Handler) serverApp
         settings = Warp.setLogger logReceivedRequest
                  $ Warp.setOnException (const logException)
                  $ Warp.setPort envPort
@@ -67,7 +59,7 @@ runCardanoServer env@Env{..} serverApp diagnostics beforeMainLoop = (`catches` e
                    Warp.defaultSettings
         beforeMainLoop' = do
             logMsg "Starting server..."
-            forkIO $ runServerM env $ doDiagnostics envDiagnosticsInterval diagnostics
+            forkIO $ runServerM env diagnostics
             runApp beforeMainLoop
         logReceivedRequest req status _ =
             logMsg $ "Received request:\n" .< req <> "\nStatus:\n" .< status

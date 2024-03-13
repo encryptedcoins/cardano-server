@@ -1,56 +1,59 @@
-{-# LANGUAGE ConstraintKinds    #-}
-{-# LANGUAGE DeriveAnyClass     #-}
-{-# LANGUAGE DeriveGeneric      #-}
-{-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE ImplicitParams     #-}
-{-# LANGUAGE KindSignatures     #-}
-{-# LANGUAGE LambdaCase         #-}
-{-# LANGUAGE RankNTypes         #-}
+{-# LANGUAGE ConstraintKinds      #-}
+{-# LANGUAGE DeriveAnyClass       #-}
+{-# LANGUAGE DeriveGeneric        #-}
+{-# LANGUAGE DerivingStrategies   #-}
+{-# LANGUAGE ImplicitParams       #-}
+{-# LANGUAGE LambdaCase           #-}
+{-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE RankNTypes           #-}
+{-# LANGUAGE RecordWildCards      #-}
+{-# LANGUAGE StandaloneDeriving   #-}
+{-# LANGUAGE TypeFamilies         #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Cardano.Server.Config where
 
-import           Cardano.Api                   (NetworkId (..))
-import           Data.Aeson                    (FromJSON (..), ToJSON,
-                                                eitherDecodeFileStrict,
-                                                genericParseJSON)
-import           Data.Aeson.Casing             (aesonPrefix, snakeCase)
-import           Data.ByteString               (ByteString)
-import           Data.Text                     (Text)
-import           GHC.Generics                  (Generic)
-import           GHC.Stack                     (HasCallStack)
-import           Ledger                        (TxOutRef)
-import           PlutusAppsExtra.IO.ChainIndex (ChainIndexProvider)
-import           PlutusAppsExtra.IO.Tx         (TxProvider)
-import           PlutusAppsExtra.IO.Wallet     (WalletProvider)
-import qualified Servant.Client                as Servant
+import           Cardano.Server.Utils.Logger ((.<))
+import           Data.Aeson                  (FromJSON (..), ToJSON, Value (Object), eitherDecodeFileStrict, withObject, (.:), (.:?))
+import           Data.ByteString             (ByteString)
+import           Data.Data                   (Typeable, typeOf)
+import           Data.Text                   (Text)
+import qualified Data.Text                   as T
+import qualified Data.Text.IO                as T
+import           GHC.Generics                (Generic)
+import           GHC.Stack                   (HasCallStack)
+import qualified Servant.Client              as Servant
 
-data Config = Config
-    { cHost                   :: Text
-    , cPort                   :: Int
-    , cHyperTextProtocol      :: HyperTextProtocol
-    , cMinUtxosNumber         :: Int
-    , cMaxUtxosNumber         :: Int
-    , cDiagnosticsInterval    :: Maybe Int
-    , cProtocolParametersFile :: FilePath
-    , cSlotConfigFile         :: FilePath
-    , cAuxiliaryEnvFile       :: FilePath
-    , cNodeFilePath           :: FilePath
-    , cWalletFile             :: Maybe FilePath
-    , cBfTokenFilePath        :: Maybe FilePath
-    , cMaestroTokenFilePath   :: Maybe FilePath
-    , cNetworkId              :: NetworkId
-    , cCollateral             :: Maybe TxOutRef
-    , cWalletProvider         :: Maybe WalletProvider
-    , cChainIndexProvider     :: Maybe ChainIndexProvider
-    , cTxProvider             :: Maybe TxProvider
-    , cActiveEndpoints        :: [Text]
-    } deriving (Show, Generic)
+data Config api = Config
+    { cHost              :: Text
+    , cPort              :: Int
+    , cHyperTextProtocol :: HyperTextProtocol
+    , cActiveEndpoints   :: Maybe [Text]
+    , cAuxilaryConfig    :: AuxillaryConfigOf api
+    } deriving (Generic)
 
-instance FromJSON Config where
-   parseJSON = genericParseJSON $ aesonPrefix snakeCase
+type family AuxillaryConfigOf api
+
+deriving instance Show (AuxillaryConfigOf api) => Show (Config api)
+deriving instance Eq   (AuxillaryConfigOf api) => Eq   (Config api)
+
+instance (FromJSON (AuxillaryConfigOf api)) => FromJSON (Config api) where
+   parseJSON = withObject "Cardano server config" $ \o -> do
+        cHost              <- o .:  "host"
+        cPort              <- o .:  "port"
+        cHyperTextProtocol <- o .:  "hyper_text_protocol"
+        cActiveEndpoints   <- o .:? "active_endpoints"
+        cAuxilaryConfig    <- parseJSON $ Object o
+        pure Config{..}
 
 decodeOrErrorFromFile :: (HasCallStack, FromJSON a) => FilePath -> IO a
 decodeOrErrorFromFile = fmap (either error id) . eitherDecodeFileStrict
+
+-- Useful function for initializing optional env fields
+withDefault :: (Typeable a, Show a) => a -> Maybe a -> IO a
+withDefault defVal mbVal = (\d -> maybe d pure mbVal) $ do
+    T.putStrLn $ "No " <> T.pack (show (typeOf defVal)) <> " specified. Using default:" .< defVal
+    pure defVal
 
 data HyperTextProtocol = HTTP | HTTPS
     deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
@@ -63,15 +66,3 @@ schemeFromProtocol :: HyperTextProtocol -> Servant.Scheme
 schemeFromProtocol = \case
     HTTP  -> Servant.Http
     HTTPS -> Servant.Https
-
-------------------------------------------------------------------- Class -------------------------------------------------------------------
-
-class CardanoServerConfig c where
-    configHost              :: c -> Text
-    configPort              :: c -> Int
-    configHyperTextProtocol :: c -> HyperTextProtocol
-
-instance CardanoServerConfig Config where
-    configHost = cHost
-    configPort = cPort
-    configHyperTextProtocol = cHyperTextProtocol
