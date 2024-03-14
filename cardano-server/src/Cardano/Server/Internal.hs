@@ -21,23 +21,23 @@
 module Cardano.Server.Internal where
 
 import           Cardano.Server.Config         (Config (..), Creds, HasCreds, HyperTextProtocol (..), schemeFromProtocol)
+import           Cardano.Server.EndpointName   (EndpointNames (..), GetEdpointNames (..))
 import           Cardano.Server.Utils.Logger   (HasLogger (..), Logger, logger)
 import           Cardano.Server.Utils.Wait     (waitTime)
 import           Control.Concurrent.Async      (async, wait)
 import           Control.Exception             (throw)
-import           Control.Monad                 (when)
 import           Control.Monad.Catch           (MonadCatch, MonadThrow (..))
-import           Control.Monad.Except          (MonadError (throwError))
+import           Control.Monad.Except          (MonadError (..))
 import           Control.Monad.Extra           (join, liftM3)
 import           Control.Monad.IO.Class        (MonadIO (..))
 import           Control.Monad.Morph           (MFunctor (..))
 import           Control.Monad.Reader          (MonadReader, ReaderT (ReaderT, runReaderT), asks, local)
 import           Data.Default                  (Default (def))
 import           Data.Kind                     (Type)
+import           Data.Maybe                    (fromMaybe)
 import           Data.Text                     (Text)
 import qualified Data.Text                     as T
 import           GHC.Records                   (HasField (..))
-import           GHC.Stack                     (HasCallStack)
 import           GHC.TypeLits                  (Symbol)
 import           Ledger                        (NetworkId)
 import           Network.Connection            (TLSSettings (TLSSettings))
@@ -48,7 +48,7 @@ import           Network.TLS                   (ClientHooks (onCertificateReques
                                                 credentialLoadX509FromMemory, defaultParamsClient)
 import           Network.TLS.Extra.Cipher      (ciphersuite_default)
 import           PlutusAppsExtra.Utils.Network (HasNetworkId (..))
-import           Servant                       (Handler, err404)
+import           Servant                       (Handler)
 import qualified Servant
 import qualified Servant.Client                as Servant
 import           UnliftIO                      (MonadUnliftIO)
@@ -89,7 +89,7 @@ data Env api = Env
     , envHost                :: Text
     , envHyperTextProtocol   :: HyperTextProtocol
     , envCreds               :: Creds
-    , envActiveEndpoints     :: Maybe [Text]
+    , envActiveEndpoints     :: EndpointNames api
     , envLogger              :: Logger (AppT api IO)
     , envLoggerFilePath      :: Maybe FilePath
     , envServerIdle          :: ServerM api ()
@@ -114,7 +114,7 @@ instance {-# OVERLAPS #-} (EnvWith "envNetworkId" NetworkId api, Monad m)
     => HasNetworkId (AppT api m) where
     getNetworkId = getField @"envNetworkId" <$> getAuxillaryEnv
 
-loadEnv :: (HasCallStack, HasCreds)
+loadEnv :: forall api. (HasCreds, GetEdpointNames api)
   => Config api
   -> AuxillaryEnvOf api
   -> ServerM api ()
@@ -124,20 +124,13 @@ loadEnv Config{..} envAuxilaryEnv envServerIdle = do
         envHost              = cHost
         envHyperTextProtocol = cHyperTextProtocol
         envCreds             = ?creds
-        envActiveEndpoints   = cActiveEndpoints
+        envActiveEndpoints   = fromMaybe (EndpointNames $ getEndpointNames @api) cActiveEndpoints
         envLogger            = logger
         envLoggerFilePath    = Nothing
     pure Env{..}
 
 setLoggerFilePath :: FilePath -> ServerM api a -> ServerM api a
 setLoggerFilePath fp = local (\Env{..} -> Env{envLoggerFilePath = Just fp, ..})
-
-checkEndpointAvailability :: Text -> ServerM api ()
-checkEndpointAvailability endpoint = do
-        mbEndpoints <- asks envActiveEndpoints
-        maybe (pure ()) (\es -> when (check es) $ throwError err404) mbEndpoints
-    where
-        check es = endpoint `elem` es
 
 mkServantClientEnv :: (MonadIO m, HasCreds) => Int -> Text -> HyperTextProtocol -> m Servant.ClientEnv
 mkServantClientEnv port host protocol = do

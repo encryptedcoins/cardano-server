@@ -13,6 +13,7 @@
 
 module Cardano.Server.Config where
 
+import           Cardano.Server.EndpointName (EndpointNames (..), GetEdpointNames)
 import           Cardano.Server.Utils.Logger ((.<))
 import           Data.Aeson                  (FromJSON (..), ToJSON, Value (Object), eitherDecodeFileStrict, withObject, (.:), (.:?))
 import           Data.ByteString             (ByteString)
@@ -28,7 +29,7 @@ data Config api = Config
     { cHost              :: Text
     , cPort              :: Int
     , cHyperTextProtocol :: HyperTextProtocol
-    , cActiveEndpoints   :: Maybe [Text]
+    , cActiveEndpoints   :: Maybe (EndpointNames api)
     , cAuxilaryConfig    :: AuxillaryConfigOf api
     } deriving (Generic)
 
@@ -37,7 +38,7 @@ type family AuxillaryConfigOf api
 deriving instance Show (AuxillaryConfigOf api) => Show (Config api)
 deriving instance Eq   (AuxillaryConfigOf api) => Eq   (Config api)
 
-instance (FromJSON (AuxillaryConfigOf api)) => FromJSON (Config api) where
+instance (FromJSON (AuxillaryConfigOf api), GetEdpointNames api) => FromJSON (Config api) where
    parseJSON = withObject "Cardano server config" $ \o -> do
         cHost              <- o .:  "host"
         cPort              <- o .:  "port"

@@ -39,6 +39,7 @@ library
     exposed-modules:
       Cardano.Server.Config
       Cardano.Server.Diagnostics
+      Cardano.Server.EndpointName
       Cardano.Server.Endpoints.Ping
       Cardano.Server.Endpoints.Submit
       Cardano.Server.Endpoints.Utxos

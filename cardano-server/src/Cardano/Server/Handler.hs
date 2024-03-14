@@ -13,24 +13,29 @@
 
 module Cardano.Server.Handler where
 
+import           Cardano.Server.EndpointName  (GetEndpointName, checkThatEndpointIsActive)
 import           Cardano.Server.Error.Class   (IsCardanoServerError, toServantError)
 import           Cardano.Server.Error.Servant (EndpointErrors)
 import           Cardano.Server.Error.Utils   (All)
-import           Cardano.Server.Internal      (ServerM)
+import           Cardano.Server.Internal      (Env (envActiveEndpoints), ServerM)
 import           Cardano.Server.Utils.Logger  (HasLogger, logSmth)
 import           Control.Exception            (SomeException)
 import           Control.Monad.Catch          (MonadCatch, handle)
 import           Control.Monad.Except         (MonadError)
+import           Control.Monad.Reader.Class   (asks)
 import           Data.Kind                    (Type)
+import           GHC.TypeLits                 (KnownSymbol)
 import           Servant                      (ServerError, throwError)
 
 -- Catch all errors, specified in endpoint and throw corresponding
 -- servant error instead. Also checks that endpoint haven't turned off
 -- in config
 wrapHandler :: forall e api a.
-    ( WithErrorHandlers (EndpointErrors e)
+    ( KnownSymbol (GetEndpointName e)
+    , WithErrorHandlers (EndpointErrors e)
     ) => ServerM api a -> ServerM api a
 wrapHandler handler = withErrorHandlers @(EndpointErrors e) $ do
+    asks envActiveEndpoints >>= checkThatEndpointIsActive @e
     handler
 
 class All IsCardanoServerError es => WithErrorHandlers (es :: [Type]) where
