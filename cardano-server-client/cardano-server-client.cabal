@@ -19,22 +19,20 @@ common lang
       -Wnoncanonical-monad-instances
       -Wredundant-constraints
       -Wno-unused-do-bind
-      
+
       -- See Plutus Tx readme
       -fno-ignore-interface-pragmas
       -fno-omit-interface-pragmas
       -fno-specialise
       -fno-strictness
-      -fobject-code       
+      -fobject-code
       -fplugin-opt PlutusTx.Plugin:defer-errors
 
 library
     import: lang
-    exposed-modules: 
+    exposed-modules:
       Cardano.Server.Client.Client
       Cardano.Server.Client.Gen
-      Cardano.Server.Client.Handle
-      Cardano.Server.Client.Internal
       Cardano.Server.Client.Opts
     other-modules:
     default-extensions:
@@ -68,4 +66,5 @@ library
       hedgehog                               -any,
       plutus-ledger-api                      -any,
       hex-text                               -any,
+      world-peace                            -any,
     hs-source-dirs: src

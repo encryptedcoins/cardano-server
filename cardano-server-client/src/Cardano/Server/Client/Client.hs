@@ -1,53 +1,75 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE ConstraintKinds     #-}
 {-# LANGUAGE DataKinds           #-}
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE ImplicitParams      #-}
-{-# LANGUAGE NumericUnderscores  #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE PolyKinds           #-}
-{-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications    #-}
+{-# LANGUAGE TypeFamilies        #-}
 
 module Cardano.Server.Client.Client where
 
-import           Cardano.Server.Client.Handle   (ClientHandle (..), NotImplementedMethodError (..))
-import           Cardano.Server.Client.Internal (Mode (..))
-import           Cardano.Server.Client.Opts     (CommonOptions (..), runWithOpts)
-import           Cardano.Server.Config          (Config (..), ServerEndpoint (..), HasCreds)
-import           Cardano.Server.Internal        (ServerHandle, loadEnv, runServerM, setLoggerFilePath, mkServantClientEnv)
-import           Cardano.Server.Utils.Logger    (logMsg, (.<))
-import           Control.Exception              (handle)
-import           Control.Monad.IO.Class         (MonadIO (..))
-import           Control.Monad.Reader           (void)
+import           Cardano.Server.Client.Opts       (Interval)
+import           Cardano.Server.EndpointName      (GetEndpointName, getEndpointName)
+import           Cardano.Server.Endpoints.Ping    (PingApi)
+import           Cardano.Server.Endpoints.Version (ServerVersion, VersionApi)
+import           Cardano.Server.Error.Servant     (EndpointEnvelope)
+import           Cardano.Server.Internal          (AppT (..), mkServerClientEnv)
+import           Cardano.Server.Utils.Logger      (logMsg)
+import           Cardano.Server.Utils.Wait        (waitTime)
+import           Control.Monad                    (forever)
+import           Control.Monad.Catch              (MonadCatch, MonadThrow (..))
+import           Control.Monad.IO.Class           (MonadIO (liftIO))
+import           Data.Data                        (Proxy (..))
+import qualified Data.Text                        as T
+import           GHC.TypeLits                     (KnownSymbol)
+import           Servant                          (NoContent)
+import           Servant.Client                   (ClientEnv, ClientM, client, runClientM)
+import           System.Random                    (randomRIO)
 
--- | When client options ~ CommonOptions
-runClient :: HasCreds => Config -> ServerHandle api -> ClientHandle api -> IO ()
-runClient c sh ch = runWithOpts >>= runClientWithOpts c sh ch
+type HasServantClientEnv = ?servantClientEnv :: ClientEnv
 
--- | For clients with another options type
-runClientWithOpts :: HasCreds => Config -> ServerHandle api -> ClientHandle api -> CommonOptions -> IO ()
-runClientWithOpts c sh ClientHandle{..} CommonOptions{..} = handleNotImplementedMethods $ do
-    env         <- loadEnv c sh
-    sce         <- liftIO $ mkServantClientEnv (cPort c) (cHost c) (cHyperTextProtocol c)
-    let ?servantClientEnv = sce
-    runServerM env $ setLoggerFilePath "client.log" $ withGreetings $ case (optsMode, optsEndpoint) of
-        (Auto     i, PingE    ) -> void $ autoPing         i
-        (Auto     i, UtxosE   ) -> void $ autoUtxos        i
-        (Auto     i, NewTxE   ) -> void $ autoNewTx        i
-        (Auto     i, SubmitTxE) -> void $ autoSumbitTx     i
-        (Auto     i, ServerTxE) -> void $ autoServerTx     i
-        (Auto     i, StatusE  ) -> void $ autoStatus       i
-        (Auto     i, VersionE ) -> void $ autoVersion      i
-        (Manual txt, PingE    ) -> void $ manualPing     txt
-        (Manual txt, UtxosE   ) -> void $ manualUtxos    txt
-        (Manual txt, NewTxE   ) -> void $ manualNewTx    txt
-        (Manual txt, SubmitTxE) -> void $ manualSubmitTx txt
-        (Manual txt, ServerTxE) -> void $ manualServerTx txt
-        (Manual txt, StatusE  ) -> void $ manualStatus   txt
-        (Manual txt, VersionE ) -> void $ manualVersion  txt
-    where
-        withGreetings = (logMsg "Starting client..." >>)
-        handleNotImplementedMethods = handle $ \(NotImplementedMethodError mode endpoint) ->
-            let mode' = case mode of {Auto _ -> "auto"; Manual _ -> "manual"}
-            in logMsg $ "You are about to use a function from client handle for which you did not provide an implementation:\n"
-                <> mode' .< endpoint
+sendRequest :: forall e api m. (Show (EndpointEnvelope e), KnownSymbol (GetEndpointName e), MonadIO m, MonadCatch m)
+    => ClientM (EndpointEnvelope e) -> AppT api m (EndpointEnvelope e)
+sendRequest endpointClient = do
+    logMsg $ "Sending " <> getEndpointName @e <> " request"
+    clientEnv <- mkServerClientEnv
+    res <- liftIO (runClientM endpointClient clientEnv)
+    logMsg $ "Received response:\n" <> either (T.pack . show) (T.pack . show) res
+    either throwM pure res
+
+manualClient :: forall e api m. (Show (EndpointEnvelope e), KnownSymbol (GetEndpointName e), MonadIO m, MonadCatch m)
+    => ClientM (EndpointEnvelope e) -> AppT api m (EndpointEnvelope e)
+manualClient = sendRequest @e
+
+autoClient :: forall e api m. (Show (EndpointEnvelope e), KnownSymbol (GetEndpointName e), MonadIO m, MonadCatch m)
+    => Interval -> ClientM (EndpointEnvelope e) -> AppT api m ()
+autoClient i c = forever $ do
+    sendRequest @e c
+    waitTime =<< randomRIO (1, i * 2)
+
+autoClientWith :: forall e api m b. (Show (EndpointEnvelope e), KnownSymbol (GetEndpointName e), MonadIO m, MonadCatch m)
+    => AppT api m b -> Interval -> (b -> ClientM (EndpointEnvelope e)) -> AppT api m ()
+autoClientWith gen i c = do
+    arg <- gen
+    autoClient @e i (c arg)
+
+pingClient :: ClientM (EndpointEnvelope PingApi)
+pingClient = client (Proxy @PingApi)
+
+manualPing :: (MonadIO m, MonadCatch m) => AppT api m NoContent
+manualPing = manualClient @PingApi pingClient
+
+autoPing :: (MonadIO m, MonadCatch m) => Interval -> AppT api m ()
+autoPing i = autoClient @PingApi i pingClient
+
+versionClient :: ClientM ServerVersion
+versionClient = client (Proxy @VersionApi)
+
+manualVersion ::(MonadIO m, MonadCatch m) => AppT api m ServerVersion
+manualVersion = manualClient @VersionApi versionClient
+
+autoVersion :: (MonadIO m, MonadCatch m) => Interval -> AppT api m ()
+autoVersion i = autoClient @VersionApi i versionClient

@@ -1,34 +1,51 @@
-{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE LambdaCase #-}
 
 module Cardano.Server.Client.Opts where
 
-import           Cardano.Server.Client.Internal (Mode (..))
-import           Cardano.Server.Config          (ServerEndpoint (..))
-import           Control.Applicative            ((<|>))
-import           Options.Applicative            (Parser, argument, auto, execParser, fullDesc, help, helper, info, long, metavar,
-                                                 option, short, strOption, value, (<**>))
+import           Options.Applicative (Alternative ((<|>)), CommandFields, Mod, Parser, auto, command, execParser, flag', fullDesc, help,
+                                      helper, info, long, metavar, option, progDesc, short, value, (<**>))
 
-runWithOpts :: IO CommonOptions
-runWithOpts = execParser $ info (optionsParser <**> helper) fullDesc
+runWithOpts :: Parser a -> IO a
+runWithOpts p = execParser $ info (p <**> helper) fullDesc
 
-optionsParser :: Parser CommonOptions
-optionsParser = CommonOptions <$> serverEndpointParser <*> (autoModeParser <|> manualModeParser)
+pingCommand :: a -> (Interval -> a) -> Mod CommandFields a
+pingCommand manualPing autoPing = let p = pingP manualPing autoPing
+    in command "ping"    $ info p $ progDesc "Client for ping endpoint."
 
-data CommonOptions = CommonOptions
-    { optsEndpoint :: ServerEndpoint
-    , optsMode     :: Mode
-    } deriving (Show, Eq)
+versionCommand :: a -> (Interval -> a) -> Mod CommandFields a
+versionCommand manualVersion autoVersion = let v = versionP manualVersion autoVersion
+    in command "version" $ info v $ progDesc "Client for version endpoint."
 
-serverEndpointParser :: Parser ServerEndpoint
-serverEndpointParser = argument auto
-    (  value ServerTxE
-    <> metavar "ping | utxos | newTx | submitTx | serverTx | status"
-    )
+randomCommand :: (Interval -> a) -> Mod CommandFields a
+randomCommand autoRandom = let r = randomP autoRandom
+    in command "random"  $ info r $ progDesc "Random client."
 
---------------------------------------------- Auto ---------------------------------------------
+pingP :: a -> (Interval -> a) -> Parser a
+pingP manualPing autoPing = fmap (mapMode autoPing (const manualPing)) $ manualModeP (pure ()) <|> autoModeP
 
-autoModeParser :: Parser Mode
-autoModeParser = Auto <$> option auto
+versionP :: a -> (Interval -> a) -> Parser a
+versionP manualVersion autoVersion = fmap (mapMode autoVersion (const manualVersion)) $ manualModeP (pure ()) <|> autoModeP
+
+randomP :: (Interval -> a) -> Parser a
+randomP autoRandom = autoRandom <$> autoIntervalP
+
+type Interval = Int
+
+data Mode manualArgs
+    = Auto   Interval
+    | Manual manualArgs
+    deriving (Show, Eq)
+
+mapMode :: (Interval -> a) -> (manualArgs -> a) -> Mode manualArgs -> a
+mapMode fa fm = \case
+    Auto i -> fa i
+    Manual args -> fm args
+
+autoModeP :: Parser (Mode manualArgs)
+autoModeP = Auto <$> autoIntervalP
+
+autoIntervalP :: Parser Interval
+autoIntervalP = option auto
     (  long  "auto"
     <> short 'a'
     <> help  "Average client request interval in seconds."
@@ -36,13 +53,7 @@ autoModeParser = Auto <$> option auto
     <> metavar "SECONDS"
     )
 
--------------------------------------------- Manual --------------------------------------------
-
-manualModeParser :: Parser Mode
-manualModeParser = Manual <$> strOption
-    (  short 'm'
-    <> long "manual"
-    <> help "Text representation of client argument"
-    <> value ""
-    <> metavar "TEXT"
-    )
+manualModeP :: Parser manualArgs -> Parser (Mode manualArgs)
+manualModeP p = flag' Manual fields <*> p
+  where fields = short 'm'
+              <> long "manual"
