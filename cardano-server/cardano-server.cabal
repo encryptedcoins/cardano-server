@@ -46,6 +46,7 @@ library
       Cardano.Server.Error.Class
       Cardano.Server.Error.Servant
       Cardano.Server.Error.Utils
+      Cardano.Server.Handler
       Cardano.Server.Input
       Cardano.Server.Internal
       Cardano.Server.Main

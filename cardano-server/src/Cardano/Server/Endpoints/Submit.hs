@@ -1,4 +1,3 @@
-{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds           #-}
 {-# LANGUAGE DeriveAnyClass      #-}
 {-# LANGUAGE DeriveGeneric       #-}
@@ -9,12 +8,14 @@
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications    #-}
 {-# LANGUAGE TypeOperators       #-}
 
 module Cardano.Server.Endpoints.Submit where
 
 import           Cardano.Server.Error          (ConnectionError, IsCardanoServerError (..), SubmitTxToLocalNodeError, Throws)
-import           Cardano.Server.Internal       (ServerM, checkEndpointAvailability)
+import           Cardano.Server.Handler        (wrapHandler)
+import           Cardano.Server.Internal       (ServerM)
 import           Cardano.Server.Utils.Logger   (logMsg, (.<))
 import           Control.Monad.Catch           (Exception, MonadThrow (throwM))
 import           Control.Monad.IO.Class        (MonadIO (..))
@@ -25,27 +26,25 @@ import           GHC.Generics                  (Generic)
 import           Ledger                        (CardanoTx)
 import           Ledger.Crypto                 (PubKey, Signature)
 import           PlutusAppsExtra.IO.Node       (sumbitTxToNodeLocal)
-import           PlutusAppsExtra.Utils.Network (HasNetworkId (..))
+import           PlutusAppsExtra.Utils.Network (HasNetworkId (getNetworkId))
 import           PlutusAppsExtra.Utils.Tx      (addCardanoTxSignature, textToCardanoTx, textToPubkey, textToSignature)
 import           Servant                       (JSON, NoContent (..), Post, ReqBody, (:>))
 
 data SubmitTxReqBody = SubmitTxReqBody
-    {
-        submitReqTx         :: Text,
-        submitReqWitnesses  :: [(Text, Text)]
-    }
-    deriving (Show, Read, Generic, ToJSON, FromJSON)
+    { submitReqTx         :: Text
+    , submitReqWitnesses  :: [(Text, Text)]
+    } deriving (Show, Read, Generic, ToJSON, FromJSON)
 
-type SubmitTxApi err = "submitTx"
-    :> Throws err
+type SubmitTxApi = "submitTx"
     :> Throws SubmitTxApiError
     :> Throws SubmitTxToLocalNodeError
     :> Throws ConnectionError
     :> ReqBody '[JSON] SubmitTxReqBody
     :> Post '[JSON] NoContent
 
-data SubmitTxApiError = UnparsableTx Text
-                      | UnparsableWitnesses [(Text, Text)]
+data SubmitTxApiError
+    = UnparsableTx Text
+    | UnparsableWitnesses [(Text, Text)]
     deriving (Show, Generic, ToJSON)
     deriving Exception
 
@@ -54,13 +53,9 @@ instance IsCardanoServerError SubmitTxApiError where
     errMsg (UnparsableTx tx)          = "Cannot parse CardanoTx from hex:" .< tx
     errMsg (UnparsableWitnesses wtns) = "Cannot parse witnesses from hex:" .< wtns
 
-submitTxHandler :: (HasNetworkId (ServerM api))
-    => FilePath
-    -> SubmitTxReqBody
-    -> ServerM api NoContent
-submitTxHandler nodeFp req = do
+submitTxHandler :: HasNetworkId (ServerM api) => FilePath -> SubmitTxReqBody -> ServerM api NoContent
+submitTxHandler nodeFp req = wrapHandler @SubmitTxApi $ do
     logMsg $ "New submitTx request received:\n" .< req
-    checkEndpointAvailability "SumbitTx"
     (ctx, wtns) <- either throwM pure $ parseSubmitTxReqBody req
     let ctx' = foldr (uncurry addCardanoTxSignature) ctx wtns
     networkId <- getNetworkId
