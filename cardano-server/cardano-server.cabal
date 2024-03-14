@@ -45,7 +45,6 @@ library
       Cardano.Server.Error
       Cardano.Server.Error.Class
       Cardano.Server.Error.Servant
-      Cardano.Server.Error.ToEnvelope
       Cardano.Server.Error.Utils
       Cardano.Server.Input
       Cardano.Server.Internal
@@ -104,4 +103,5 @@ library
       wai-cors                               -any,
       warp                                   -any,
       warp-tls                               -any,
+       world-peace                           -any,
     hs-source-dirs: src

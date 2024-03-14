@@ -14,8 +14,7 @@ module Cardano.Server.Endpoints.Utxos where
 
 import qualified CSL
 import           CSL.Class                     (toCSL)
-import           Cardano.Server.Error          (ConnectionError, CslError (..), Envelope, IsCardanoServerError (errMsg, errStatus), Throws,
-                                                toEnvelope)
+import           Cardano.Server.Error          (ConnectionError, CslError (..), IsCardanoServerError (..), Throws)
 import           Cardano.Server.Internal       (ServerM, checkEndpointAvailability)
 import           Cardano.Server.Tx             (MkTxConstrains)
 import           Cardano.Server.Utils.Logger   (logMsg, (.<))
@@ -47,8 +46,8 @@ instance IsCardanoServerError UtxosError where
     errMsg = \case
         UnparsableAddress -> "Incorrect wallet address."
 
-utxosHandler :: MkTxConstrains (ServerM api) => Text -> ServerM api (Envelope '[UtxosError, ConnectionError, CslError] CSL.TransactionUnspentOutputs)
-utxosHandler addrTxt = toEnvelope $ do
+utxosHandler :: MkTxConstrains (ServerM api) => Text -> ServerM api CSL.TransactionUnspentOutputs
+utxosHandler addrTxt = do
     logMsg $ "New utxos request received:\n" .< addrTxt
     checkEndpointAvailability "Utxos"
     let !addr = fromMaybe (throw UnparsableAddress) $ bech32ToAddress addrTxt

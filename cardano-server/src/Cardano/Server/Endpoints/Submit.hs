@@ -1,3 +1,4 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds           #-}
 {-# LANGUAGE DeriveAnyClass      #-}
 {-# LANGUAGE DeriveGeneric       #-}
@@ -12,8 +13,7 @@
 
 module Cardano.Server.Endpoints.Submit where
 
-import           Cardano.Server.Error          (ConnectionError, Envelope, IsCardanoServerError (..), SubmitTxToLocalNodeError, Throws,
-                                                toEnvelope)
+import           Cardano.Server.Error          (ConnectionError, IsCardanoServerError (..), SubmitTxToLocalNodeError, Throws)
 import           Cardano.Server.Internal       (ServerM, checkEndpointAvailability)
 import           Cardano.Server.Utils.Logger   (logMsg, (.<))
 import           Control.Monad.Catch           (Exception, MonadThrow (throwM))
@@ -54,11 +54,11 @@ instance IsCardanoServerError SubmitTxApiError where
     errMsg (UnparsableTx tx)          = "Cannot parse CardanoTx from hex:" .< tx
     errMsg (UnparsableWitnesses wtns) = "Cannot parse witnesses from hex:" .< wtns
 
-submitTxHandler :: (IsCardanoServerError err, HasNetworkId (ServerM api))
+submitTxHandler :: (HasNetworkId (ServerM api))
     => FilePath
     -> SubmitTxReqBody
-    -> ServerM api (Envelope '[err, SubmitTxApiError, SubmitTxToLocalNodeError, ConnectionError] NoContent)
-submitTxHandler nodeFp req = toEnvelope $ do
+    -> ServerM api NoContent
+submitTxHandler nodeFp req = do
     logMsg $ "New submitTx request received:\n" .< req
     checkEndpointAvailability "SumbitTx"
     (ctx, wtns) <- either throwM pure $ parseSubmitTxReqBody req
