@@ -11,24 +11,24 @@
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE TupleSections              #-}
 {-# LANGUAGE TypeApplications           #-}
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE TypeOperators              #-}
-{-# LANGUAGE TupleSections              #-}
 
 module Cardano.Server.Example.OnChain where
 
-import           Cardano.Ledger.Alonzo.Language       (Language(PlutusV2))
-import           PlutusAppsExtra.Constraints.OnChain  (tokensMinted)
-import           Ledger                               (Versioned(..), Validator)
-import           Ledger.Typed.Scripts                 (IsScriptContext(..))
-import           Plutus.Script.Utils.V2.Typed.Scripts (ValidatorTypes (..), TypedValidator, mkTypedValidator, validatorScript)
-import           Plutus.V2.Ledger.Api                 (ScriptContext(..), MintingPolicy, TokenName (..), mkMintingPolicyScript,
-                                                       ScriptHash, unMintingPolicyScript)
-import           PlutusTx                             (compile)
-import           PlutusTx.AssocMap                    (fromList)
-import           PlutusTx.Prelude                     (BuiltinByteString, Bool (..), ($), map)
+import           Cardano.Ledger.Alonzo.Language       (Language (PlutusV2))
+import           Cardano.Server.Example.Input         (TestPolicyInput, toTokenMap)
+import           Ledger                               (Validator, Versioned (..))
+import           Ledger.Typed.Scripts                 (IsScriptContext (..))
 import           Plutus.Script.Utils.V2.Scripts       (scriptHash)
+import           Plutus.Script.Utils.V2.Typed.Scripts (TypedValidator, ValidatorTypes (..), mkTypedValidator, validatorScript)
+import           Plutus.V2.Ledger.Api                 (MintingPolicy, ScriptContext (..), ScriptHash, TokenName (..), mkMintingPolicyScript,
+                                                       unMintingPolicyScript)
+import           PlutusAppsExtra.Constraints.OnChain  (tokensMinted)
+import           PlutusTx                             (compile)
+import           PlutusTx.Prelude                     (Bool (..), BuiltinByteString, ($))
 
 ------------------------------------- Test Minting Policy --------------------------------------
 
@@ -36,12 +36,11 @@ import           Plutus.Script.Utils.V2.Scripts       (scriptHash)
 testTokenName :: BuiltinByteString -> TokenName
 testTokenName = TokenName
 
-testPolicyCheck :: [BuiltinByteString] -> ScriptContext -> Bool
-testPolicyCheck bss ctx = cond1
+{-# INLINABLE testPolicyCheck #-}
+testPolicyCheck :: TestPolicyInput -> ScriptContext -> Bool
+testPolicyCheck red ctx = cond1
   where
-    names = map testTokenName bss
-
-    cond1 = tokensMinted ctx $ fromList $ map (, 1) names
+    cond1 = tokensMinted ctx $ toTokenMap red
 
 testPolicy :: MintingPolicy
 testPolicy = mkMintingPolicyScript $$(PlutusTx.compile [|| mkUntypedMintingPolicy testPolicyCheck ||])

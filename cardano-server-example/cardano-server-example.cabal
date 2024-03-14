@@ -31,16 +31,22 @@ common lang
 library
     import: lang
     exposed-modules:
+      Cardano.Server.Example.Input
       Cardano.Server.Example.Main
       Cardano.Server.Example.OnChain
       Cardano.Server.Example.OffChain
     other-modules:
     build-depends:
       base                          >= 4.9 && < 5,
+      aeson                                  -any,
+      aeson-casing                           -any,
       cardano-server                         -any,
       cardano-server-client                  -any,
       cardano-ledger-alonzo                  -any,
+      cardano-node-emulator                  -any,
       exceptions                             -any,
+      data-default                           -any,
+      gitrev                                 -any,
       mtl                                    -any,
       optparse-applicative                   -any,
       plutus-apps-extra                      -any,
@@ -50,8 +56,11 @@ library
       plutus-tx                              -any,
       plutus-tx-plugin                       -any,
       servant-client                         -any,
+      servant-server                         -any,
       text                                   -any,
     hs-source-dirs: src
+    other-modules: Paths_cardano_server_example
+    autogen-modules: Paths_cardano_server_example
 
 executable cardano-server-example
   default-language: Haskell2010
