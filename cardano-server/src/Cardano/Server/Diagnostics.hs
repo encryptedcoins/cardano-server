@@ -15,7 +15,7 @@
 module Cardano.Server.Diagnostics where
 
 import           Cardano.Server.Endpoints.Ping         (PingApi)
-import           Cardano.Server.Internal               (mkServerClientEnv, ServerM)
+import           Cardano.Server.Internal               (AppT, mkServerClientEnv)
 import           Cardano.Server.Utils.Logger           (HasLogger, logMsg, (.<))
 import           Cardano.Server.Utils.Wait             (waitTime)
 import qualified Cardano.Wallet.Api.Types              as Wallet
@@ -41,7 +41,7 @@ import qualified PlutusAppsExtra.Utils.Kupo            as Kupo
 import qualified Servant.Client                        as Servant
 import Servant.Client (ClientM)
 
-doDiagnostics :: Int -> ServerM api () -> ServerM api ()
+doDiagnostics :: MonadIO m => Int -> m () -> m ()
 doDiagnostics i d = forever $ do
     delay <- liftIO $ async $ waitTime i
     d
@@ -56,10 +56,10 @@ providersDiagnostics = do
     whenM ((== ChainIndex.Kupo) <$> getChainIndexProvider)
         $ withDiagnostics "kupo" kupoDiagnostics
 
-pingDiagnostics :: ServerM api ()
+pingDiagnostics :: (MonadIO m, MonadCatch m) => AppT api m ()
 pingDiagnostics = clientDiagnostics (Servant.client (Proxy @PingApi))
 
-clientDiagnostics :: ClientM a -> ServerM api ()
+clientDiagnostics :: (MonadIO m, MonadCatch m) => ClientM a -> AppT api m ()
 clientDiagnostics client = withDiagnostics "server" $ do
     env <- mkServerClientEnv
     res <- liftIO $ Servant.runClientM client env

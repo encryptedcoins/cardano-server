@@ -162,7 +162,7 @@ checkForCleanUtxos = mkTxErrorH $ do
         logMsg $ "Address doesn't has enough clean UTXO's. Need "
             <> (T.pack . show $ minUtxos - cleanUtxos)
             <> " more."
-        addr         <- PlutusAppsExtra.IO.Wallet.getWalletAddr
+        addr <- PlutusAppsExtra.IO.Wallet.getWalletAddr
         mkWalletTxOutRefs addr (maxUtxos - cleanUtxos) >>= logSmth
 
 mkWalletTxOutRefs :: MkTxConstrains m => Address -> Int -> m [TxOutRef]
