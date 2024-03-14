@@ -42,6 +42,7 @@ library
       Cardano.Server.Endpoints.Ping
       Cardano.Server.Endpoints.Submit
       Cardano.Server.Endpoints.Utxos
+      Cardano.Server.Endpoints.Version
       Cardano.Server.Error
       Cardano.Server.Error.Class
       Cardano.Server.Error.Servant
@@ -91,6 +92,7 @@ library
       plutus-tx                              -any,
       plutus-tx-constraints                  -any,
       prettyprinter                          -any,
+      prettyprinter-ansi-terminal            -any,
       servant                                -any,
       servant-client                         -any,
       servant-client-core                    -any,
