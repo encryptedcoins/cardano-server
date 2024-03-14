@@ -34,17 +34,21 @@ library
     Cardano.Server.Test.Utils
   other-modules:
     Cardano.Server.Test.Internal
+    Cardano.Server.Test.Gen
   build-depends:
     base                          >= 4.9 && < 5,
     aeson                                  -any,
     cardano-api                            -any,
     cardano-server                         -any,
     cardano-server-client                  -any,
+    data-default                           -any,
     hspec                                  -any,
     mtl                                    -any,
     plutus-apps-extra                      -any,
     servant-client                         -any,
+    servant-server                         -any,
     text                                   -any,
+    QuickCheck                             -any,
   hs-source-dirs: test
 
 test-suite cardano-server-test
@@ -77,6 +81,7 @@ test-suite cardano-server-test
     cardano-server-client-example          -any,
     cardano-wallet-core                    -any,
     cryptonite                             -any,
+    data-default                           -any,
     exceptions                             -any,
     hspec                                  -any,
     hspec-wai                              -any,
@@ -85,6 +90,7 @@ test-suite cardano-server-test
     mtl                                    -any,
     plutus-apps-extra                      -any,
     servant-client                         -any,
+    servant-server                         -any,
     text                                   -any,
     text-class                             -any,
     quickcheck-text                        -any,

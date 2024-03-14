@@ -1,16 +1,19 @@
 {-# LANGUAGE FlexibleInstances   #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications    #-}
 
 module Cardano.Server.Endpoints.PingSpec where
 
-import           Cardano.Server.Client.Handle   (HasServantClientEnv)
-import           Cardano.Server.Client.Internal (pingC)
-import           Cardano.Server.Test.Internal   (shouldBeOk)
-import           Test.Hspec                     (Spec, describe, it)
+import           Cardano.Server.Client.Client  (HasServantClientEnv)
+import           Cardano.Server.Endpoints.Ping (PingApi)
+import           Cardano.Server.Test.Internal  (shouldBeOk)
+import           Servant                       (Proxy (..))
+import           Servant.Client                (client)
+import           Test.Hspec                    (Spec, describe, it)
 
 spec :: HasServantClientEnv => Spec
 spec = describe "/ping" $ do
 
         it "should always be available" $ do
-            shouldBeOk pingC
+            shouldBeOk $ client (Proxy @PingApi)

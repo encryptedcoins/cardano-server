@@ -2,12 +2,12 @@
 
 module Cardano.Server.Test.Gen where
 
-import           Cardano.Server.Client.Handle       ()
-import           Cardano.Server.Endpoints.Tx.Submit (SubmitTxReqBody (SubmitTxReqBody), parseSubmitTxReqBody)
-import           Control.Monad.IO.Class             (MonadIO (..))
-import           Data.Text                          (Text)
-import           PlutusAppsExtra.Utils.Address      (bech32ToAddress)
-import           Test.QuickCheck                    (Arbitrary (arbitrary), generate)
+import           Cardano.Server.Client.Gen       ()
+import           Cardano.Server.Endpoints.Submit (SubmitTxReqBody (SubmitTxReqBody), parseSubmitTxReqBody)
+import           Control.Monad.IO.Class          (MonadIO (..))
+import           Data.Text                       (Text)
+import           PlutusAppsExtra.Utils.Address   (bech32ToAddress)
+import           Test.QuickCheck                 (Arbitrary (arbitrary), generate)
 
 newtype Malformed a = Malformed a
 
