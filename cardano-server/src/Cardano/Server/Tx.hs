@@ -148,23 +148,6 @@ mkTx :: MkTxConstrains m
     -> m CardanoTx
 mkTx addressesTracked ctx txs = submitTx addressesTracked ctx txs >>= awaitTxConfirmed
 
-checkForCleanUtxos ::
-    ( Monad m
-    , MkTxConstrains (AppT api m)
-    , HasField "envMinUtxosNumber" (AuxillaryEnvOf api) Int
-    , HasField "envMaxUtxosNumber" (AuxillaryEnvOf api) Int
-    ) => AppT api m ()
-checkForCleanUtxos = mkTxErrorH $ do
-    cleanUtxos <- length . filterCleanUtxos <$> PlutusAppsExtra.IO.Wallet.getWalletUtxos mempty
-    minUtxos   <- getField @"envMinUtxosNumber" <$> getAuxillaryEnv
-    maxUtxos   <- getField @"envMaxUtxosNumber" <$> getAuxillaryEnv
-    when (cleanUtxos < minUtxos) $ do
-        logMsg $ "Address doesn't has enough clean UTXO's. Need "
-            <> (T.pack . show $ minUtxos - cleanUtxos)
-            <> " more."
-        addr <- PlutusAppsExtra.IO.Wallet.getWalletAddr
-        mkWalletTxOutRefs addr (maxUtxos - cleanUtxos) >>= logSmth
-
 mkWalletTxOutRefs :: MkTxConstrains m => Address -> Int -> m [TxOutRef]
 mkWalletTxOutRefs addr n = do
     (pkh, scr) <- throwMaybe (CantExtractKeyHashesFromAddress addr) $ addressToKeyHashes addr
