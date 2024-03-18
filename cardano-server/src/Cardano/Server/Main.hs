@@ -1,20 +1,5 @@
-{-# LANGUAGE AllowAmbiguousTypes       #-}
-{-# LANGUAGE ConstraintKinds           #-}
-{-# LANGUAGE DataKinds                 #-}
-{-# LANGUAGE FlexibleContexts          #-}
-{-# LANGUAGE FlexibleInstances         #-}
-{-# LANGUAGE ImplicitParams            #-}
-{-# LANGUAGE NoMonomorphismRestriction #-}
-{-# LANGUAGE OverloadedStrings         #-}
-{-# LANGUAGE PatternSynonyms           #-}
-{-# LANGUAGE QuantifiedConstraints     #-}
-{-# LANGUAGE RankNTypes                #-}
-{-# LANGUAGE RecordWildCards           #-}
-{-# LANGUAGE ScopedTypeVariables       #-}
-{-# LANGUAGE TemplateHaskell           #-}
-{-# LANGUAGE TypeApplications          #-}
-{-# LANGUAGE TypeFamilies              #-}
-{-# LANGUAGE TypeOperators             #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell   #-}
 
 module Cardano.Server.Main where
 

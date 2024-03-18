@@ -1,6 +1,3 @@
-{-# LANGUAGE DataKinds        #-}
-{-# LANGUAGE TypeApplications #-}
-
 module Cardano.Server.Endpoints.StatusSpec where
 
 import           Cardano.Server.Client.Client (HasServantClientEnv)
@@ -17,11 +14,11 @@ spec :: HasServantClientEnv => Spec
 spec = describe "/status" $ do
 
     it "gets status endpoint result when all is ok" $ do
-        shouldBeOk $ client (Proxy @StatusApi) True
+        shouldBeOk $ statusClient True
 
     it "gets corresponding error on failed request" $ do
-        client (Proxy @StatusApi) False `shoudlFailWithStatus` fromEnum (errStatus ExampleStatusEndpointError)
-        client (Proxy @StatusApi) False `shoudlFailWithMessage` errMsg ExampleStatusEndpointError
+        statusClient False `shoudlFailWithStatus` fromEnum (errStatus ExampleStatusEndpointError)
+        statusClient False `shoudlFailWithMessage` errMsg ExampleStatusEndpointError
 
 statusClient :: Bool -> ClientM (Envelope '[ExampleStatusEndpointError] Text)
 statusClient = client (Proxy @StatusApi)

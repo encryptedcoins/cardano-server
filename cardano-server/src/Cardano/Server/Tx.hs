@@ -1,15 +1,4 @@
-{-# LANGUAGE ConstraintKinds      #-}
-{-# LANGUAGE DataKinds            #-}
-{-# LANGUAGE FlexibleContexts     #-}
-{-# LANGUAGE FlexibleInstances    #-}
-{-# LANGUAGE LambdaCase           #-}
-{-# LANGUAGE MonoLocalBinds       #-}
-{-# LANGUAGE NumericUnderscores   #-}
-{-# LANGUAGE OverloadedStrings    #-}
-{-# LANGUAGE RecordWildCards      #-}
-{-# LANGUAGE TypeApplications     #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE ViewPatterns         #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Cardano.Server.Tx where
 
@@ -49,11 +38,9 @@ import           PlutusAppsExtra.IO.ChainIndex        (getUtxosAt)
 import           PlutusAppsExtra.IO.Time              (currentTime)
 import           PlutusAppsExtra.IO.Tx                (HasTxProvider)
 import qualified PlutusAppsExtra.IO.Tx
-import qualified PlutusAppsExtra.IO.Wallet
 import           PlutusAppsExtra.Types.Tx             (TransactionBuilder, TxConstructor (..), mkTxConstructor, selectTxConstructor,
                                                        txBuilderRequirements)
 import           PlutusAppsExtra.Utils.Address        (addressToKeyHashes)
-import           PlutusAppsExtra.Utils.ChainIndex     (filterCleanUtxos)
 import           PlutusTx                             (BuiltinData)
 import qualified PlutusTx.AssocMap                    as PAM
 import           PlutusTx.Builtins.Class              (ToBuiltin (..))

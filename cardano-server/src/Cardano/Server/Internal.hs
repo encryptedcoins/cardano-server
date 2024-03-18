@@ -1,21 +1,4 @@
-{-# LANGUAGE AllowAmbiguousTypes        #-}
-{-# LANGUAGE ConstraintKinds            #-}
-{-# LANGUAGE DataKinds                  #-}
-{-# LANGUAGE DerivingVia                #-}
-{-# LANGUAGE ExistentialQuantification  #-}
-{-# LANGUAGE FlexibleContexts           #-}
-{-# LANGUAGE FlexibleInstances          #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE ImplicitParams             #-}
-{-# LANGUAGE MultiParamTypeClasses      #-}
-{-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE RankNTypes                 #-}
-{-# LANGUAGE RecordWildCards            #-}
-{-# LANGUAGE ScopedTypeVariables        #-}
-{-# LANGUAGE StandaloneDeriving         #-}
-{-# LANGUAGE TypeApplications           #-}
-{-# LANGUAGE TypeFamilies               #-}
-{-# LANGUAGE UndecidableInstances       #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Cardano.Server.Internal where
 
@@ -70,13 +53,13 @@ newtype AppT (api :: Type) (m :: Type -> Type) (a :: Type) = AppT {unAppT :: Rea
         , MonadCatch
         )
 
-deriving instance MonadUnliftIO (AppT api IO)
+deriving newtype instance MonadUnliftIO (AppT api IO)
 
 runAppT :: Env api -> AppT api m a -> m a
 runAppT env = (`runReaderT` env) . unAppT
 
 type ServerM api = AppT api Handler
-deriving instance MonadError Servant.ServerError (ServerM api)
+deriving newtype instance MonadError Servant.ServerError (ServerM api)
 
 runServerM :: Env api -> ServerM api a -> IO a
 runServerM env = fmap (either throw id) . Servant.runHandler . (`runReaderT` env) . unAppT

@@ -1,8 +1,4 @@
-{-# LANGUAGE DeriveAnyClass    #-}
-{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE PatternSynonyms   #-}
-{-# LANGUAGE RankNTypes        #-}
 
 module Cardano.Server.Error.Class where
 
@@ -123,7 +119,8 @@ data InternalServerError
     | NoMaestroToken
     | NoBlockfrostToken
     | WalletWithoutKeyHashes
-    deriving (Show, Exception)
+    deriving stock (Show)
+    deriving anyclass (Exception)
 
 instance IsCardanoServerError ConnectionError where
     errStatus _ = toEnum 503
@@ -160,7 +157,8 @@ instance IsCardanoServerError SubmitTxToLocalNodeError where
 
 data CslError
     = CslConversionError
-    deriving (Show, Exception)
+    deriving stock (Show)
+    deriving anyclass (Exception)
 
 instance IsCardanoServerError CslError where
     errStatus _ = toEnum 422

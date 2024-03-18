@@ -1,23 +1,6 @@
-{-# LANGUAGE AllowAmbiguousTypes       #-}
-{-# LANGUAGE DataKinds                 #-}
-{-# LANGUAGE DeriveFunctor             #-}
-{-# LANGUAGE DerivingStrategies        #-}
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE FlexibleContexts          #-}
-{-# LANGUAGE FlexibleInstances         #-}
-{-# LANGUAGE LambdaCase                #-}
-{-# LANGUAGE MultiParamTypeClasses     #-}
 {-# LANGUAGE OverloadedStrings         #-}
 {-# LANGUAGE PolyKinds                 #-}
-{-# LANGUAGE RankNTypes                #-}
-{-# LANGUAGE ScopedTypeVariables       #-}
-{-# LANGUAGE StandaloneDeriving        #-}
-{-# LANGUAGE TupleSections             #-}
-{-# LANGUAGE TypeApplications          #-}
-{-# LANGUAGE TypeFamilies              #-}
-{-# LANGUAGE TypeOperators             #-}
-{-# LANGUAGE UndecidableInstances      #-}
-{-# LANGUAGE UndecidableSuperClasses   #-}
 
 module Cardano.Server.Error.Servant where
 
@@ -63,7 +46,7 @@ data VerbWithErrors
 
 data Envelope es a
     = (All IsCardanoServerError es) => ErrEnvelope (OpenUnion es) | SuccEnvelope a
-deriving instance Functor (Envelope es)
+deriving stock instance Functor (Envelope es)
 
 envelopeToEither :: Envelope '[e] a -> Either e a
 envelopeToEither = \case
@@ -124,7 +107,10 @@ instance FromJSON a => FromJSON (Envelope '[] a) where
     parseJSON j = SuccEnvelope <$> parseJSON j
 
 instance (All IsCardanoServerError (e : es), FromJSON (Envelope es a), Contains es (e : es)) => FromJSON (Envelope (e : es) a) where
-    parseJSON j = maybe (mapUnion relaxUnion <$> parseJSON @(Envelope es a) j) (pure . ErrEnvelope . openUnionLift) (cardanoServerErrorFromJSON @e j)
+    parseJSON j = maybe
+        (mapUnion relaxUnion <$> parseJSON @(Envelope es a) j)
+        (pure . ErrEnvelope . openUnionLift)
+        (cardanoServerErrorFromJSON @e j)
 
 type family ThrowingNonterminal api where
     ThrowingNonterminal (Throwing es :> Throws e :> api) = Throwing (Snoc es e) :> api
@@ -271,6 +257,7 @@ instance Accept ctyp => AllMimeRender '[ctyp] (Envelope es NoContent) where
 instance AllMime (ctyp ': ctyp' ': ctyps) => AllMimeRender (ctyp ': ctyp' ': ctyps) (Envelope es NoContent) where
     allMimeRender p _ = zip (allMime p) (repeat "")
 
-instance {-# OVERLAPPING #-} (All IsCardanoServerError (e : es), FromJSON (Envelope es ()), Contains es (e : es)) => MimeUnrender JSON (Envelope (e : es) NoContent) where
+instance {-# OVERLAPPING #-} (All IsCardanoServerError (e : es), FromJSON (Envelope es ()), Contains es (e : es)
+    ) => MimeUnrender JSON (Envelope (e : es) NoContent) where
     mimeUnrender _ "" = Right $ SuccEnvelope NoContent
     mimeUnrender _ bs = (NoContent <$) <$> J.eitherDecode @(Envelope (e : es) ()) bs

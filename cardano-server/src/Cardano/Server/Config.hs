@@ -1,15 +1,4 @@
-{-# LANGUAGE ConstraintKinds      #-}
-{-# LANGUAGE DeriveAnyClass       #-}
-{-# LANGUAGE DeriveGeneric        #-}
-{-# LANGUAGE DerivingStrategies   #-}
-{-# LANGUAGE ImplicitParams       #-}
-{-# LANGUAGE LambdaCase           #-}
-{-# LANGUAGE OverloadedStrings    #-}
-{-# LANGUAGE RankNTypes           #-}
-{-# LANGUAGE RecordWildCards      #-}
-{-# LANGUAGE StandaloneDeriving   #-}
-{-# LANGUAGE TypeFamilies         #-}
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Cardano.Server.Config where
 
@@ -35,8 +24,8 @@ data Config api = Config
 
 type family AuxillaryConfigOf api
 
-deriving instance Show (AuxillaryConfigOf api) => Show (Config api)
-deriving instance Eq   (AuxillaryConfigOf api) => Eq   (Config api)
+deriving stock instance Show (AuxillaryConfigOf api) => Show (Config api)
+deriving stock instance Eq   (AuxillaryConfigOf api) => Eq   (Config api)
 
 instance (FromJSON (AuxillaryConfigOf api), GetEdpointNames api) => FromJSON (Config api) where
    parseJSON = withObject "Cardano server config" $ \o -> do
@@ -57,7 +46,8 @@ withDefault defVal mbVal = (\d -> maybe d pure mbVal) $ do
     pure defVal
 
 data HyperTextProtocol = HTTP | HTTPS
-    deriving (Show, Eq, Ord, Generic, FromJSON, ToJSON)
+    deriving stock (Show, Eq, Ord, Generic)
+    deriving anyclass ( FromJSON, ToJSON)
 
 type Creds = Maybe (ByteString, ByteString)
 

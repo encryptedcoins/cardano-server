@@ -1,7 +1,4 @@
-{-# LANGUAGE DataKinds      #-}
-{-# LANGUAGE PolyKinds      #-}
-{-# LANGUAGE TypeFamilies   #-}
-{-# LANGUAGE TypeOperators  #-}
+{-# LANGUAGE PolyKinds #-}
 
 module Cardano.Server.Error.Utils where
 

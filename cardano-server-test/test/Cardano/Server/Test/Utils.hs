@@ -1,4 +1,4 @@
-module Cardano.Server.Test.Utils 
+module Cardano.Server.Test.Utils
     ( module Cardano.Server.Test.Internal
     , module Cardano.Server.Test.Gen
     ) where

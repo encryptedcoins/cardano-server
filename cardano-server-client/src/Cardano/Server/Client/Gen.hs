@@ -1,6 +1,3 @@
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications    #-}
-
 module Cardano.Server.Client.Gen where
 
 import           Cardano.Crypto.DSIGN.Class    (DSIGNAlgorithm (..), seedSizeDSIGN)

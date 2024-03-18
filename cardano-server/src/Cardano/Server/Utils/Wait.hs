@@ -1,5 +1,3 @@
-{-# LANGUAGE NumericUnderscores #-}
-
 module Cardano.Server.Utils.Wait where
 
 import Control.Concurrent     (threadDelay)

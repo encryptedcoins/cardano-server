@@ -1,6 +1,3 @@
-{-# LANGUAGE RecordWildCards  #-}
-{-# LANGUAGE TypeApplications #-}
-
 module Cardano.Server.Endpoints.UtxosSpec where
 
 -- import           Cardano.Server.Client.Gen      (randomAddressBech32Text)

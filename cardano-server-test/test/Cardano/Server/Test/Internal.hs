@@ -1,13 +1,4 @@
-{-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE DataKinds           #-}
-{-# LANGUAGE FlexibleContexts    #-}
-{-# LANGUAGE FlexibleInstances   #-}
-{-# LANGUAGE ImplicitParams      #-}
-{-# LANGUAGE LambdaCase          #-}
-{-# LANGUAGE MonoLocalBinds      #-}
-{-# LANGUAGE RankNTypes          #-}
-{-# LANGUAGE TypeApplications    #-}
-{-# OPTIONS_GHC -Wno-orphans   #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 module Cardano.Server.Test.Internal where
 

@@ -1,16 +1,4 @@
-{-# LANGUAGE DataKinds                  #-}
-{-# LANGUAGE DeriveAnyClass             #-}
-{-# LANGUAGE DerivingStrategies         #-}
-{-# LANGUAGE FlexibleContexts           #-}
-{-# LANGUAGE FlexibleInstances          #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE RankNTypes                 #-}
-{-# LANGUAGE ScopedTypeVariables        #-}
-{-# LANGUAGE TypeApplications           #-}
-{-# LANGUAGE TypeFamilies               #-}
-{-# LANGUAGE UndecidableInstances       #-}
-{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Cardano.Server.Diagnostics where
 
@@ -38,8 +26,8 @@ import           PlutusAppsExtra.IO.Wallet             (HasWalletProvider (getWa
 import qualified PlutusAppsExtra.IO.Wallet             as Wallet
 import qualified PlutusAppsExtra.IO.Wallet.Cardano     as Wallet
 import qualified PlutusAppsExtra.Utils.Kupo            as Kupo
+import           Servant.Client                        (ClientM)
 import qualified Servant.Client                        as Servant
-import Servant.Client (ClientM)
 
 doDiagnostics :: MonadIO m => Int -> m () -> m ()
 doDiagnostics i d = forever $ do
@@ -99,5 +87,5 @@ withDiagnostics serviceName diagnostics = handle h $ do
         h (e :: SomeException) = logMsg $ serviceName <> " isn't alive. Reason: " .< e
 
 newtype DiagnosticsError = DiagnosticsError {getDiagnosticsError :: Text}
-    deriving newtype  Show
-    deriving anyclass Exception
+    deriving newtype (Show)
+    deriving anyclass (Exception)

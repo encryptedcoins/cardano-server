@@ -1,8 +1,3 @@
-{-# LANGUAGE FlexibleInstances   #-}
-{-# LANGUAGE OverloadedStrings   #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications    #-}
-
 module Cardano.Server.Endpoints.PingSpec where
 
 import           Cardano.Server.Client.Client  (HasServantClientEnv)

@@ -1,17 +1,5 @@
-{-# LANGUAGE AllowAmbiguousTypes  #-}
-{-# LANGUAGE DataKinds            #-}
-{-# LANGUAGE DeriveAnyClass       #-}
-{-# LANGUAGE DeriveGeneric        #-}
-{-# LANGUAGE FlexibleInstances    #-}
-{-# LANGUAGE ImplicitParams       #-}
-{-# LANGUAGE OverloadedStrings    #-}
-{-# LANGUAGE RecordWildCards      #-}
-{-# LANGUAGE ScopedTypeVariables  #-}
-{-# LANGUAGE TemplateHaskell      #-}
-{-# LANGUAGE TypeApplications     #-}
-{-# LANGUAGE TypeFamilies         #-}
-{-# LANGUAGE TypeOperators        #-}
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell   #-}
 
 module Cardano.Server.Example.Main where
 
@@ -74,7 +62,7 @@ data ExampleApiConfig = ExampleApiConfig
     , cChainIndexProvider     :: Maybe ChainIndexProvider
     , cTxProvider             :: Maybe TxProvider
     , cCollateral             :: Maybe TxOutRef
-    } deriving (Show, Eq, Generic)
+    } deriving stock (Show, Eq, Generic)
 
 instance FromJSON ExampleApiConfig where
     parseJSON = genericParseJSON $ aesonPrefix snakeCase
@@ -90,7 +78,7 @@ data ExampleApiEnv = ExampleApiEnv
     , envTxProvider         :: TxProvider
     , envCollateral         :: Maybe TxOutRef
     , envMaestroToken       :: Maybe MaestroToken
-    } deriving (Show, Eq)
+    } deriving stock (Show, Eq)
 
 loadExampleApiEnv :: MonadIO m => ExampleApiConfig -> m ExampleApiEnv
 loadExampleApiEnv ExampleApiConfig{..} = liftIO $ do
@@ -133,7 +121,8 @@ type MintApi = "mint"
 
 data ExampleApiError
     = HasDuplicates
-    deriving (Show, Exception)
+    deriving stock (Show)
+    deriving anyclass (Exception)
 
 instance IsCardanoServerError ExampleApiError where
     errStatus _ = toEnum 422
@@ -158,7 +147,8 @@ type StatusApi = "status"
 
 data ExampleStatusEndpointError
     = ExampleStatusEndpointError
-    deriving (Show, Exception, Generic)
+    deriving stock (Show, Generic)
+    deriving anyclass (Exception)
 
 instance IsCardanoServerError ExampleStatusEndpointError where
     errStatus _ = toEnum 422

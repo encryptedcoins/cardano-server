@@ -1,10 +1,3 @@
-{-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE DeriveAnyClass      #-}
-{-# LANGUAGE DeriveGeneric       #-}
-{-# LANGUAGE FlexibleContexts    #-}
-{-# LANGUAGE FlexibleInstances   #-}
-{-# LANGUAGE TypeFamilies        #-}
-
 module Cardano.Server.Input where
 
 import           Data.Aeson                       (FromJSON, ToJSON)
@@ -25,7 +18,8 @@ data InputContext = InputContextServer
         inputCollateral    :: TxOutRef,   -- Reference of a collateral input
         inputChangeAddress :: Address     -- Address for the change
     }
-    deriving (Eq, Show, Generic, ToJSON, FromJSON)
+    deriving stock (Eq, Show, Generic)
+    deriving anyclass (ToJSON, FromJSON)
 
 instance Default InputContext where
     def = InputContextServer mempty

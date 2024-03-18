@@ -1,7 +1,4 @@
-{-# LANGUAGE DataKinds         #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeApplications  #-}
-{-# LANGUAGE TypeOperators     #-}
 
 module Cardano.Server.Endpoints.Ping where
 

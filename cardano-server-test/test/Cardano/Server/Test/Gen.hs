@@ -1,5 +1,3 @@
-{-# LANGUAGE FlexibleInstances #-}
-
 module Cardano.Server.Test.Gen where
 
 import           Cardano.Server.Client.Gen       ()

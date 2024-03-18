@@ -1,14 +1,4 @@
-{-# LANGUAGE BangPatterns      #-}
-{-# LANGUAGE DataKinds         #-}
-{-# LANGUAGE DeriveAnyClass    #-}
-{-# LANGUAGE DeriveGeneric     #-}
-{-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE LambdaCase        #-}
-{-# LANGUAGE MonoLocalBinds    #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TupleSections     #-}
-{-# LANGUAGE TypeApplications  #-}
-{-# LANGUAGE TypeOperators     #-}
 
 module Cardano.Server.Endpoints.Utxos where
 
@@ -39,7 +29,8 @@ type UtxosApi = "utxos"
 
 data UtxosError
     = UnparsableAddress
-    deriving (Show, Exception, Generic, ToJSON)
+    deriving stock (Show, Generic)
+    deriving anyclass (Exception, ToJSON)
 
 instance IsCardanoServerError UtxosError where
     errStatus _ = toEnum 400

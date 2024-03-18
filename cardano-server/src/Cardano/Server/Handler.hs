@@ -1,16 +1,3 @@
-{-# LANGUAGE AllowAmbiguousTypes     #-}
-{-# LANGUAGE DataKinds               #-}
-{-# LANGUAGE FlexibleContexts        #-}
-{-# LANGUAGE FlexibleInstances       #-}
-{-# LANGUAGE MultiParamTypeClasses   #-}
-{-# LANGUAGE RankNTypes              #-}
-{-# LANGUAGE ScopedTypeVariables     #-}
-{-# LANGUAGE TypeApplications        #-}
-{-# LANGUAGE TypeFamilies            #-}
-{-# LANGUAGE TypeOperators           #-}
-{-# LANGUAGE UndecidableInstances    #-}
-{-# LANGUAGE UndecidableSuperClasses #-}
-
 module Cardano.Server.Handler where
 
 import           Cardano.Server.EndpointName  (GetEndpointName, checkThatEndpointIsActive)

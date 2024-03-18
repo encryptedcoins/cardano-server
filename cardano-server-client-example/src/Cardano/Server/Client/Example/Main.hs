@@ -1,17 +1,5 @@
-{-# LANGUAGE AllowAmbiguousTypes  #-}
-{-# LANGUAGE DataKinds            #-}
-{-# LANGUAGE FlexibleContexts     #-}
-{-# LANGUAGE ImplicitParams       #-}
-{-# LANGUAGE LambdaCase           #-}
-{-# LANGUAGE MultiWayIf           #-}
-{-# LANGUAGE OverloadedStrings    #-}
-{-# LANGUAGE RankNTypes           #-}
-{-# LANGUAGE ScopedTypeVariables  #-}
-{-# LANGUAGE TemplateHaskell      #-}
-{-# LANGUAGE TupleSections        #-}
-{-# LANGUAGE TypeApplications     #-}
-{-# LANGUAGE TypeFamilies         #-}
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell   #-}
 
 module Cardano.Server.Client.Example.Main where
 
@@ -68,7 +56,7 @@ data ClientCommand
     | ManualMint     [(BuiltinByteString, Integer)]
     | ManualStatus   Bool
     | RandomEndpoint Interval
-    deriving (Show, Eq)
+    deriving stock (Show, Eq)
 
 runCommand :: ClientCommand -> AppT ExampleApi IO ()
 runCommand = \case

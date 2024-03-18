@@ -1,5 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
-
 module Cardano.Server.Client.Opts where
 
 import           Options.Applicative (Alternative ((<|>)), CommandFields, Mod, Parser, auto, command, execParser, flag', fullDesc, help,

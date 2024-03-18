@@ -1,10 +1,3 @@
-{-# LANGUAGE DataKinds                    #-}
-{-# LANGUAGE KindSignatures               #-}
-{-# LANGUAGE OverloadedStrings            #-}
-{-# LANGUAGE ScopedTypeVariables          #-}
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-{-# HLINT ignore "Redundant <$>"          #-}
-
 module Cardano.Server.Client.OptsSpec where
 -- import           Cardano.Server.Client.Example.Main (readInput)
 -- import           Cardano.Server.Client.Internal     (Mode (Auto, Manual))

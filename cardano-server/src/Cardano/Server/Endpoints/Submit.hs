@@ -1,15 +1,4 @@
-{-# LANGUAGE DataKinds           #-}
-{-# LANGUAGE DeriveAnyClass      #-}
-{-# LANGUAGE DeriveGeneric       #-}
-{-# LANGUAGE DerivingVia         #-}
-{-# LANGUAGE FlexibleContexts    #-}
-{-# LANGUAGE MonoLocalBinds      #-}
-{-# LANGUAGE OverloadedStrings   #-}
-{-# LANGUAGE RankNTypes          #-}
-{-# LANGUAGE RecordWildCards     #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications    #-}
-{-# LANGUAGE TypeOperators       #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Cardano.Server.Endpoints.Submit where
 
@@ -33,7 +22,8 @@ import           Servant                       (JSON, NoContent (..), Post, ReqB
 data SubmitTxReqBody = SubmitTxReqBody
     { submitReqTx         :: Text
     , submitReqWitnesses  :: [(Text, Text)]
-    } deriving (Show, Read, Generic, ToJSON, FromJSON)
+    } deriving stock    (Show, Read, Generic)
+      deriving anyclass (ToJSON, FromJSON)
 
 type SubmitTxApi = "submitTx"
     :> Throws SubmitTxApiError
@@ -45,8 +35,8 @@ type SubmitTxApi = "submitTx"
 data SubmitTxApiError
     = UnparsableTx Text
     | UnparsableWitnesses [(Text, Text)]
-    deriving (Show, Generic, ToJSON)
-    deriving Exception
+    deriving stock (Show, Generic)
+    deriving anyclass (Exception, ToJSON)
 
 instance IsCardanoServerError SubmitTxApiError where
     errStatus _ = toEnum 400
