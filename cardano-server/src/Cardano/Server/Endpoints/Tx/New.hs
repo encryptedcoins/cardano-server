@@ -24,7 +24,6 @@ import           Cardano.Server.Internal              (ServerM, TxApiRequestOf, 
                                                        txEndpointProcessRequest, txEndpointsTxBuilders)
 import           Cardano.Server.Tx                    (mkBalanceTx)
 import           Cardano.Server.Utils.Logger          (logMsg, (.<))
-import           Control.Monad                        (join, liftM3)
 import           Control.Monad.Catch                  (Exception, MonadThrow (throwM))
 import           Control.Monad.IO.Class               (MonadIO (..))
 import           Data.Aeson                           (ToJSON)
@@ -64,8 +63,10 @@ newTxHandler req = withMetric "newTx request processing" $ toEnvelope $ do
     checkEndpointAvailability NewTxE
     (input, context) <- withMetric "processing request" $
         txEndpointProcessRequest req
-    balancedTx       <- withMetric "balancing tx" $
-        join $ liftM3 mkBalanceTx serverTrackedAddresses (pure context) (txEndpointsTxBuilders input)
+    balancedTx       <- withMetric "balancing tx" $ do
+        addrs <- serverTrackedAddresses
+        txBuilder <- txEndpointsTxBuilders input
+        mkBalanceTx addrs context txBuilder Nothing
     case cardanoTxToText balancedTx of
         Just res ->
             let txId = encodeHex $ fromBuiltin $ getTxId $ getCardanoTxId balancedTx

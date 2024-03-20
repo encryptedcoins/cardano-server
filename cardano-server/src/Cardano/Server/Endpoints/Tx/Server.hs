@@ -26,7 +26,7 @@ import           Cardano.Server.Tx                    (checkForCleanUtxos, submi
 import           Cardano.Server.Utils.Logger          (logMsg, logSmth, (.<))
 import           Cardano.Server.Utils.Wait            (waitTime)
 import           Control.Concurrent                   (putMVar, takeMVar)
-import           Control.Monad                        (join, liftM3, when)
+import           Control.Monad                        (when)
 import           Control.Monad.Catch                  (SomeException, catch, fromException, handle, throwM)
 import           Control.Monad.IO.Class               (MonadIO (..))
 import           Control.Monad.Reader                 (asks)
@@ -89,7 +89,9 @@ processQueueElem qRef QueueElem{..} elems = handle h $ do
         liftIO $ atomicWriteIORef qRef elems
         logMsg $ "New input to process:" .< qeInput <> "\nContext:" .< qeContext
         checkForCleanUtxos
-        join $ liftM3 submitTx serverTrackedAddresses (pure qeContext) $ txEndpointsTxBuilders qeInput
+        addrs <- serverTrackedAddresses
+        txBuilder <- txEndpointsTxBuilders qeInput
+        submitTx addrs qeContext txBuilder Nothing
         logMsg "Submited."
         liftIO $ putMVar qeMvar $ Right ()
     where
