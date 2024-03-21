@@ -164,6 +164,9 @@ mkServantClientEnv port host protocol = do
                 tlsSettings = TLSSettings clientParams
             mkManagerSettings tlsSettings Nothing
 
+mkServantClientEnvFromConfig :: (MonadIO m, HasCreds) => Config api -> m Servant.ClientEnv
+mkServantClientEnvFromConfig Config{..} = mkServantClientEnv cPort cHost cHyperTextProtocol
+
 mkServerClientEnv :: MonadIO m => AppT api m Servant.ClientEnv
 mkServerClientEnv = do
     creds <- asks envCreds
