@@ -57,6 +57,7 @@ import           Text.Hex                             (decodeHex)
 import           Text.Read                            (readMaybe)
 import qualified PlutusAppsExtra.IO.Tx
 import PlutusAppsExtra.IO.Tx (HasTxProvider)
+import Cardano.Api (TxMetadataInEra, BabbageEra)
 
 type MkTxConstrains m = (MonadIO m, MonadCatch m, HasLogger m, HasTxProvider m, HasMkTxEnv m)
 
@@ -72,8 +73,9 @@ mkBalanceTx :: MkTxConstrains m
     => [Address]
     -> InputContext
     -> [TransactionBuilder ()]
+    -> Maybe (TxMetadataInEra BabbageEra)
     -> m CardanoTx
-mkBalanceTx addressesTracked context txs = do
+mkBalanceTx addressesTracked context txs mbMeta = do
     reqs         <- liftIO $ txBuilderRequirements txs
     utxosTracked <- mconcatMapM (getUtxosAt reqs) addressesTracked
     ct           <- liftIO currentTime
@@ -93,16 +95,17 @@ mkBalanceTx addressesTracked context txs = do
 
     logMsg "Balancing..."
     case context of
-        InputContextServer {}   -> PlutusAppsExtra.IO.Tx.balanceTx ledgerParams lookups cons
-        InputContextClient {..} -> balanceExternalTx ledgerParams inputWalletUTXO inputChangeAddress lookups cons
+        InputContextServer {}   -> PlutusAppsExtra.IO.Tx.balanceTx ledgerParams lookups cons mbMeta
+        InputContextClient {..} -> balanceExternalTx ledgerParams inputWalletUTXO inputChangeAddress lookups cons mbMeta
 
 signTx :: MkTxConstrains m
     => [Address]
     -> InputContext
     -> [TransactionBuilder ()]
+    -> Maybe (TxMetadataInEra BabbageEra)
     -> m CardanoTx
-signTx addressesTracked ctx txs = mkTxErrorH $ do
-    balancedTx <- mkBalanceTx addressesTracked ctx txs
+signTx addressesTracked ctx txs mbMeta = mkTxErrorH $ do
+    balancedTx <- mkBalanceTx addressesTracked ctx txs mbMeta
     logPretty balancedTx
     logMsg "Signing..."
     signedTx <- PlutusAppsExtra.IO.Tx.signTx balancedTx
@@ -113,9 +116,10 @@ submitTx :: MkTxConstrains m
     => [Address]
     -> InputContext
     -> [TransactionBuilder ()]
+    -> Maybe (TxMetadataInEra BabbageEra)
     -> m CardanoTx
-submitTx addressesTracked ctx txs = mkTxErrorH $ do
-    signedTx <- signTx addressesTracked ctx txs
+submitTx addressesTracked ctx txs mbMetadata = mkTxErrorH $ do
+    signedTx <- signTx addressesTracked ctx txs mbMetadata
     logMsg "Submitting..."
     PlutusAppsExtra.IO.Tx.submitTx signedTx
     return signedTx
@@ -135,8 +139,9 @@ mkTx :: MkTxConstrains m
     => [Address]
     -> InputContext
     -> [TransactionBuilder ()]
+    -> Maybe (TxMetadataInEra BabbageEra)
     -> m CardanoTx
-mkTx addressesTracked ctx txs = submitTx addressesTracked ctx txs >>= awaitTxConfirmed
+mkTx addressesTracked ctx txs mbMetadata = submitTx addressesTracked ctx txs mbMetadata >>= awaitTxConfirmed
 
 checkForCleanUtxos :: ServerM api ()
 checkForCleanUtxos = mkTxErrorH $ do
@@ -152,7 +157,7 @@ mkWalletTxOutRefs :: MkTxConstrains m => Address -> Int -> m [TxOutRef]
 mkWalletTxOutRefs addr n = do
     (pkh, scr) <- throwMaybe (CantExtractKeyHashesFromAddress addr) $ addressToKeyHashes addr
     let txBuilder = mapM_ (const $ utxoProducedPublicKeyTx pkh scr (fromCardanoValue $ C.lovelaceValueOf 10_000_000) Nothing) [1..n]
-    signedTx <- mkTx [] def [txBuilder]
+    signedTx <- mkTx [] def [txBuilder] Nothing
     let refs = Map.keys . CardanoAPI.unspentOutputsTx $ signedTx
     pure refs
 

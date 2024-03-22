@@ -24,12 +24,9 @@ import           Cardano.Server.Internal              (ServerM, TxApiRequestOf, 
                                                        txEndpointProcessRequest, txEndpointsTxBuilders)
 import           Cardano.Server.Tx                    (mkBalanceTx)
 import           Cardano.Server.Utils.Logger          (logMsg, (.<))
-import           Control.Monad                        (join, liftM3)
 import           Control.Monad.Catch                  (Exception, MonadThrow (throwM))
-import           Control.Monad.IO.Class               (MonadIO (..))
 import           Data.Aeson                           (ToJSON)
 import           Data.Text                            (Text)
-import qualified Data.Time                            as Time
 import           GHC.Generics                         (Generic)
 import           Ledger                               (CardanoTx, TxId (..), getCardanoTxId)
 import           PlutusAppsExtra.Utils.Tx             (cardanoTxToText)
@@ -59,23 +56,15 @@ newTxHandler :: (Show (TxApiRequestOf api), IsCardanoServerError (TxApiErrorOf a
     -> ServerM api (Envelope
         [TxApiErrorOf api, NewTxApiError, ConnectionError, MkTxError, BalanceExternalTxError]
         (Text, Text))
-newTxHandler req = withMetric "newTx request processing" $ toEnvelope $ do
+newTxHandler req = toEnvelope $ do
     logMsg $ "New newTx request received:\n" .< req
     checkEndpointAvailability NewTxE
-    (input, context) <- withMetric "processing request" $
-        txEndpointProcessRequest req
-    balancedTx       <- withMetric "balancing tx" $
-        join $ liftM3 mkBalanceTx serverTrackedAddresses (pure context) (txEndpointsTxBuilders input)
+    (input, context) <- txEndpointProcessRequest req
+    addrs <- serverTrackedAddresses
+    txBuilder <- txEndpointsTxBuilders input
+    balancedTx <- mkBalanceTx addrs context txBuilder Nothing
     case cardanoTxToText balancedTx of
         Just res ->
             let txId = encodeHex $ fromBuiltin $ getTxId $ getCardanoTxId balancedTx
             in pure (txId, res)
-        Nothing  -> throwM $ UnserialisableCardanoTx balancedTx
-    where
-        withMetric msg ma = do
-            logMsg $ "start " <> msg
-            start  <- liftIO Time.getCurrentTime
-            res    <- ma
-            finish <- res `seq` liftIO Time.getCurrentTime
-            logMsg $ msg <> " finished in " .< Time.diffUTCTime finish start
-            pure res
+        Nothing -> throwM $ UnserialisableCardanoTx balancedTx
