@@ -3,22 +3,23 @@
 {-# LANGUAGE DeriveGeneric       #-}
 {-# LANGUAGE DerivingVia         #-}
 {-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators       #-}
-{-# LANGUAGE LambdaCase #-}
 
 module Cardano.Server.Endpoints.Tx.Submit where
 
-import           Cardano.Server.Config                (ServerEndpoint (SubmitTxE))
 import           Cardano.Node.Emulator                (Params (..))
+import           Cardano.Server.Config                (ServerEndpoint (SubmitTxE))
 import           Cardano.Server.Endpoints.Tx.Internal (TxApiErrorOf)
-import           Cardano.Server.Error                 (ConnectionError, Envelope, IsCardanoServerError (..),
-                                                       SubmitTxToLocalNodeError, Throws, toEnvelope)
+import           Cardano.Server.Error                 (ConnectionError, Envelope, IsCardanoServerError (..), SubmitTxToLocalNodeError,
+                                                       Throws, toEnvelope)
 import           Cardano.Server.Internal              (Env (..), ServerM, checkEndpointAvailability)
 import           Cardano.Server.Utils.Logger          (logMsg, (.<))
+import           Control.Monad                        (void)
 import           Control.Monad.Catch                  (Exception, MonadThrow (throwM))
 import           Control.Monad.IO.Class               (MonadIO (..))
 import           Control.Monad.Reader                 (asks)
@@ -29,11 +30,11 @@ import           GHC.Generics                         (Generic)
 import           Ledger                               (CardanoTx)
 import           Ledger.Crypto                        (PubKey, Signature)
 import           PlutusAppsExtra.IO.Node              (sumbitTxToNodeLocal)
+import           PlutusAppsExtra.IO.Tx                (HasTxProvider (..))
+import qualified PlutusAppsExtra.IO.Tx                as Tx
 import           PlutusAppsExtra.Utils.Tx             (addCardanoTxSignature, textToCardanoTx, textToPubkey, textToSignature)
 import           Servant                              (JSON, NoContent (..), Post, ReqBody, (:>))
-import          PlutusAppsExtra.IO.Tx                 (HasTxProvider (..))
-import qualified PlutusAppsExtra.IO.Tx as Tx
-import Control.Monad (void)
+
 data SubmitTxReqBody = SubmitTxReqBody
     {
         submitReqTx         :: Text,
