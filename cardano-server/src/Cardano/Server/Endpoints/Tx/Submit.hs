@@ -8,6 +8,7 @@
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators       #-}
+{-# LANGUAGE LambdaCase #-}
 
 module Cardano.Server.Endpoints.Tx.Submit where
 
@@ -30,7 +31,9 @@ import           Ledger.Crypto                        (PubKey, Signature)
 import           PlutusAppsExtra.IO.Node              (sumbitTxToNodeLocal)
 import           PlutusAppsExtra.Utils.Tx             (addCardanoTxSignature, textToCardanoTx, textToPubkey, textToSignature)
 import           Servant                              (JSON, NoContent (..), Post, ReqBody, (:>))
-
+import          PlutusAppsExtra.IO.Tx                 (HasTxProvider (..))
+import qualified PlutusAppsExtra.IO.Tx as Tx
+import Control.Monad (void)
 data SubmitTxReqBody = SubmitTxReqBody
     {
         submitReqTx         :: Text,
@@ -64,9 +67,13 @@ submitTxHandler req = toEnvelope $ do
     checkEndpointAvailability SubmitTxE
     (ctx, wtns) <- either throwM pure $ parseSubmitTxReqBody req
     let ctx' = foldr (uncurry addCardanoTxSignature) ctx wtns
-    networkId <- asks $ pNetworkId . envLedgerParams
-    node      <- asks envNodeFilePath
-    liftIO (sumbitTxToNodeLocal node networkId ctx')
+    getTxProvider >>= \case
+        Tx.Cardano -> do
+            logMsg "impossible"
+            networkId <- asks $ pNetworkId . envLedgerParams
+            node      <- asks envNodeFilePath
+            void $ liftIO $ sumbitTxToNodeLocal node networkId ctx'
+        _          -> Tx.submitTx ctx'
     pure NoContent
 
 parseSubmitTxReqBody :: SubmitTxReqBody -> Either SubmitTxApiError (CardanoTx, [(PubKey, Signature)])
