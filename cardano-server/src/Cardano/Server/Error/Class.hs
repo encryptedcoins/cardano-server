@@ -101,7 +101,6 @@ instance IsCardanoServerError SomeException where
 data InternalServerError
     = NoWalletProvided
     | NoMaestroToken
-    | NoBlockfrostToken
     deriving (Show, Exception)
 
 instance IsCardanoServerError ConnectionError where
