@@ -29,7 +29,7 @@ import           Data.Text                             (Text)
 import qualified PlutusAppsExtra.Api.Kupo              as Kupo
 import           PlutusAppsExtra.IO.ChainIndex         (ChainIndexProvider (Plutus), HasChainIndexProvider (getChainIndexProvider))
 import qualified PlutusAppsExtra.IO.ChainIndex         as ChainIndex
-import qualified PlutusAppsExtra.IO.Node               as Node
+import           PlutusAppsExtra                       (nodeHealthCheck)
 import           PlutusAppsExtra.IO.Tx                 (HasTxProvider (getTxProvider))
 import qualified PlutusAppsExtra.IO.Tx                 as Tx
 import           PlutusAppsExtra.IO.Wallet             (HasWalletProvider (getWalletProvider))
@@ -69,7 +69,7 @@ serverDiagnostics = do
             either throwM (const $ logMsg "Server is alive.") res
 
 nodeDiagnostics = do
-    liftIO Node.healthCheck
+    liftIO nodeHealthCheck
     logMsg "Cardano-node is alive."
 
 cardanoWalletDiagnostics = do

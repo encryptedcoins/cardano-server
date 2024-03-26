@@ -11,15 +11,14 @@
 
 module Cardano.Server.Endpoints.Tx.Submit where
 
-import           Cardano.Server.Config                (ServerEndpoint (SubmitTxE))
 import           Cardano.Node.Emulator                (Params (..))
+import           Cardano.Server.Config                (ServerEndpoint (SubmitTxE))
 import           Cardano.Server.Endpoints.Tx.Internal (TxApiErrorOf)
-import           Cardano.Server.Error                 (ConnectionError, Envelope, IsCardanoServerError (..),
-                                                       SubmitTxToLocalNodeError, Throws, toEnvelope)
+import           Cardano.Server.Error                 (ConnectionError, Envelope, IsCardanoServerError (..), SubmitTxToLocalNodeError,
+                                                       Throws, toEnvelope)
 import           Cardano.Server.Internal              (Env (..), ServerM, checkEndpointAvailability)
 import           Cardano.Server.Utils.Logger          (logMsg, (.<))
 import           Control.Monad.Catch                  (Exception, MonadThrow (throwM))
-import           Control.Monad.IO.Class               (MonadIO (..))
 import           Control.Monad.Reader                 (asks)
 import           Data.Aeson                           (FromJSON, ToJSON)
 import           Data.Either.Extra                    (maybeToEither)
@@ -27,7 +26,7 @@ import           Data.Text                            (Text)
 import           GHC.Generics                         (Generic)
 import           Ledger                               (CardanoTx)
 import           Ledger.Crypto                        (PubKey, Signature)
-import           PlutusAppsExtra.IO.Node              (sumbitTxToNodeLocal)
+import           PlutusAppsExtra.IO.Tx                (sumbitTxToNodeLocal)
 import           PlutusAppsExtra.Utils.Tx             (addCardanoTxSignature, textToCardanoTx, textToPubkey, textToSignature)
 import           Servant                              (JSON, NoContent (..), Post, ReqBody, (:>))
 
@@ -64,9 +63,9 @@ submitTxHandler req = toEnvelope $ do
     checkEndpointAvailability SubmitTxE
     (ctx, wtns) <- either throwM pure $ parseSubmitTxReqBody req
     let ctx' = foldr (uncurry addCardanoTxSignature) ctx wtns
-    networkId <- asks $ pNetworkId . envLedgerParams
     node      <- asks envNodeFilePath
-    liftIO (sumbitTxToNodeLocal node networkId ctx')
+    networkId <- asks $ pNetworkId . envLedgerParams
+    sumbitTxToNodeLocal node networkId ctx'
     pure NoContent
 
 parseSubmitTxReqBody :: SubmitTxReqBody -> Either SubmitTxApiError (CardanoTx, [(PubKey, Signature)])
