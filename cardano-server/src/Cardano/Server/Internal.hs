@@ -55,7 +55,7 @@ import           Network.TLS                        (ClientHooks (onCertificateR
                                                      ClientParams (clientHooks, clientSupported), Supported (supportedCiphers),
                                                      credentialLoadX509FromMemory, defaultParamsClient)
 import           Network.TLS.Extra.Cipher           (ciphersuite_default)
-import           PlutusAppsExtra.Api.Blockfrost     (BlockfrostToken)
+import           PlutusAppsExtra.Api.Blockfrost     (BlockfrostToken, MonadBlockfrost (..))
 import           PlutusAppsExtra.Api.Maestro        (MaestroToken, MonadMaestro (..))
 import           PlutusAppsExtra.IO.ChainIndex      (ChainIndexProvider, HasChainIndexProvider (..))
 import           PlutusAppsExtra.IO.Tx              (HasTxProvider (..), TxProvider)
@@ -100,6 +100,9 @@ instance HasChainIndexProvider (ServerM api) where
 
 instance MonadMaestro (ServerM api) where
     getMaestroToken = asks envMaestroToken >>= maybe (throwM NoMaestroToken) pure
+
+instance MonadBlockfrost (ServerM api) where
+    getBlockfrostToken = asks envBlockfrostToken >>= maybe (throwM NoBlockfrostToken) pure
 
 instance HasWalletProvider (ServerM api) where
     getWalletProvider = asks envWalletProvider
