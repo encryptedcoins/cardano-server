@@ -37,6 +37,6 @@ instance WithErrorHandlers '[] where
     withErrorHandlers = handle $ \(e :: SomeException) -> logSmth e >> throwError (toServantError e)
 
 instance (All IsCardanoServerError (e ': es), WithErrorHandlers es) => WithErrorHandlers (e ': es) where
-    withErrorHandlers = handle reThrow . withErrorHandlers @es
+    withErrorHandlers = withErrorHandlers @es . handle reThrow
         where
             reThrow e = logSmth e >> throwError (toServantError @e e)
