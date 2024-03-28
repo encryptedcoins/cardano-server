@@ -1,72 +1,73 @@
-{-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE ImplicitParams    #-}
-{-# LANGUAGE LambdaCase        #-}
-{-# LANGUAGE MonoLocalBinds    #-}
-{-# LANGUAGE RankNTypes        #-}
-{-# OPTIONS_GHC -Wno-orphans   #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE DataKinds           #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE FlexibleInstances   #-}
+{-# LANGUAGE ImplicitParams      #-}
+{-# LANGUAGE LambdaCase          #-}
+{-# LANGUAGE MonoLocalBinds      #-}
+{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications    #-}
 
 module Cardano.Server.Test.Internal where
 
-import           Cardano.Api                        (NetworkId (Testnet), NetworkMagic (NetworkMagic))
-import           Cardano.Server.Client.Handle       (HasServantClientEnv)
-import           Cardano.Server.Config              (Config (..), decodeOrErrorFromFile)
-import           Cardano.Server.Error               (parseErrorText)
-import           Cardano.Server.Internal            (ServerHandle, envLogger, loadEnv, mkServantClientEnv)
-import           Cardano.Server.Main                (ServerConstraints, runServer')
-import           Cardano.Server.Utils.Logger        (mutedLogger)
-import           Cardano.Server.Utils.Wait          (waitTime)
-import qualified Control.Concurrent                 as C
-import           Control.Exception                  (bracket)
-import           Control.Monad                      (unless)
-import           Control.Monad.IO.Class             (MonadIO (..))
-import           Control.Monad.Reader               (ReaderT (runReaderT), ask)
-import           Data.Aeson                         (decode)
-import           Data.Either                        (isRight)
-import           Data.Maybe                         (fromJust)
-import           Data.Text                          (Text)
-import           PlutusAppsExtra.IO.ChainIndex      (ChainIndexProvider (..), HasChainIndexProvider (..))
-import qualified PlutusAppsExtra.IO.ChainIndex.Kupo as Kupo
-import           PlutusAppsExtra.IO.Wallet          (HasWalletProvider (getWalletProvider), WalletProvider (Cardano), getWalletAda, HasWallet (..), RestoredWallet, restoreWalletFromFile)
-import           PlutusAppsExtra.Utils.Network      (HasNetworkId (..))
-import           Servant.Client                     (ClientError (FailureResponse), ClientM, ResponseF (responseBody, responseStatusCode),
-                                                     runClientM)
-import           Test.Hspec                         (Expectation, Spec, expectationFailure, hspec, it, shouldBe, shouldSatisfy)
+import           Cardano.Server.Client.Handle (HasServantClientEnv)
+import           Cardano.Server.Config        (CardanoServerConfig (..))
+import           Cardano.Server.Error         (parseErrorText)
+import           Cardano.Server.Internal      (mkServantClientEnv)
+import           Cardano.Server.Main          (runCardanoServer)
+import           Cardano.Server.Utils.Logger  (HasLogger)
+import           Cardano.Server.Utils.Wait    (waitTime)
+import qualified Control.Concurrent           as C
+import           Control.Exception            (bracket)
+import           Control.Monad.Catch          (MonadThrow (..))
+import           Control.Monad.Extra          (ifM)
+import           Control.Monad.IO.Class       (MonadIO (..))
+import           Data.Aeson                   (decode)
+import           Data.Either                  (isRight)
+import           Data.Maybe                   (isJust)
+import           Data.Text                    (Text)
+import           PlutusAppsExtra.IO.Wallet    (HasWalletProvider, RestoredWallet, getWalletAda)
+import           Servant                      (Handler, HasServer, ServerT, runHandler)
+import           Servant.Client               (ClientError (FailureResponse), ClientM, ResponseF (responseBody, responseStatusCode),
+                                               runClientM)
+import           Test.Hspec                   (Expectation, Spec, expectationFailure, hspec, it, runIO, shouldBe, shouldSatisfy)
+import PlutusAppsExtra.IO.ChainIndex (HasChainIndexProvider)
 
-withCardanoServer :: ServerConstraints api => FilePath -> ServerHandle api -> Integer -> (HasServantClientEnv => Spec) -> IO ()
-withCardanoServer configFp sHandle minAdaInWallet specs = do
-    config <- decodeOrErrorFromFile configFp
+withCardanoServer :: forall api m c.
+    ( HasServer api '[]
+    , CardanoServerConfig c
+    , HasWalletProvider m
+    , HasChainIndexProvider m
+    , HasLogger m
+    )
+    => c
+    -> (forall a. m a -> Servant.Handler a)
+    -> ServerT api m
+    -> m ()
+    -> Maybe RestoredWallet
+    -> Integer
+    -> (HasServantClientEnv => Spec)
+    -> IO ()
+withCardanoServer config runApp serverApp beforeMainLoop mbWallet minAdaInWallet specs = do
     let ?creds = Nothing
-    env <- loadEnv config sHandle
-    sce <- mkServantClientEnv (cPort config) (cHost config) (cHyperTextProtocol config)
+    sce <- mkServantClientEnv (configPort config) (configHost config) (configHyperTextProtocol config)
     let ?servantClientEnv = sce
-    walletHasEnouhgAda <- checkWalletHasMinAda $ fromJust $ cWalletFile config
     bracket
-        (liftIO $ C.forkIO $ runServer' env{envLogger = mutedLogger})
+        (liftIO $ C.forkIO $ runCardanoServer @api config runApp serverApp beforeMainLoop)
         C.killThread $
-        const $ (waitTime 5 >>) $ hspec $ do
-            specs
-            unless walletHasEnouhgAda
-                $ it                 "The wallet has no minimum amount of ada."
-                $ expectationFailure "This may cause some tests to fail. Please replenish your wallet and re-run the tests."
-    where
-        checkWalletHasMinAda fp = do
-            w <- restoreWalletFromFile fp
-            (>= fromInteger minAdaInWallet) <$> runReaderT getWalletAda w
-
-instance HasNetworkId (ReaderT RestoredWallet IO) where
-    getNetworkId = pure $ Testnet (NetworkMagic 1)
-
-instance HasChainIndexProvider (ReaderT RestoredWallet IO) where
-    getChainIndexProvider = pure Kupo
-    getUtxosAt reqs addr = liftIO $ Kupo.getUtxosAt reqs addr
-    getUnspentTxOutFromRef reqs txOutRef = liftIO $ Kupo.getUnspentTxOutFromRef reqs txOutRef
-
-instance HasWallet (ReaderT RestoredWallet IO) where
-    getRestoredWallet = ask
-
-instance HasWalletProvider (ReaderT RestoredWallet IO) where
-    getWalletProvider = pure Cardano
+        const $ (waitTime 5 >>) $ hspec specsWithMinAdaCheck
+  where
+    specsWithMinAdaCheck :: HasServantClientEnv => Spec
+    specsWithMinAdaCheck
+        | minAdaInWallet <= 0 = specs
+        | isJust mbWallet = ifM (runIO walletHasMinAda) specs (specs >> noAdaWarn)
+        | otherwise = specs >> noWalletWarn
+    walletHasMinAda = fmap (>= fromInteger minAdaInWallet) $ either throwM pure =<< Servant.runHandler (runApp getWalletAda)
+    noAdaWarn = it "The wallet has no minimum amount of ada." $
+        expectationFailure "This may cause some tests to fail. Please replenish your wallet and re-run the tests."
+    noWalletWarn = it "You didn't specify a wallet, although the tests require some amount of ada." $
+        expectationFailure "This may cause some tests to fail. Please add wallet to configuration folder and re-run the tests."
 
 shoudlFailWithStatus :: (Show a, HasServantClientEnv) => ClientM a -> Int -> Expectation
 shoudlFailWithStatus ma s = runClientM ma ?servantClientEnv >>= \case

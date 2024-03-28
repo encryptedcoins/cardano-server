@@ -69,7 +69,6 @@ import           Servant                            (Handler, err404)
 import qualified Servant
 import qualified Servant.Client                     as Servant
 
-
 newtype ServerM api a = ServerM {unServerM :: ReaderT (Env api) Handler a}
      deriving newtype
         ( Functor

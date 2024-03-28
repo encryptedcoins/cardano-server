@@ -44,6 +44,14 @@ source-repository-package
 
 source-repository-package
   type: git
+  location: https://github.com/encryptedcoins/encoins-common.git
+  tag: ed338068a70b4c50b2cc46feab465074c3b81009
+  subdir:
+    encoins-common-constant
+    encoins-common-version
+
+source-repository-package
+  type: git
   location: https://github.com/input-output-hk/plutus-apps
   tag: 68efca7eda4afd1c14698adf697d70acb5a489e2
   subdir:

@@ -1,4 +1,3 @@
-{-# LANGUAGE BangPatterns      #-}
 {-# LANGUAGE DataKinds         #-}
 {-# LANGUAGE DeriveAnyClass    #-}
 {-# LANGUAGE DeriveGeneric     #-}
@@ -18,7 +17,7 @@ import           Cardano.Server.Error          (ConnectionError, CslError (..), 
 import           Cardano.Server.Internal       (ServerM, checkEndpointAvailability, getNetworkId)
 import           Cardano.Server.Utils.Logger   (logMsg, (.<))
 import           Control.Exception             (Exception (..), SomeException, throw)
-import           Control.Monad.Catch           (try)
+import           Control.Monad.Catch           (try, MonadThrow (..))
 import           Data.Aeson                    (ToJSON)
 import           Data.Maybe                    (fromMaybe)
 import           Data.Text                     (Text)
@@ -48,7 +47,7 @@ utxosHandler :: Text -> ServerM api (Envelope '[UtxosError, ConnectionError, Csl
 utxosHandler addrTxt = toEnvelope $ do
     logMsg $ "New utxos request received:\n" .< addrTxt
     checkEndpointAvailability UtxosE
-    let !addr = fromMaybe (throw UnparsableAddress) $ bech32ToAddress addrTxt
+    addr <- maybe (throwM UnparsableAddress) pure $ bech32ToAddress addrTxt
     networkId <- getNetworkId
     fromMaybe (throw CslConversionError) . toCSL . (, networkId) .
         either mempty id <$> try @_ @SomeException (getUtxosAt allRequirements addr)

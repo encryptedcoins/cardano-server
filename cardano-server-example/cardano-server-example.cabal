@@ -40,6 +40,7 @@ library
       cardano-server                         -any,
       cardano-server-client                  -any,
       cardano-ledger-alonzo                  -any,
+      encoins-common-version                 -any,
       exceptions                             -any,
       mtl                                    -any,
       optparse-applicative                   -any,
@@ -49,6 +50,7 @@ library
       plutus-script-utils                    -any,
       plutus-tx                              -any,
       plutus-tx-plugin                       -any,
+      servant-server                         -any,
       servant-client                         -any,
       text                                   -any,
     hs-source-dirs: src

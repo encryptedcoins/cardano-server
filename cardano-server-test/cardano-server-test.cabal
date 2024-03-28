@@ -30,6 +30,8 @@ common lang
 
 library
   import: lang
+  ghc-options:
+      -Wall
   exposed-modules:
     Cardano.Server.Test.Utils
   other-modules:
@@ -40,10 +42,13 @@ library
     cardano-api                            -any,
     cardano-server                         -any,
     cardano-server-client                  -any,
+    exceptions                             -any,
+    extra                                  -any,
     hspec                                  -any,
     mtl                                    -any,
     plutus-apps-extra                      -any,
     servant-client                         -any,
+    servant-server                         -any,
     text                                   -any,
   hs-source-dirs: test
 
@@ -78,6 +83,7 @@ test-suite cardano-server-test
     cardano-wallet-core                    -any,
     cryptonite                             -any,
     exceptions                             -any,
+    extra                                  -any,
     hspec                                  -any,
     hspec-wai                              -any,
     http-types                             -any,
@@ -85,6 +91,7 @@ test-suite cardano-server-test
     mtl                                    -any,
     plutus-apps-extra                      -any,
     servant-client                         -any,
+    servant-server                         -any,
     text                                   -any,
     text-class                             -any,
     quickcheck-text                        -any,
