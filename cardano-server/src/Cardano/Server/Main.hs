@@ -19,7 +19,9 @@ module Cardano.Server.Main where
 import           Cardano.Server.Config                (CardanoServerConfig (..), Creds, HasCreds, HyperTextProtocol (..))
 import           Cardano.Server.Error                 (ConnectionError (..), logCriticalExceptions)
 import           Cardano.Server.Internal              (Env, ServerM (unServerM))
-import           Cardano.Server.Utils.Logger          (logMsg, (.<), HasLogger)
+import           Cardano.Server.Utils.Logger          (HasLogger, logMsg, (.<))
+import           Control.Exception                    (throw)
+import           Control.Monad.Catch                  (handle)
 import           Control.Monad.Reader                 (ReaderT (..))
 import           Data.FileEmbed                       (embedFileIfExists)
 import qualified Data.Text.Encoding                   as T
@@ -35,9 +37,6 @@ import           PlutusAppsExtra.IO.Wallet.Cardano    (pattern CardanoWalletApiC
 import           Servant                              (Proxy (..), ServerT, hoistServer, serve)
 import qualified Servant
 import           System.IO                            (BufferMode (LineBuffering), hSetBuffering, stdout)
-import Control.Monad ((<=<))
-import Control.Monad.Catch (MonadThrow(..), handle)
-import Control.Exception (throw)
 
 runServer :: forall api.
     ( Servant.HasServer api '[]
