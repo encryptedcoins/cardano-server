@@ -32,7 +32,6 @@ library
     import: lang
     exposed-modules:
       Cardano.Server.Example.Main
-      Cardano.Server.Example.Input
       Cardano.Server.Example.OnChain
       Cardano.Server.Example.OffChain
     other-modules:

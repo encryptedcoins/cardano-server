@@ -2,7 +2,6 @@
 {-# LANGUAGE ImplicitParams       #-}
 {-# LANGUAGE NumericUnderscores   #-}
 {-# LANGUAGE OverloadedStrings    #-}
-{-# LANGUAGE TupleSections        #-}
 {-# LANGUAGE TypeFamilies         #-}
 {-# LANGUAGE UndecidableInstances #-}
 
@@ -12,7 +11,8 @@ import           Cardano.Server.Client.Client (runClient)
 import           Cardano.Server.Client.Handle (ClientHandle (..), autoWith, autoWithRandom, manualWith, manualWithRead)
 import           Cardano.Server.Config        (decodeOrErrorFromFile)
 import           Cardano.Server.Example.Main  (ExampleApi, exampleServerHandle)
-import           Cardano.Server.Input         (InputContext)
+import           Cardano.Server.Input         (InputContext (InputContextClient))
+import           Cardano.Server.Internal
 import           Cardano.Server.Main          (embedCreds)
 import           Control.Monad                (replicateM)
 import           Control.Monad.IO.Class       (MonadIO (liftIO))
@@ -21,6 +21,8 @@ import           Data.Default                 (Default (def))
 import           Data.List.Extra              (breakOn, nub)
 import           Data.Text                    (Text)
 import qualified Data.Text                    as T
+import           Ledger                       (TxId (TxId), TxOutRef (..))
+import           PlutusAppsExtra.IO.Wallet    (HasWalletProvider (getWalletAddr), getWalletUtxos)
 import           PlutusTx.Builtins            (BuiltinByteString)
 import           PlutusTx.Builtins.Class      (stringToBuiltinByteString)
 import           System.Random                (randomIO, randomRIO)
@@ -33,19 +35,27 @@ runExampleClient configFp = do
 
 exampleClientHandle :: ClientHandle ExampleApi
 exampleClientHandle = def
-    { autoNewTx      = autoWith genInput
-    , autoServerTx   = autoWith genInput
+    { autoNewTx      = autoWith $ withCtx genInput
+    , autoServerTx   = autoWith $ withCtx genInput
     , autoStatus     = autoWithRandom
-    , manualNewTx    = manualWith readInput
-    , manualServerTx = manualWith readInput
+    , manualNewTx    = manualWith $ withCtx . readInput
+    , manualServerTx = manualWith $ withCtx . readInput
     , manualStatus   = manualWithRead
     }
+  where
+    withCtx ma = (,) <$> ma <*> mkCtx
 
-genInput :: MonadIO m => m ([(BuiltinByteString, Integer)], InputContext)
-genInput = fmap ((,def) . nub) $ liftIO $ do
+mkCtx :: ServerM ExampleApi InputContext
+mkCtx = do
+    addr <- getWalletAddr
+    utxos <- getWalletUtxos mempty
+    pure $ InputContextClient mempty utxos (TxOutRef (TxId "") 1) addr
+
+genInput :: MonadIO m => m [(BuiltinByteString, Integer)]
+genInput = fmap nub $ liftIO $ do
     inputLength <- randomRIO (1, 15)
     let genBbs = stringToBuiltinByteString <$> (randomRIO (2, 8) >>= (`replicateM` randomIO))
     replicateM inputLength $ (,) <$> genBbs <*> randomRIO (1, 10_000_000)
 
-readInput :: Monad m => Text -> m ([(BuiltinByteString, Integer)], InputContext)
-readInput = pure . (,def) . map (bimap stringToBuiltinByteString (read . tail) . breakOn "=" . T.unpack) . T.splitOn ","
+readInput :: Monad m => Text -> m [(BuiltinByteString, Integer)]
+readInput = pure . map (bimap stringToBuiltinByteString (read . tail) . breakOn "=" . T.unpack) . T.splitOn ","

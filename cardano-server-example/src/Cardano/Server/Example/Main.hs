@@ -23,9 +23,8 @@ import           Cardano.Server.Endpoints.Tx.Submit   (SubmitTxApi, submitTxHand
 import           Cardano.Server.Endpoints.Utxos       (UtxosApi, utxosHandler)
 import           Cardano.Server.Endpoints.Version     (VersionApi)
 import           Cardano.Server.Error                 (ConnectionError (..), Envelope, IsCardanoServerError (..), toEnvelope)
-import           Cardano.Server.Example.Input         (TestPolicyInput (..))
 import           Cardano.Server.Example.OffChain      (testMintTx)
-import           Cardano.Server.Input                 (InputContext)
+import           Cardano.Server.Input                 (InputContext (..))
 import           Cardano.Server.Internal              (AuxillaryEnvOf, HasStatusEndpoint (..), HasVersionEndpoint (..), InputOf,
                                                        ServerHandle (ServerHandle), ServerM, TxApiRequestOf, loadEnv, mkServerClientEnv, InputWithContext)
 import           Cardano.Server.Main                  (embedCreds, runServer)
@@ -76,7 +75,7 @@ exampleServerHandle = ServerHandle
     checkStatusEndpoint             -- How to check if status endpoint is alive.
     versionEndpointHandler          -- Handler of version endpoint
   where
-    buildTx bbs = pure [testMintTx $ TestPolicyInput bbs]
+    buildTx bbs = pure [testMintTx bbs]
 
 runExampleServer :: FilePath -> IO ()
 runExampleServer configFp = do
@@ -113,7 +112,7 @@ serverTxHandler arg = toEnvelope $ ($> NoContent) $ do
     logMsg $ "Recieved mint request:\n" .< arg
     (bbsWithAmt, ctx) <- processRequest  arg
     addr <- getWalletAddr
-    mkTx [addr] ctx [testMintTx $ TestPolicyInput bbsWithAmt] Nothing
+    mkTx [addr] ctx [testMintTx bbsWithAmt] Nothing
 
 --------------------------------------------
 -- | * Status endpoint

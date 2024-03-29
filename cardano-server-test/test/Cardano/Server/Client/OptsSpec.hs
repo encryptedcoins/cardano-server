@@ -6,6 +6,7 @@
 {-# HLINT ignore "Redundant <$>"          #-}
 
 module Cardano.Server.Client.OptsSpec where
+
 import           Cardano.Server.Client.Example.Main (readInput)
 import           Cardano.Server.Client.Internal     (Mode (Auto, Manual))
 import           Cardano.Server.Client.Opts         (CommonOptions (..), runWithOpts)
@@ -27,7 +28,7 @@ spec = describe "Parsing client command line arguments" $ do
         let input = "aaaa=2,aaaa=3"
             inputT = T.pack input
 
-        withArgs ["serverTx","--manual",input] runWithOpts >>=
+        withArgs ["serverTx","--manual", input] runWithOpts >>=
             (`shouldBe` CommonOptions ServerTxE (Manual inputT))
 
-        fst <$> readInput inputT >>= (`shouldBe` [("aaaa", 2),("aaaa", 3)])
+        readInput inputT >>= (`shouldBe` [("aaaa", 2),("aaaa", 3)])

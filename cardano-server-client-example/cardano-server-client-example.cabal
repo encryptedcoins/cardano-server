@@ -41,6 +41,8 @@ library
       data-default                           -any,
       extra                                  -any,
       optparse-applicative                   -any,
+      plutus-apps-extra                      -any,
+      plutus-ledger                          -any,
       plutus-tx                              -any,
       random                                 -any,
       split                                  -any,

@@ -25,7 +25,7 @@ main = do
         WalletEncryption.spec
         Ping.spec
         Utxos.spec
-        ServerTx.spec
+        ServerTx.spec env
         SubmitTx.spec
         Status.spec
         ClientOpts.spec

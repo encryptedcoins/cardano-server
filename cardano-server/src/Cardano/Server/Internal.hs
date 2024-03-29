@@ -8,6 +8,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ImplicitParams             #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE NumericUnderscores         #-}
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE RankNTypes                 #-}
 {-# LANGUAGE RecordWildCards            #-}
@@ -49,7 +50,7 @@ import qualified Data.Text                          as T
 import           GHC.Stack                          (HasCallStack)
 import           Ledger                             (Address, NetworkId, TxOutRef)
 import           Network.Connection                 (TLSSettings (TLSSettings))
-import           Network.HTTP.Client                (defaultManagerSettings, newManager)
+import           Network.HTTP.Client                (defaultManagerSettings, newManager, responseTimeoutMicro, ManagerSettings (managerResponseTimeout))
 import           Network.HTTP.Client.TLS            (mkManagerSettings)
 import           Network.TLS                        (ClientHooks (onCertificateRequest, onServerCertificate),
                                                      ClientParams (clientHooks, clientSupported), Supported (supportedCiphers),
@@ -251,9 +252,9 @@ checkEndpointAvailability endpoint = whenM (asks ((endpoint `notElem`) . envActi
 mkServantClientEnv :: (MonadIO m, HasCreds) => Int -> Text -> HyperTextProtocol -> m Servant.ClientEnv
 mkServantClientEnv port host protocol = do
     manager <- liftIO $ newManager $ case (protocol, ?creds) of
-        (HTTP, _)                     -> defaultManagerSettings
-        (HTTPS, Nothing)              -> mkManagerSettings def def
-        (HTTPS, Just (certBs, keyBs)) -> mkManagerSettingsWithCreds certBs keyBs
+        (HTTP, _)                     -> setTimeout   defaultManagerSettings
+        (HTTPS, Nothing)              -> setTimeout $ mkManagerSettings def def
+        (HTTPS, Just (certBs, keyBs)) -> setTimeout $ mkManagerSettingsWithCreds certBs keyBs
     pure $ Servant.ClientEnv
         manager
         (Servant.BaseUrl (schemeFromProtocol protocol) (T.unpack host) port "")
@@ -272,6 +273,7 @@ mkServantClientEnv port host protocol = do
                     }
                 tlsSettings = TLSSettings clientParams
             mkManagerSettings tlsSettings Nothing
+        setTimeout settings = settings{managerResponseTimeout = responseTimeoutMicro 90_000_000}
 
 mkServerClientEnv :: ServerM api Servant.ClientEnv
 mkServerClientEnv = do

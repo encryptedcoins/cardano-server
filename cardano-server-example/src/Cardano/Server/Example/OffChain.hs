@@ -2,7 +2,7 @@
 
 module Cardano.Server.Example.OffChain where
 
-import           Cardano.Server.Example.Input         (TestPolicyInput (..))
+-- import           Cardano.Server.Example.Input         (TestPolicyInput (..))
 import           Cardano.Server.Example.OnChain       (testPolicy, testPolicyV, testTokenName)
 import           Control.Monad.State                  (State)
 import           Ledger.Tokens                        (token)
@@ -14,7 +14,7 @@ import qualified Plutus.Script.Utils.Value            as Value
 import           Plutus.V2.Ledger.Api                 (CurrencySymbol, TokenName (..), Value)
 import           PlutusAppsExtra.Constraints.OffChain (tokensMintedTx)
 import           PlutusAppsExtra.Types.Tx             (TxConstructor (..))
-import           PlutusTx.Prelude                     (BuiltinByteString, mconcat, ($), (.), (<$>))
+import           PlutusTx.Prelude                     (BuiltinByteString, mconcat, ($), (.), (<$>), Integer)
 import PlutusTx.Base (uncurry)
 
 type TestTransaction = TxConstructor Any (RedeemerType Any) (DatumType Any)
@@ -31,7 +31,7 @@ testAssetClass bs = AssetClass (testCurrencySymbol, testTokenName bs)
 testToken :: BuiltinByteString -> Value
 testToken = token . testAssetClass
 
-testMintTx :: TestPolicyInput -> TestTransactionBuilder
-testMintTx arg@(TestPolicyInput i) = tokensMintedTx testPolicyV arg $ mconcat $ uncurry f <$> i
+testMintTx :: [(BuiltinByteString, Integer)] -> TestTransactionBuilder
+testMintTx i = tokensMintedTx testPolicyV i $ mconcat $ uncurry f <$> i
   where
     f bbs amt = Value.singleton testCurrencySymbol (TokenName bbs) amt
