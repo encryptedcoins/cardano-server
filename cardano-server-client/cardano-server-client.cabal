@@ -48,6 +48,7 @@ library
       cardano-server                         -any,
       csl-types                              -any,
       data-default                           -any,
+      encoins-common-version                 -any,
       exceptions                             -any,
       extra                                  -any,
       http-client                            -any,

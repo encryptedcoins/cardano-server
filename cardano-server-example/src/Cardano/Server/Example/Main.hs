@@ -5,6 +5,7 @@
 {-# LANGUAGE ImplicitParams       #-}
 {-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE ScopedTypeVariables  #-}
+{-# LANGUAGE TemplateHaskell      #-}
 {-# LANGUAGE TypeApplications     #-}
 {-# LANGUAGE TypeFamilies         #-}
 {-# LANGUAGE TypeOperators        #-}
@@ -21,12 +22,12 @@ import           Cardano.Server.Endpoints.Tx.New      (NewTxApi, newTxHandler)
 import           Cardano.Server.Endpoints.Tx.Server   (ServerTxApi)
 import           Cardano.Server.Endpoints.Tx.Submit   (SubmitTxApi, submitTxHandler)
 import           Cardano.Server.Endpoints.Utxos       (UtxosApi, utxosHandler)
-import           Cardano.Server.Endpoints.Version     (VersionApi)
+import           Cardano.Server.Endpoints.Version     (VersionApi, versionEndpointHandler)
 import           Cardano.Server.Error                 (ConnectionError (..), Envelope, IsCardanoServerError (..), toEnvelope)
 import           Cardano.Server.Example.OffChain      (testMintTx)
 import           Cardano.Server.Input                 (InputContext (..))
-import           Cardano.Server.Internal              (AuxillaryEnvOf, HasStatusEndpoint (..), HasVersionEndpoint (..), InputOf,
-                                                       ServerHandle (ServerHandle), ServerM, TxApiRequestOf, loadEnv, mkServerClientEnv, InputWithContext)
+import           Cardano.Server.Internal              (AuxillaryEnvOf, HasStatusEndpoint (..), InputOf, InputWithContext,
+                                                       ServerHandle (ServerHandle), ServerM, TxApiRequestOf, loadEnv, mkServerClientEnv)
 import           Cardano.Server.Main                  (embedCreds, runServer)
 import           Cardano.Server.Tx                    (mkTx)
 import           Cardano.Server.Utils.Logger          (logMsg, (.<))
@@ -36,16 +37,19 @@ import           Control.Monad.IO.Class               (MonadIO (..))
 import           Data.Functor                         (($>))
 import           Data.List                            (nub, sort)
 import           Data.Text                            (Text)
+import           Development.GitRev                   (gitCommitDate, gitHash)
+import           Encoins.Common.Version               (AppVersion)
+import           Paths_cardano_server_example         (version)
 import           Plutus.V2.Ledger.Api                 (BuiltinByteString)
 import           PlutusAppsExtra.IO.ChainIndex        (ChainIndexProvider (..))
 import           PlutusAppsExtra.IO.Wallet            (getWalletAddr)
-import           Servant                              (Get, HasServer (ServerT), JSON, NoContent (..), type (:<|>) (..), type (:>))
+import           Servant                              (HasServer (ServerT), NoContent (..), type (:<|>) (..))
 import           Servant.Client                       (runClientM)
 
 exampleServer :: Servant.ServerT ExampleApi (ServerM ExampleApi)
 exampleServer
     =    pingHandler
-    :<|> versionEndpointHandler
+    :<|> versionEndpointHandler version $gitHash $gitCommitDate
     :<|> statusHandler
     :<|> serverTxHandler
     :<|> utxosHandler
@@ -54,7 +58,7 @@ exampleServer
 
 type ExampleApi
     =    PingApi
-    :<|> VersionApi Text
+    :<|> VersionApi
     :<|> StatusApi '[ExampleStatusEndpointError] Bool Text
     :<|> ServerTxApi ([(BuiltinByteString, Integer)], InputContext) ExampleApiError
     :<|> UtxosApi
@@ -73,14 +77,14 @@ exampleServerHandle = ServerHandle
     processRequest                  -- How to extract input from request in tx endpoints
     statusHandler                   -- Handler of status endpoint
     checkStatusEndpoint             -- How to check if status endpoint is alive.
-    versionEndpointHandler          -- Handler of version endpoint
+    cardanoServerExampleVersion     -- Handler of version endpoint
   where
     buildTx bbs = pure [testMintTx bbs]
 
 runExampleServer :: FilePath -> IO ()
 runExampleServer configFp = do
     config <- decodeOrErrorFromFile configFp
-    let ?creds    = embedCreds
+    let ?creds = embedCreds
     env <- loadEnv config exampleServerHandle
     runServer env exampleServer (pure ())
 
@@ -144,12 +148,5 @@ checkStatusEndpoint = do
 -- | * Version endpoint
 --------------------------------------------
 
-instance HasVersionEndpoint ExampleApi where
-    type VersionEndpointResOf ExampleApi = Text
-    versionHandler = versionEndpointHandler
-
-type VersionEndpoint =  "version" :> Get '[JSON] NoContent
-
-versionEndpointHandler :: ServerM ExampleApi Text
-versionEndpointHandler =
-    pure "This is an example of a version endpoint."
+cardanoServerExampleVersion :: ServerM ExampleApi AppVersion
+cardanoServerExampleVersion = versionEndpointHandler version $gitHash $gitCommitDate

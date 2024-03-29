@@ -12,27 +12,22 @@
 
 module Cardano.Server.Client.Internal where
 
+import qualified CSL
 import           Cardano.Server.Config                (ServerEndpoint (..))
 import           Cardano.Server.Endpoints.Ping        (PingApi)
 import           Cardano.Server.Endpoints.Status      (StatusApi')
 import           Cardano.Server.Endpoints.Tx.Internal (TxApiErrorOf)
 import           Cardano.Server.Endpoints.Tx.New      (NewTxApi)
 import           Cardano.Server.Endpoints.Tx.Server   (ServerTxApi)
-import           Cardano.Server.Endpoints.Tx.Submit   (SubmitTxApi,
-                                                       SubmitTxReqBody (..))
+import           Cardano.Server.Endpoints.Tx.Submit   (SubmitTxApi, SubmitTxReqBody (..))
 import           Cardano.Server.Endpoints.Utxos       (UtxosApi)
-import           Cardano.Server.Endpoints.Version     (VersionApi')
-import           Cardano.Server.Internal              (HasStatusEndpoint (..),
-                                                       HasVersionEndpoint (..),
-                                                       TxApiRequestOf)
-import qualified CSL
+import           Cardano.Server.Endpoints.Version     (VersionApi)
+import           Cardano.Server.Internal              (HasStatusEndpoint (..), TxApiRequestOf)
 import           Data.Kind                            (Type)
 import           Data.Text                            (Text)
-import           Servant                              (Get, JSON, MimeRender,
-                                                       NoContent, Post,
-                                                       Proxy (Proxy))
-import           Servant.Client                       (ClientM, HasClient,
-                                                       client)
+import           Encoins.Common.Version               (AppVersion)
+import           Servant                              (JSON, MimeRender, NoContent, Post, Proxy (Proxy))
+import           Servant.Client                       (ClientM, HasClient, client)
 
 pingC :: ClientM NoContent
 pingC = client (Proxy @PingApi)
@@ -59,9 +54,8 @@ statusC :: forall api.
     ) => StatusEndpointReqBodyOf api -> ClientM (StatusEndpointResOf api)
 statusC = client (Proxy @(StatusApi' api))
 
-versionC :: forall api . HasClient ClientM (Get '[JSON] (VersionEndpointResOf api))
-  => ClientM (VersionEndpointResOf api)
-versionC = client (Proxy @(VersionApi' api))
+versionC :: ClientM AppVersion
+versionC = client (Proxy @VersionApi)
 
 class (Show (EndpointArg e api), Show (EndpointRes e api)) => ClientEndpoint (e :: ServerEndpoint) api where
     type EndpointArg e api :: Type
@@ -101,13 +95,6 @@ instance ( Show (StatusEndpointReqBodyOf api)
     type EndpointArg 'StatusE api = StatusEndpointReqBodyOf api
     type EndpointRes 'StatusE api = StatusEndpointResOf api
     endpointClient                = statusC @api
-
-instance ( Show (VersionEndpointResOf api)
-         , HasClient ClientM (Get '[JSON] (VersionEndpointResOf api))
-         ) => ClientEndpoint 'VersionE api where
-    type EndpointArg 'VersionE api = ()
-    type EndpointRes 'VersionE api = VersionEndpointResOf api
-    endpointClient               = const (versionC @api)
 
 type Interval = Int
 

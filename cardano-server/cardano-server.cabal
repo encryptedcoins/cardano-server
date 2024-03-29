@@ -76,6 +76,7 @@ library
       csl-types                              -any,
       data-default                           -any,
       directory                              -any,
+      encoins-common-version                 -any,
       exceptions                             -any,
       extra                                  -any,
       file-embed                             -any,

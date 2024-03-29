@@ -35,6 +35,7 @@ library
       Cardano.Server.Example.OnChain
       Cardano.Server.Example.OffChain
     other-modules:
+      Paths_cardano_server_example
     build-depends:
       base                          >= 4.9 && < 5,
       cardano-server                         -any,
@@ -42,6 +43,7 @@ library
       cardano-ledger-alonzo                  -any,
       encoins-common-version                 -any,
       exceptions                             -any,
+      gitrev                                 -any,
       mtl                                    -any,
       optparse-applicative                   -any,
       plutus-apps-extra                      -any,
