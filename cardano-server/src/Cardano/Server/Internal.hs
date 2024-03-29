@@ -22,13 +22,11 @@ module Cardano.Server.Internal where
 import           Cardano.Node.Emulator           (Params (..), pParamsFromProtocolParams)
 import           Cardano.Server.Config           (CardanoServerConfig (..), Config (..), Creds, HasCreds, HyperTextProtocol (..),
                                                   ServerEndpoint, decodeOrErrorFromFile, schemeFromProtocol)
-import           Cardano.Server.Error            (Envelope, InternalServerError (..))
+import           Cardano.Server.Error            (InternalServerError (..))
 import           Cardano.Server.Input            (InputContext)
 import           Cardano.Server.Utils.Logger     (HasLogger (..), Logger, logger)
-import           Cardano.Server.Utils.Wait       (waitTime)
 import           Cardano.Server.WalletEncryption (loadWallet)
 import           Control.Concurrent              (MVar, newEmptyMVar)
-import           Control.Concurrent.Async        (async, wait)
 import           Control.Exception               (SomeException, throw)
 import           Control.Lens                    ((^?))
 import           Control.Monad.Catch             (MonadCatch, MonadThrow (..))
@@ -131,23 +129,12 @@ type Queue api = Seq (QueueElem api)
 
 type QueueRef api = IORef (Queue api)
 
-class HasStatusEndpoint api where
-    type StatusEndpointErrorsOf  api :: [Type]
-    type StatusEndpointReqBodyOf api :: Type
-    type StatusEndpointResOf     api :: Type
-    statusHandler :: StatusHandler api
-
-type StatusHandler api = StatusEndpointReqBodyOf api -> ServerM api (Envelope (StatusEndpointErrorsOf api) (StatusEndpointResOf api))
-
 data ServerHandle api = ServerHandle
     { shDefaultCI              :: ChainIndexProvider
     , shAuxiliaryEnv           :: AuxillaryEnvOf api
     , shGetTrackedAddresses    :: ServerM api [Address]
     , shTxEndpointsTxBuilders  :: InputOf api -> ServerM api [TransactionBuilder ()]
-    , shServerIdle             :: ServerM api ()
     , shProcessRequest         :: TxApiRequestOf api -> ServerM api (InputWithContext api)
-    , shStatusHandler          :: StatusHandler api
-    , shCheckIfStatusAlive     :: ServerM api (Either Text ())
     }
 
 data Env api = Env
@@ -185,11 +172,11 @@ serverTrackedAddresses = join $ asks $ shGetTrackedAddresses . envServerHandle
 txEndpointsTxBuilders :: InputOf api -> ServerM api [TransactionBuilder ()]
 txEndpointsTxBuilders input = asks (shTxEndpointsTxBuilders . envServerHandle) >>= ($ input)
 
-serverIdle :: ServerM api ()
-serverIdle = do
-    delay <- liftIO $ async $ waitTime 2
-    join $ asks $ shServerIdle . envServerHandle
-    liftIO $ wait delay
+-- serverIdle :: ServerM api ()
+-- serverIdle = do
+--     delay <- liftIO $ async $ waitTime 2
+--     join $ asks $ shServerIdle . envServerHandle
+--     liftIO $ wait delay
 
 txEndpointProcessRequest :: TxApiRequestOf api -> ServerM api (InputWithContext api)
 txEndpointProcessRequest req = asks (shProcessRequest . envServerHandle) >>= ($ req)

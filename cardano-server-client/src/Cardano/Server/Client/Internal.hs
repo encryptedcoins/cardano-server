@@ -15,19 +15,18 @@ module Cardano.Server.Client.Internal where
 import qualified CSL
 import           Cardano.Server.Config                (ServerEndpoint (..))
 import           Cardano.Server.Endpoints.Ping        (PingApi)
-import           Cardano.Server.Endpoints.Status      (StatusApi')
 import           Cardano.Server.Endpoints.Tx.Internal (TxApiErrorOf)
 import           Cardano.Server.Endpoints.Tx.New      (NewTxApi)
 import           Cardano.Server.Endpoints.Tx.Server   (ServerTxApi)
 import           Cardano.Server.Endpoints.Tx.Submit   (SubmitTxApi, SubmitTxReqBody (..))
 import           Cardano.Server.Endpoints.Utxos       (UtxosApi)
 import           Cardano.Server.Endpoints.Version     (VersionApi)
-import           Cardano.Server.Internal              (HasStatusEndpoint (..), TxApiRequestOf)
+import           Cardano.Server.Internal              (TxApiRequestOf)
 import           Data.Kind                            (Type)
 import           Data.Text                            (Text)
 import           Encoins.Common.Version               (AppVersion)
-import           Servant                              (JSON, MimeRender, NoContent, Post, Proxy (Proxy))
-import           Servant.Client                       (ClientM, HasClient, client)
+import           Servant                              (JSON, MimeRender, NoContent, Proxy (Proxy))
+import           Servant.Client                       (ClientM, client)
 
 pingC :: ClientM NoContent
 pingC = client (Proxy @PingApi)
@@ -47,12 +46,6 @@ serverTxC :: forall api. MimeRender JSON (TxApiRequestOf api)
   => TxApiRequestOf api
   -> ClientM NoContent
 serverTxC = client (Proxy @(ServerTxApi (TxApiRequestOf api) (TxApiErrorOf api)))
-
-statusC :: forall api.
-    ( MimeRender JSON (StatusEndpointReqBodyOf api)
-    , HasClient ClientM (Post '[JSON] (StatusEndpointResOf api))
-    ) => StatusEndpointReqBodyOf api -> ClientM (StatusEndpointResOf api)
-statusC = client (Proxy @(StatusApi' api))
 
 versionC :: ClientM AppVersion
 versionC = client (Proxy @VersionApi)
@@ -86,15 +79,6 @@ instance (Show (TxApiRequestOf api), MimeRender JSON (TxApiRequestOf api)) => Cl
     type EndpointArg 'ServerTxE api = TxApiRequestOf api
     type EndpointRes 'ServerTxE _   = NoContent
     endpointClient                  = serverTxC @api
-
-instance ( Show (StatusEndpointReqBodyOf api)
-         , Show (StatusEndpointResOf api)
-         , MimeRender JSON (StatusEndpointReqBodyOf api)
-         , HasClient ClientM (Post '[JSON] (StatusEndpointResOf api))
-         ) => ClientEndpoint 'StatusE api where
-    type EndpointArg 'StatusE api = StatusEndpointReqBodyOf api
-    type EndpointRes 'StatusE api = StatusEndpointResOf api
-    endpointClient                = statusC @api
 
 type Interval = Int
 

@@ -45,7 +45,6 @@ data ClientHandle api = ClientHandle
     , autoNewTx      :: HasServantClientEnv => Interval -> ServerM api (Proxy 'NewTxE)
     , autoSumbitTx   :: HasServantClientEnv => Interval -> ServerM api (Proxy 'SubmitTxE)
     , autoServerTx   :: HasServantClientEnv => Interval -> ServerM api (Proxy 'ServerTxE)
-    , autoStatus     :: HasServantClientEnv => Interval -> ServerM api (Proxy 'StatusE)
     , autoVersion    :: HasServantClientEnv => Interval -> ServerM api (Proxy 'VersionE)
     -- Manual
     , manualPing     :: HasServantClientEnv => Text -> ServerM api (Proxy 'PingE)
@@ -53,7 +52,6 @@ data ClientHandle api = ClientHandle
     , manualNewTx    :: HasServantClientEnv => Text -> ServerM api (Proxy 'NewTxE)
     , manualSubmitTx :: HasServantClientEnv => Text -> ServerM api (Proxy 'SubmitTxE)
     , manualServerTx :: HasServantClientEnv => Text -> ServerM api (Proxy 'ServerTxE)
-    , manualStatus   :: HasServantClientEnv => Text -> ServerM api (Proxy 'StatusE)
     , manualVersion  :: HasServantClientEnv => Text -> ServerM api (Proxy 'VersionE)
     }
 
@@ -64,14 +62,12 @@ instance Default (ClientHandle api) where
         , autoNewTx      = throwAutoNotImplemented NewTxE
         , autoSumbitTx   = throwAutoNotImplemented SubmitTxE
         , autoServerTx   = throwAutoNotImplemented ServerTxE
-        , autoStatus     = throwAutoNotImplemented StatusE
         , autoVersion     = throwAutoNotImplemented VersionE
         , manualPing     = const $ sendRequest ()
         , manualUtxos    = manualWithRead
         , manualNewTx    = throwManualNotImplemented NewTxE
         , manualSubmitTx = manualWith readSubmitTxArg
         , manualServerTx = throwManualNotImplemented ServerTxE
-        , manualStatus   = throwManualNotImplemented StatusE
         , manualVersion  = throwManualNotImplemented VersionE
         }
         where

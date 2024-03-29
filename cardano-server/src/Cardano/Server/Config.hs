@@ -85,7 +85,6 @@ data ServerEndpoint
     | NewTxE
     | SubmitTxE
     | ServerTxE
-    | StatusE
     | VersionE
     deriving Eq
 
@@ -96,7 +95,6 @@ instance Read ServerEndpoint where
         "newTx"    -> [(NewTxE   , "")]
         "submitTx" -> [(SubmitTxE, "")]
         "serverTx" -> [(ServerTxE, "")]
-        "status"   -> [(StatusE  , "")]
         "version"  -> [(VersionE  , "")]
         _          -> []
 
@@ -107,7 +105,6 @@ instance Show ServerEndpoint where
         NewTxE    -> "newTx"
         SubmitTxE -> "submitTx"
         ServerTxE -> "serverTx"
-        StatusE   -> "status"
         VersionE  -> "version"
 
 instance FromJSON ServerEndpoint where
@@ -117,6 +114,5 @@ instance FromJSON ServerEndpoint where
         "newTx"    -> pure NewTxE
         "submitTx" -> pure SubmitTxE
         "serverTx" -> pure ServerTxE
-        "status"   -> pure StatusE
         "version"  -> pure VersionE
         _          -> mzero

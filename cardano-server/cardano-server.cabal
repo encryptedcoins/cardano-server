@@ -40,7 +40,6 @@ library
       Cardano.Server.Config
       Cardano.Server.Diagnostics
       Cardano.Server.Endpoints.Ping
-      Cardano.Server.Endpoints.Status
       Cardano.Server.Endpoints.Tx.Internal
       Cardano.Server.Endpoints.Tx.New
       Cardano.Server.Endpoints.Tx.Server

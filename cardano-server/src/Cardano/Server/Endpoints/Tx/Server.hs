@@ -20,7 +20,7 @@ import           Cardano.Server.Endpoints.Tx.Internal (TxApiErrorOf)
 import           Cardano.Server.Error                 (ConnectionError, Envelope, IsCardanoServerError, Throws, toEnvelope)
 import           Cardano.Server.Internal              (Env (envQueueRef), InputOf, Queue, QueueElem (..), QueueRef, ServerM,
                                                        TxApiRequestOf, checkEndpointAvailability, getQueueRef, newQueueElem,
-                                                       runServerM, serverIdle, serverTrackedAddresses, setLoggerFilePath,
+                                                       runServerM, serverTrackedAddresses, setLoggerFilePath,
                                                        txEndpointProcessRequest, txEndpointsTxBuilders)
 import           Cardano.Server.Tx                    (checkForCleanUtxos, submitTx)
 import           Cardano.Server.Utils.Logger          (logMsg, logSmth, (.<))
@@ -81,7 +81,6 @@ idleQueue st = do
         firstTime        = delta < 3
     when (enoughTimePassed || firstTime) $ logMsg "No new inputs to process."
     checkForCleanUtxos
-    serverIdle
     pure $ if enoughTimePassed then ct else st
 
 processQueueElem :: (Show (InputOf api)) => QueueRef api -> QueueElem api -> Queue api -> ServerM api ()

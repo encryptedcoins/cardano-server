@@ -8,11 +8,11 @@
 module Cardano.Server.Client.Example.Main where
 
 import           Cardano.Server.Client.Client (runClient)
-import           Cardano.Server.Client.Handle (ClientHandle (..), autoWith, autoWithRandom, manualWith, manualWithRead)
+import           Cardano.Server.Client.Handle (ClientHandle (..), autoWith, manualWith)
 import           Cardano.Server.Config        (decodeOrErrorFromFile)
 import           Cardano.Server.Example.Main  (ExampleApi, exampleServerHandle)
 import           Cardano.Server.Input         (InputContext (InputContextClient))
-import           Cardano.Server.Internal
+import           Cardano.Server.Internal      (ServerM)
 import           Cardano.Server.Main          (embedCreds)
 import           Control.Monad                (replicateM)
 import           Control.Monad.IO.Class       (MonadIO (liftIO))
@@ -37,10 +37,8 @@ exampleClientHandle :: ClientHandle ExampleApi
 exampleClientHandle = def
     { autoNewTx      = autoWith $ withCtx genInput
     , autoServerTx   = autoWith $ withCtx genInput
-    , autoStatus     = autoWithRandom
     , manualNewTx    = manualWith $ withCtx . readInput
     , manualServerTx = manualWith $ withCtx . readInput
-    , manualStatus   = manualWithRead
     }
   where
     withCtx ma = (,) <$> ma <*> mkCtx
