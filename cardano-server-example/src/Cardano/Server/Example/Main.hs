@@ -77,7 +77,6 @@ exampleServerHandle = ServerHandle
     processRequest                  -- How to extract input from request in tx endpoints
     statusHandler                   -- Handler of status endpoint
     checkStatusEndpoint             -- How to check if status endpoint is alive.
-    cardanoServerExampleVersion     -- Handler of version endpoint
   where
     buildTx bbs = pure [testMintTx bbs]
 

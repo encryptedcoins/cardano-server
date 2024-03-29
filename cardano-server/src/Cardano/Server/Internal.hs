@@ -47,7 +47,6 @@ import           Data.Maybe                      (fromMaybe)
 import           Data.Sequence                   (Seq, empty)
 import           Data.Text                       (Text)
 import qualified Data.Text                       as T
-import           Encoins.Common.Version          (AppVersion)
 import           GHC.Stack                       (HasCallStack)
 import           Ledger                          (Address, NetworkId, TxOutRef)
 import           Network.Connection              (TLSSettings (TLSSettings))
@@ -149,7 +148,6 @@ data ServerHandle api = ServerHandle
     , shProcessRequest         :: TxApiRequestOf api -> ServerM api (InputWithContext api)
     , shStatusHandler          :: StatusHandler api
     , shCheckIfStatusAlive     :: ServerM api (Either Text ())
-    , shVersionHandler         :: ServerM api AppVersion
     }
 
 data Env api = Env
