@@ -20,7 +20,9 @@ import           Cardano.Server.Config                (CardanoServerConfig (..),
 import           Cardano.Server.Error                 (ConnectionError (..), logCriticalExceptions)
 import           Cardano.Server.Internal              (Env, ServerM (unServerM))
 import           Cardano.Server.Utils.Logger          (HasLogger, logMsg, (.<))
+import           Control.Concurrent                   (forkIO)
 import           Control.Exception                    (throw)
+import           Control.Monad                        (void)
 import           Control.Monad.Catch                  (handle)
 import           Control.Monad.Reader                 (ReaderT (..))
 import           Data.FileEmbed                       (embedFileIfExists)
@@ -71,7 +73,7 @@ runCardanoServer config runCardanoApp serverApp beforeMainLoop = handle connecti
     settings = Warp.setLogger logReceivedRequest
              $ Warp.setOnException (const logException)
              $ Warp.setPort (configPort config)
-             $ Warp.setBeforeMainLoop (runHandler $ runCardanoApp beforeMainLoop)
+             $ Warp.setBeforeMainLoop (void $ forkIO $ runHandler $ runCardanoApp beforeMainLoop)
                Warp.defaultSettings
     logReceivedRequest req status _ = runHandler $ runCardanoApp $
         logMsg $ "Received request:\n" .< req <> "\nStatus:\n" .< status

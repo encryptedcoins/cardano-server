@@ -15,6 +15,7 @@ module Cardano.Server.Example.Main where
 
 import           Cardano.Server.Client.Internal       (statusC)
 import           Cardano.Server.Config                (decodeOrErrorFromFile)
+import           Cardano.Server.Diagnostics           (doDiagnostics, pingDiagnostics, providersDiagnostics)
 import           Cardano.Server.Endpoints.Ping        (PingApi, pingHandler)
 import           Cardano.Server.Endpoints.Status      (StatusApi)
 import           Cardano.Server.Endpoints.Tx.Internal (TxApiErrorOf)
@@ -27,7 +28,8 @@ import           Cardano.Server.Error                 (ConnectionError (..), Env
 import           Cardano.Server.Example.OffChain      (testMintTx)
 import           Cardano.Server.Input                 (InputContext (..))
 import           Cardano.Server.Internal              (AuxillaryEnvOf, HasStatusEndpoint (..), InputOf, InputWithContext,
-                                                       ServerHandle (ServerHandle), ServerM, TxApiRequestOf, loadEnv, mkServerClientEnv)
+                                                       ServerHandle (ServerHandle), ServerM, TxApiRequestOf, envDiagnosticsInterval,
+                                                       loadEnv, mkServerClientEnv)
 import           Cardano.Server.Main                  (embedCreds, runServer)
 import           Cardano.Server.Tx                    (mkTx)
 import           Cardano.Server.Utils.Logger          (logMsg, (.<))
@@ -85,7 +87,12 @@ runExampleServer configFp = do
     config <- decodeOrErrorFromFile configFp
     let ?creds = embedCreds
     env <- loadEnv config exampleServerHandle
-    runServer env exampleServer (pure ())
+    runServer env exampleServer (serverIdle $ envDiagnosticsInterval env)
+
+serverIdle :: Int -> ServerM ExampleApi ()
+serverIdle i = doDiagnostics i $ do
+    providersDiagnostics
+    pingDiagnostics
 
 --------------------------------------------
 -- | * ServerTx endpoint
