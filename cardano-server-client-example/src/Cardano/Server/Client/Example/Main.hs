@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds            #-}
 {-# LANGUAGE ImplicitParams       #-}
+{-# LANGUAGE NumericUnderscores   #-}
 {-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE TupleSections        #-}
 {-# LANGUAGE TypeFamilies         #-}
@@ -15,8 +16,9 @@ import           Cardano.Server.Input         (InputContext)
 import           Cardano.Server.Main          (embedCreds)
 import           Control.Monad                (replicateM)
 import           Control.Monad.IO.Class       (MonadIO (liftIO))
+import           Data.Bifunctor               (Bifunctor (..))
 import           Data.Default                 (Default (def))
-import           Data.List                    (nub)
+import           Data.List.Extra              (breakOn, nub)
 import           Data.Text                    (Text)
 import qualified Data.Text                    as T
 import           PlutusTx.Builtins            (BuiltinByteString)
@@ -31,19 +33,19 @@ runExampleClient configFp = do
 
 exampleClientHandle :: ClientHandle ExampleApi
 exampleClientHandle = def
-    { autoNewTx      = autoWith   genInput
-    , autoServerTx   = autoWith   genInput
+    { autoNewTx      = autoWith genInput
+    , autoServerTx   = autoWith genInput
     , autoStatus     = autoWithRandom
     , manualNewTx    = manualWith readInput
     , manualServerTx = manualWith readInput
     , manualStatus   = manualWithRead
     }
 
-genInput :: MonadIO m => m ([BuiltinByteString], InputContext)
+genInput :: MonadIO m => m ([(BuiltinByteString, Integer)], InputContext)
 genInput = fmap ((,def) . nub) $ liftIO $ do
     inputLength <- randomRIO (1, 15)
     let genBbs = stringToBuiltinByteString <$> (randomRIO (2, 8) >>= (`replicateM` randomIO))
-    replicateM inputLength genBbs
+    replicateM inputLength $ (,) <$> genBbs <*> randomRIO (1, 10_000_000)
 
-readInput :: Monad m => Text -> m ([BuiltinByteString], InputContext)
-readInput = pure . (,def) . map (stringToBuiltinByteString . T.unpack) . T.splitOn ","
+readInput :: Monad m => Text -> m ([(BuiltinByteString, Integer)], InputContext)
+readInput = pure . (,def) . map (bimap stringToBuiltinByteString (read . tail) . breakOn "=" . T.unpack) . T.splitOn ","

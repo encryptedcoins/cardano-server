@@ -24,10 +24,10 @@ spec = describe "Parsing client command line arguments" $ do
 
     it "manual" $ do
 
-        let input = "aaaa,aaaa"
+        let input = "aaaa=2,aaaa=3"
             inputT = T.pack input
 
         withArgs ["serverTx","--manual",input] runWithOpts >>=
             (`shouldBe` CommonOptions ServerTxE (Manual inputT))
 
-        fst <$> readInput inputT >>= (`shouldBe` ["aaaa","aaaa"])
+        fst <$> readInput inputT >>= (`shouldBe` [("aaaa", 2),("aaaa", 3)])

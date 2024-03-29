@@ -19,5 +19,5 @@ spec = describe "/serverTx" $ do
         shouldBeOk $ serverTxC @ExampleApi input
 
     it "fails when request contains duplicate tokens" $ do
-        input <- first (("aaaa":) . ("aaaa":)) <$> genInput
+        input <- first ((("aaaa",1):) . (("aaaa",2):)) <$> genInput
         serverTxC @ExampleApi input `shoudlFailWithStatus` 422
