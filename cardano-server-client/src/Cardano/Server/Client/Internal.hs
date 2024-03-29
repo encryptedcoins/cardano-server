@@ -13,7 +13,6 @@
 module Cardano.Server.Client.Internal where
 
 import qualified CSL
-import           Cardano.Server.Config                (ServerEndpoint (..))
 import           Cardano.Server.Endpoints.Ping        (PingApi)
 import           Cardano.Server.Endpoints.Tx.Internal (TxApiErrorOf)
 import           Cardano.Server.Endpoints.Tx.New      (NewTxApi)
@@ -27,6 +26,7 @@ import           Data.Text                            (Text)
 import           Encoins.Common.Version               (AppVersion)
 import           Servant                              (JSON, MimeRender, NoContent, Proxy (Proxy))
 import           Servant.Client                       (ClientM, client)
+import GHC.Base (Symbol)
 
 pingC :: ClientM NoContent
 pingC = client (Proxy @PingApi)
@@ -50,34 +50,34 @@ serverTxC = client (Proxy @(ServerTxApi (TxApiRequestOf api) (TxApiErrorOf api))
 versionC :: ClientM AppVersion
 versionC = client (Proxy @VersionApi)
 
-class (Show (EndpointArg e api), Show (EndpointRes e api)) => ClientEndpoint (e :: ServerEndpoint) api where
+class (Show (EndpointArg e api), Show (EndpointRes e api)) => ClientEndpoint (e :: Symbol) api where
     type EndpointArg e api :: Type
     type EndpointRes e api :: Type
     endpointClient         :: EndpointArg e api -> ClientM (EndpointRes e api)
 
-instance ClientEndpoint 'PingE api where
-    type EndpointArg 'PingE _ = ()
-    type EndpointRes 'PingE _ = NoContent
+instance ClientEndpoint "ping" api where
+    type EndpointArg "ping" _ = ()
+    type EndpointRes "ping" _ = NoContent
     endpointClient            = const pingC
 
-instance ClientEndpoint 'UtxosE api where
-    type EndpointArg 'UtxosE _ = Text
-    type EndpointRes 'UtxosE _ = CSL.TransactionUnspentOutputs
+instance ClientEndpoint "utxos" api where
+    type EndpointArg "utxos" _ = Text
+    type EndpointRes "utxos" _ = CSL.TransactionUnspentOutputs
     endpointClient             = utxosC
 
-instance (Show (TxApiRequestOf api), MimeRender JSON (TxApiRequestOf api)) => ClientEndpoint 'NewTxE api where
-    type EndpointArg 'NewTxE api = TxApiRequestOf api
-    type EndpointRes 'NewTxE _   = (Text, Text)
+instance (Show (TxApiRequestOf api), MimeRender JSON (TxApiRequestOf api)) => ClientEndpoint "newTx" api where
+    type EndpointArg "newTx" api = TxApiRequestOf api
+    type EndpointRes "newTx" _   = (Text, Text)
     endpointClient               = newTxC @api
 
-instance ClientEndpoint 'SubmitTxE api where
-    type EndpointArg 'SubmitTxE api = SubmitTxReqBody
-    type EndpointRes 'SubmitTxE _   = NoContent
+instance ClientEndpoint "submitTx" api where
+    type EndpointArg "submitTx" api = SubmitTxReqBody
+    type EndpointRes "submitTx" _   = NoContent
     endpointClient                  = submitTxC
 
-instance (Show (TxApiRequestOf api), MimeRender JSON (TxApiRequestOf api)) => ClientEndpoint 'ServerTxE api where
-    type EndpointArg 'ServerTxE api = TxApiRequestOf api
-    type EndpointRes 'ServerTxE _   = NoContent
+instance (Show (TxApiRequestOf api), MimeRender JSON (TxApiRequestOf api)) => ClientEndpoint "serverTx" api where
+    type EndpointArg "serverTx" api = TxApiRequestOf api
+    type EndpointRes "serverTx" _   = NoContent
     endpointClient                  = serverTxC @api
 
 type Interval = Int

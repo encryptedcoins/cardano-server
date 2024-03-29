@@ -21,7 +21,7 @@ module Cardano.Server.Internal where
 
 import           Cardano.Node.Emulator           (Params (..), pParamsFromProtocolParams)
 import           Cardano.Server.Config           (CardanoServerConfig (..), Config (..), Creds, HasCreds, HyperTextProtocol (..),
-                                                  ServerEndpoint, decodeOrErrorFromFile, schemeFromProtocol)
+                                                  decodeOrErrorFromFile, schemeFromProtocol)
 import           Cardano.Server.Error            (InternalServerError (..))
 import           Cardano.Server.Input            (InputContext)
 import           Cardano.Server.Utils.Logger     (HasLogger (..), Logger, logger)
@@ -154,7 +154,7 @@ data Env api = Env
     , envWalletProvider        :: WalletProvider
     , envChainIndexProvider    :: ChainIndexProvider
     , envTxProvider            :: TxProvider
-    , envActiveEndpoints       :: [ServerEndpoint]
+    , envActiveEndpoints       :: [Text]
     , envLogger                :: Logger (ServerM api)
     , envLoggerFilePath        :: Maybe FilePath
     , envServerHandle          :: ServerHandle api
@@ -227,7 +227,7 @@ loadEnv Config{..} ServerHandle{..} = do
 setLoggerFilePath :: FilePath -> ServerM api a -> ServerM api a
 setLoggerFilePath fp = local (\Env{..} -> Env{envLoggerFilePath = Just fp, ..})
 
-checkEndpointAvailability :: ServerEndpoint -> ServerM api ()
+checkEndpointAvailability :: Text -> ServerM api ()
 checkEndpointAvailability endpoint = whenM (asks ((endpoint `notElem`) . envActiveEndpoints)) $ throwError err404
 
 mkServantClientEnv :: (MonadIO m, HasCreds) => Int -> Text -> HyperTextProtocol -> m Servant.ClientEnv

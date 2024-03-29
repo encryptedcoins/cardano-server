@@ -5,7 +5,6 @@
 module Cardano.Server.Example.OnChain where
 
 import           Cardano.Ledger.Alonzo.Language      (Language (PlutusV2))
--- import           Cardano.Server.Example.Input        (TestPolicyInput (..))
 import           Ledger                              (Versioned (..))
 import           Ledger.Typed.Scripts                (IsScriptContext (..))
 import           Plutus.V2.Ledger.Api                (MintingPolicy, ScriptContext (..), TokenName (..), mkMintingPolicyScript)

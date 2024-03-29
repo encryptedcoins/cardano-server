@@ -135,9 +135,9 @@ instance IsCardanoServerError ExampleStatusEndpointError where
 
 statusHandler :: Bool -> ServerM ExampleApi (Envelope '[ExampleStatusEndpointError] Text)
 statusHandler b = toEnvelope $
-        if b
-        then pure "This is an example of a status endpoint."
-        else throwM ExampleStatusEndpointError
+    if b
+    then pure "This is an example of a status endpoint."
+    else throwM ExampleStatusEndpointError
 
 --------------------------------------------
 -- | * Version endpoint

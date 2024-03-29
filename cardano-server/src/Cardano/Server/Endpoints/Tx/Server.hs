@@ -15,7 +15,6 @@
 
 module Cardano.Server.Endpoints.Tx.Server where
 
-import           Cardano.Server.Config                (ServerEndpoint (ServerTxE))
 import           Cardano.Server.Endpoints.Tx.Internal (TxApiErrorOf)
 import           Cardano.Server.Error                 (ConnectionError, Envelope, IsCardanoServerError, Throws, toEnvelope)
 import           Cardano.Server.Internal              (Env (envQueueRef), InputOf, Queue, QueueElem (..), QueueRef, ServerM,
@@ -47,7 +46,7 @@ serverTxHandler :: forall api. (Show (TxApiRequestOf api), IsCardanoServerError 
     -> ServerM api (Envelope '[TxApiErrorOf api, ConnectionError] NoContent)
 serverTxHandler req = toEnvelope $ do
         logMsg $ "New serverTx request received:\n" .< req
-        checkEndpointAvailability ServerTxE
+        checkEndpointAvailability "serverTx"
         qElem <- txEndpointProcessRequest req >>= newQueueElem
         ref   <- getQueueRef
         liftIO $ atomicModifyIORef ref ((,()) . (|> qElem))

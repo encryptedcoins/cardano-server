@@ -8,7 +8,7 @@
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications    #-}
-{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE ViewPatterns        #-}
 {-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
@@ -16,7 +16,6 @@ module Cardano.Server.Client.Handle where
 
 import           Cardano.Server.Client.Gen          (randomAddressBech32Text)
 import           Cardano.Server.Client.Internal     (ClientEndpoint (..), Interval, Mode (..))
-import           Cardano.Server.Config              (ServerEndpoint (..))
 import           Cardano.Server.Endpoints.Tx.Submit (SubmitTxReqBody (..))
 import           Cardano.Server.Internal            (ServerM, getNetworkId)
 import           Cardano.Server.Utils.Logger        (logMsg, logSmth, (.<))
@@ -31,6 +30,7 @@ import           Data.List.Extra                    (chunksOf)
 import           Data.Proxy                         (Proxy (..))
 import           Data.Text                          (Text)
 import qualified Data.Text                          as T
+import           GHC.Base                           (Symbol)
 import           Servant.Client                     (ClientEnv, runClientM)
 import           System.Random                      (Random, randomIO, randomRIO)
 import           Text.Read                          (readEither)
@@ -40,50 +40,50 @@ type HasServantClientEnv = ?servantClientEnv :: ClientEnv
 -- Proxy here is necessary to save the user from writing explicit type applications
 data ClientHandle api = ClientHandle
     -- Auto
-    { autoPing       :: HasServantClientEnv => Interval -> ServerM api (Proxy 'PingE)
-    , autoUtxos      :: HasServantClientEnv => Interval -> ServerM api (Proxy 'UtxosE)
-    , autoNewTx      :: HasServantClientEnv => Interval -> ServerM api (Proxy 'NewTxE)
-    , autoSumbitTx   :: HasServantClientEnv => Interval -> ServerM api (Proxy 'SubmitTxE)
-    , autoServerTx   :: HasServantClientEnv => Interval -> ServerM api (Proxy 'ServerTxE)
-    , autoVersion    :: HasServantClientEnv => Interval -> ServerM api (Proxy 'VersionE)
+    { autoPing       :: HasServantClientEnv => Interval -> ServerM api (Proxy "ping")
+    , autoUtxos      :: HasServantClientEnv => Interval -> ServerM api (Proxy "utxos")
+    , autoNewTx      :: HasServantClientEnv => Interval -> ServerM api (Proxy "newTx")
+    , autoSumbitTx   :: HasServantClientEnv => Interval -> ServerM api (Proxy "submitTx")
+    , autoServerTx   :: HasServantClientEnv => Interval -> ServerM api (Proxy "serverTx")
+    , autoVersion    :: HasServantClientEnv => Interval -> ServerM api (Proxy "version")
     -- Manual
-    , manualPing     :: HasServantClientEnv => Text -> ServerM api (Proxy 'PingE)
-    , manualUtxos    :: HasServantClientEnv => Text -> ServerM api (Proxy 'UtxosE)
-    , manualNewTx    :: HasServantClientEnv => Text -> ServerM api (Proxy 'NewTxE)
-    , manualSubmitTx :: HasServantClientEnv => Text -> ServerM api (Proxy 'SubmitTxE)
-    , manualServerTx :: HasServantClientEnv => Text -> ServerM api (Proxy 'ServerTxE)
-    , manualVersion  :: HasServantClientEnv => Text -> ServerM api (Proxy 'VersionE)
+    , manualPing     :: HasServantClientEnv => Text -> ServerM api (Proxy "ping")
+    , manualUtxos    :: HasServantClientEnv => Text -> ServerM api (Proxy "utxos")
+    , manualNewTx    :: HasServantClientEnv => Text -> ServerM api (Proxy "newTx")
+    , manualSubmitTx :: HasServantClientEnv => Text -> ServerM api (Proxy "submitTx")
+    , manualServerTx :: HasServantClientEnv => Text -> ServerM api (Proxy "serverTx")
+    , manualVersion  :: HasServantClientEnv => Text -> ServerM api (Proxy "version")
     }
 
 instance Default (ClientHandle api) where
     def = ClientHandle
         { autoPing       = autoWith (pure ())
         , autoUtxos      = \i -> getNetworkId >>= (`autoWith` i) . randomAddressBech32Text
-        , autoNewTx      = throwAutoNotImplemented NewTxE
-        , autoSumbitTx   = throwAutoNotImplemented SubmitTxE
-        , autoServerTx   = throwAutoNotImplemented ServerTxE
-        , autoVersion     = throwAutoNotImplemented VersionE
+        , autoNewTx      = throwAutoNotImplemented "newTx"
+        , autoSumbitTx   = throwAutoNotImplemented "submitTx"
+        , autoServerTx   = throwAutoNotImplemented "serverTx"
+        , autoVersion     = throwAutoNotImplemented "version"
         , manualPing     = const $ sendRequest ()
         , manualUtxos    = manualWithRead
-        , manualNewTx    = throwManualNotImplemented NewTxE
+        , manualNewTx    = throwManualNotImplemented "newTx"
         , manualSubmitTx = manualWith readSubmitTxArg
-        , manualServerTx = throwManualNotImplemented ServerTxE
-        , manualVersion  = throwManualNotImplemented VersionE
+        , manualServerTx = throwManualNotImplemented "serverTx"
+        , manualVersion  = throwManualNotImplemented "version"
         }
         where
             readSubmitTxArg (T.splitOn "," -> tx:wits)
                 = pure $ SubmitTxReqBody tx $ map (\[a,b] -> (a,b)) $ chunksOf 2 wits
 
-data NotImplementedMethodError = NotImplementedMethodError Mode ServerEndpoint
+data NotImplementedMethodError = NotImplementedMethodError Mode Text
     deriving (Show, Exception)
 
-throwAutoNotImplemented :: ServerEndpoint -> Interval -> ServerM api a
+throwAutoNotImplemented :: Text -> Interval -> ServerM api a
 throwAutoNotImplemented e i = throwM $ NotImplementedMethodError (Auto i) e
 
-throwManualNotImplemented :: ServerEndpoint -> Text -> ServerM api a
+throwManualNotImplemented :: Text -> Text -> ServerM api a
 throwManualNotImplemented e t = throwM $ NotImplementedMethodError (Manual t) e
 
-autoWith :: forall (e :: ServerEndpoint) api.
+autoWith :: forall (e :: Symbol) api.
     ( HasServantClientEnv
     , ClientEndpoint e api
     ) => ServerM api (EndpointArg e api) -> Interval -> ServerM api (Proxy e)
@@ -92,27 +92,27 @@ autoWith gen averageInterval = forever $ do
     sendRequest @e reqBody
     waitTime =<< randomRIO (1, averageInterval * 2)
 
-autoWithRandom :: forall (e :: ServerEndpoint) api.
+autoWithRandom :: forall (e :: Symbol) api.
     ( HasServantClientEnv
     , ClientEndpoint e api
     , Random (EndpointArg e api)
     ) => Interval -> ServerM api (Proxy e)
 autoWithRandom = autoWith (liftIO randomIO)
 
-manualWith :: forall (e :: ServerEndpoint) api.
+manualWith :: forall (e :: Symbol) api.
     ( HasServantClientEnv
     , ClientEndpoint e api
     ) => (Text -> ServerM api (EndpointArg e api)) -> Text -> ServerM api (Proxy e)
 manualWith = (>=> sendRequest @e)
 
-manualWithRead :: forall (e :: ServerEndpoint) api.
+manualWithRead :: forall (e :: Symbol) api.
     ( HasServantClientEnv
     , ClientEndpoint e api
     , Read (EndpointArg e api)
     ) => Text -> ServerM api (Proxy e)
 manualWithRead = either ((Proxy <$) . logSmth) (sendRequest @e) . readEither . T.unpack
 
-manualWithJsonFile :: forall (e :: ServerEndpoint) api.
+manualWithJsonFile :: forall (e :: Symbol) api.
     ( HasServantClientEnv
     , ClientEndpoint e api
     , FromJSON (EndpointArg e api)

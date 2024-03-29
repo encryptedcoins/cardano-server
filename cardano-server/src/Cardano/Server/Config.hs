@@ -10,20 +10,18 @@
 
 module Cardano.Server.Config where
 
-import           Cardano.Api                    (NetworkId (..))
-import           Control.Monad
-import           Data.Aeson                     (FromJSON (..), ToJSON, eitherDecodeFileStrict, genericParseJSON)
-import qualified Data.Aeson                     as J
-import           Data.Aeson.Casing              (aesonPrefix, snakeCase)
-import           Data.ByteString                (ByteString)
-import           Data.Text                      (Text)
-import           GHC.Generics                   (Generic)
-import           GHC.Stack                      (HasCallStack)
-import           Ledger                         (TxOutRef)
-import           PlutusAppsExtra.IO.ChainIndex  (ChainIndexProvider)
-import qualified Servant.Client                 as Servant
-import PlutusAppsExtra.IO.Wallet (WalletProvider)
-import PlutusAppsExtra.IO.Tx (TxProvider)
+import           Cardano.Api                   (NetworkId (..))
+import           Data.Aeson                    (FromJSON (..), ToJSON, eitherDecodeFileStrict, genericParseJSON)
+import           Data.Aeson.Casing             (aesonPrefix, snakeCase)
+import           Data.ByteString               (ByteString)
+import           Data.Text                     (Text)
+import           GHC.Generics                  (Generic)
+import           GHC.Stack                     (HasCallStack)
+import           Ledger                        (TxOutRef)
+import           PlutusAppsExtra.IO.ChainIndex (ChainIndexProvider)
+import           PlutusAppsExtra.IO.Tx         (TxProvider)
+import           PlutusAppsExtra.IO.Wallet     (WalletProvider)
+import qualified Servant.Client                as Servant
 
 data Config = Config
     { cHost                   :: Text
@@ -44,7 +42,7 @@ data Config = Config
     , cWalletProvider         :: Maybe WalletProvider
     , cChainIndexProvider     :: Maybe ChainIndexProvider
     , cTxProvider             :: Maybe TxProvider
-    , cActiveEndpoints        :: [ServerEndpoint]
+    , cActiveEndpoints        :: [Text]
     } deriving (Show, Generic)
 
 instance FromJSON Config where
@@ -79,40 +77,40 @@ instance CardanoServerConfig Config where
 
 ------------------------------------------------------------------- Endpoints -------------------------------------------------------------------
 
-data ServerEndpoint
-    = PingE
-    | UtxosE
-    | NewTxE
-    | SubmitTxE
-    | ServerTxE
-    | VersionE
-    deriving Eq
+-- data ServerEndpoint
+--     = PingE
+--     | UtxosE
+--     | "newTx"
+--     | "submitTx"
+--     | "serverTx"
+--     | "version"
+--     deriving Eq
 
-instance Read ServerEndpoint where
-    readsPrec _ = \case
-        "ping"     -> [(PingE    , "")]
-        "utxos"    -> [(UtxosE   , "")]
-        "newTx"    -> [(NewTxE   , "")]
-        "submitTx" -> [(SubmitTxE, "")]
-        "serverTx" -> [(ServerTxE, "")]
-        "version"  -> [(VersionE  , "")]
-        _          -> []
+-- instance Read ServerEndpoint where
+--     readsPrec _ = \case
+--         "ping"     -> [(PingE    , "")]
+--         "utxos"    -> [(UtxosE   , "")]
+--         "newTx"    -> [("newTx"   , "")]
+--         "submitTx" -> [("submitTx", "")]
+--         "serverTx" -> [("serverTx", "")]
+--         "version"  -> [("version"  , "")]
+--         _          -> []
 
-instance Show ServerEndpoint where
-    show = \case
-        PingE     -> "ping"
-        UtxosE    -> "utxos"
-        NewTxE    -> "newTx"
-        SubmitTxE -> "submitTx"
-        ServerTxE -> "serverTx"
-        VersionE  -> "version"
+-- instance Show ServerEndpoint where
+--     show = \case
+--         PingE     -> "ping"
+--         UtxosE    -> "utxos"
+--         "newTx"    -> "newTx"
+--         "submitTx" -> "submitTx"
+--         "serverTx" -> "serverTx"
+--         "version"  -> "version"
 
-instance FromJSON ServerEndpoint where
-    parseJSON = J.withText "ServerEndpoint" $ \case
-        "ping"     -> pure PingE
-        "utxos"    -> pure UtxosE
-        "newTx"    -> pure NewTxE
-        "submitTx" -> pure SubmitTxE
-        "serverTx" -> pure ServerTxE
-        "version"  -> pure VersionE
-        _          -> mzero
+-- instance FromJSON ServerEndpoint where
+--     parseJSON = J.withText "ServerEndpoint" $ \case
+--         "ping"     -> pure PingE
+--         "utxos"    -> pure UtxosE
+--         "newTx"    -> pure "newTx"
+--         "submitTx" -> pure "submitTx"
+--         "serverTx" -> pure "serverTx"
+--         "version"  -> pure "version"
+--         _          -> mzero

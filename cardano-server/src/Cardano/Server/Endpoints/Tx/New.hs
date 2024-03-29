@@ -16,7 +16,6 @@
 
 module Cardano.Server.Endpoints.Tx.New where
 
-import           Cardano.Server.Config                (ServerEndpoint (NewTxE))
 import           Cardano.Server.Endpoints.Tx.Internal (TxApiErrorOf)
 import           Cardano.Server.Error                 (BalanceExternalTxError, ConnectionError, Envelope,
                                                        IsCardanoServerError (..), MkTxError, Throws, toEnvelope)
@@ -58,7 +57,7 @@ newTxHandler :: (Show (TxApiRequestOf api), IsCardanoServerError (TxApiErrorOf a
         (Text, Text))
 newTxHandler req = toEnvelope $ do
     logMsg $ "New newTx request received:\n" .< req
-    checkEndpointAvailability NewTxE
+    checkEndpointAvailability "newTx"
     (input, context) <- txEndpointProcessRequest req
     addrs <- serverTrackedAddresses
     txBuilder <- txEndpointsTxBuilders input
