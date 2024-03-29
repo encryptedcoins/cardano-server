@@ -46,7 +46,7 @@ import           Data.Sequence                   (Seq, empty)
 import           Data.Text                       (Text)
 import qualified Data.Text                       as T
 import           GHC.Stack                       (HasCallStack)
-import           Ledger                          (Address, NetworkId, TxOutRef)
+import           Ledger                          (NetworkId, TxOutRef)
 import           Network.Connection              (TLSSettings (TLSSettings))
 import           Network.HTTP.Client             (ManagerSettings (managerResponseTimeout), defaultManagerSettings, newManager,
                                                   responseTimeoutMicro)
@@ -62,7 +62,6 @@ import           PlutusAppsExtra.IO.Tx           (HasTxProvider (..), TxProvider
 import qualified PlutusAppsExtra.IO.Tx           as Tx
 import           PlutusAppsExtra.IO.Wallet       (HasWallet (..), HasWalletProvider (..), RestoredWallet, WalletProvider)
 import qualified PlutusAppsExtra.IO.Wallet       as Wallet
-import           PlutusAppsExtra.Types.Tx        (TransactionBuilder)
 import           PlutusAppsExtra.Utils.Network   (HasNetworkId)
 import qualified PlutusAppsExtra.Utils.Network   as Network
 import           Servant                         (Handler, err404)
@@ -106,35 +105,11 @@ instance HasWalletProvider (ServerM api) where
 instance HasTxProvider (ServerM api) where
     getTxProvider = asks envTxProvider
 
-type family TxApiRequestOf api :: Type
-
-type family InputOf api :: Type
-
 type family AuxillaryEnvOf api :: Type
-
-type InputWithContext api = (InputOf api, InputContext)
-
-data QueueElem api = QueueElem
-    { qeInput   :: InputOf api
-    , qeContext :: InputContext
-    , qeMvar    :: MVar (Either SomeException ())
-    }
-
-newQueueElem :: MonadIO m => InputWithContext api -> m (QueueElem api)
-newQueueElem (qeInput, qeContext) = do
-    qeMvar <- liftIO newEmptyMVar
-    pure QueueElem{..}
-
-type Queue api = Seq (QueueElem api)
-
-type QueueRef api = IORef (Queue api)
 
 data ServerHandle api = ServerHandle
     { shDefaultCI              :: ChainIndexProvider
     , shAuxiliaryEnv           :: AuxillaryEnvOf api
-    , shGetTrackedAddresses    :: ServerM api [Address]
-    , shTxEndpointsTxBuilders  :: InputOf api -> ServerM api [TransactionBuilder ()]
-    , shProcessRequest         :: TxApiRequestOf api -> ServerM api (InputWithContext api)
     }
 
 data Env api = Env
@@ -142,7 +117,6 @@ data Env api = Env
     , envHost                  :: Text
     , envHyperTextProtocol     :: HyperTextProtocol
     , envCreds                 :: Creds
-    , envQueueRef              :: QueueRef api
     , envWallet                :: Maybe RestoredWallet
     , envBlockfrostToken       :: Maybe BlockfrostToken
     , envMaestroToken          :: Maybe MaestroToken
@@ -165,24 +139,6 @@ instance CardanoServerConfig (Env api) where
     configHost = envHost
     configPort = envPort
     configHyperTextProtocol = envHyperTextProtocol
-
-serverTrackedAddresses :: ServerM api [Address]
-serverTrackedAddresses = join $ asks $ shGetTrackedAddresses . envServerHandle
-
-txEndpointsTxBuilders :: InputOf api -> ServerM api [TransactionBuilder ()]
-txEndpointsTxBuilders input = asks (shTxEndpointsTxBuilders . envServerHandle) >>= ($ input)
-
--- serverIdle :: ServerM api ()
--- serverIdle = do
---     delay <- liftIO $ async $ waitTime 2
---     join $ asks $ shServerIdle . envServerHandle
---     liftIO $ wait delay
-
-txEndpointProcessRequest :: TxApiRequestOf api -> ServerM api (InputWithContext api)
-txEndpointProcessRequest req = asks (shProcessRequest . envServerHandle) >>= ($ req)
-
-getQueueRef :: ServerM api (QueueRef api)
-getQueueRef = asks envQueueRef
 
 getNetworkId :: ServerM api NetworkId
 getNetworkId = asks $ pNetworkId . envLedgerParams
