@@ -16,6 +16,37 @@ custom-setup
 -- Plutus language settings
 common lang
     default-language:   Haskell2010
+    default-extensions:
+      AllowAmbiguousTypes,
+      BangPatterns,
+      ConstraintKinds,
+      DataKinds,
+      DeriveAnyClass,
+      DeriveFunctor,
+      DeriveGeneric,
+      DerivingStrategies,
+      FlexibleContexts,
+      FlexibleInstances,
+      GeneralizedNewtypeDeriving,
+      ImplicitParams,
+      InstanceSigs,
+      LambdaCase,
+      MultiParamTypeClasses,
+      MultiWayIf,
+      NumericUnderscores,
+      QuantifiedConstraints,
+      PatternSynonyms,
+      RankNTypes,
+      RecordWildCards,
+      ScopedTypeVariables,
+      StandaloneDeriving,
+      StandaloneKindSignatures,
+      TypeApplications,
+      TypeFamilies,
+      TypeOperators,
+      TupleSections,
+      UndecidableInstances,
+      UndecidableSuperClasses,
     ghc-options:
       -fwarn-redundant-constraints
       -Wall
@@ -39,6 +70,7 @@ library
     exposed-modules:
       Cardano.Server.Config
       Cardano.Server.Diagnostics
+      Cardano.Server.EndpointHandler
       Cardano.Server.Endpoints.Ping
       Cardano.Server.Endpoints.Tx.Submit
       Cardano.Server.Endpoints.Utxos
@@ -46,7 +78,6 @@ library
       Cardano.Server.Error
       Cardano.Server.Error.Class
       Cardano.Server.Error.Servant
-      Cardano.Server.Error.ToEnvelope
       Cardano.Server.Error.Utils
       Cardano.Server.Input
       Cardano.Server.Internal
@@ -104,4 +135,5 @@ library
       wai-cors                               -any,
       warp                                   -any,
       warp-tls                               -any,
+      world-peace                            -any,
     hs-source-dirs: src
