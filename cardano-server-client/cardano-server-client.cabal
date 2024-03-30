@@ -10,6 +10,37 @@ maintainer:         team@encoins.io
 -- Plutus language settings
 common lang
     default-language:   Haskell2010
+    default-extensions:
+      AllowAmbiguousTypes,
+      BangPatterns,
+      ConstraintKinds,
+      DataKinds,
+      DeriveAnyClass,
+      DeriveFunctor,
+      DeriveGeneric,
+      DerivingStrategies,
+      FlexibleContexts,
+      FlexibleInstances,
+      GeneralizedNewtypeDeriving,
+      ImplicitParams,
+      InstanceSigs,
+      LambdaCase,
+      MultiParamTypeClasses,
+      MultiWayIf,
+      NumericUnderscores,
+      QuantifiedConstraints,
+      PatternSynonyms,
+      RankNTypes,
+      RecordWildCards,
+      ScopedTypeVariables,
+      StandaloneDeriving,
+      StandaloneKindSignatures,
+      TypeApplications,
+      TypeFamilies,
+      TypeOperators,
+      TupleSections,
+      UndecidableInstances,
+      UndecidableSuperClasses,
     ghc-options:
       -fwarn-redundant-constraints
       -Wall
@@ -33,7 +64,6 @@ library
     exposed-modules: 
       Cardano.Server.Client.Client
       Cardano.Server.Client.Gen
-      Cardano.Server.Client.Handle
       Cardano.Server.Client.Internal
       Cardano.Server.Client.Opts
     other-modules:
