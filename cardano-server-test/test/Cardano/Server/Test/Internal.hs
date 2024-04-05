@@ -23,7 +23,6 @@ import           Control.Monad.IO.Class             (MonadIO (..))
 import           Control.Monad.Reader               (ReaderT (runReaderT), ask)
 import           Data.Aeson                         (decode)
 import           Data.Either                        (isRight)
-import           Data.Maybe                         (fromJust)
 import           Data.Text                          (Text)
 import           PlutusAppsExtra.IO.ChainIndex      (ChainIndexProvider (..), HasChainIndexProvider (..))
 import qualified PlutusAppsExtra.IO.ChainIndex.Kupo as Kupo
@@ -40,7 +39,7 @@ withCardanoServer configFp sHandle minAdaInWallet specs = do
     env <- loadEnv config sHandle
     sce <- mkServantClientEnv (cPort config) (cHost config) (cHyperTextProtocol config)
     let ?servantClientEnv = sce
-    walletHasEnouhgAda <- checkWalletHasMinAda $ fromJust $ cWalletFile config
+    walletHasEnouhgAda <- checkWalletHasMinAda $ cWalletFile config
     bracket
         (liftIO $ C.forkIO $ runServer' env{envLogger = mutedLogger})
         C.killThread $
