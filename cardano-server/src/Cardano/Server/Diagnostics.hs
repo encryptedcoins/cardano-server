@@ -30,8 +30,7 @@ import qualified PlutusAppsExtra.Api.Kupo              as Kupo
 import           PlutusAppsExtra.IO.ChainIndex         (ChainIndexProvider (Plutus), HasChainIndexProvider (getChainIndexProvider))
 import qualified PlutusAppsExtra.IO.ChainIndex         as ChainIndex
 import           PlutusAppsExtra                       (nodeHealthCheck)
-import           PlutusAppsExtra.IO.Tx                 (HasTxProvider (getTxProvider))
-import qualified PlutusAppsExtra.IO.Tx                 as Tx
+import           PlutusAppsExtra.IO.Tx                 (HasTxProvider (getTxProvider), isCardanoTxProvider)
 import           PlutusAppsExtra.IO.Wallet             (HasWalletProvider (getWalletProvider))
 import qualified PlutusAppsExtra.IO.Wallet             as Wallet
 import qualified PlutusAppsExtra.IO.Wallet.Cardano     as Wallet
@@ -43,7 +42,7 @@ doDiagnostics = do
     i <- asks envDiagnosticsInterval
     forever $ do
         delay <- liftIO $ async $ waitTime i
-        whenM (orM [(== Wallet.Cardano) <$> getWalletProvider, (== Tx.Cardano) <$> getTxProvider, (== Plutus) <$> getChainIndexProvider])
+        whenM (orM [(== Wallet.Cardano) <$> getWalletProvider, isCardanoTxProvider <$> getTxProvider, (== Plutus) <$> getChainIndexProvider])
             $ withDiagnostics "cardano-node" nodeDiagnostics
         whenM ((== Wallet.Cardano) <$> getWalletProvider)
             $ withDiagnostics "cardano-wallet" cardanoWalletDiagnostics
