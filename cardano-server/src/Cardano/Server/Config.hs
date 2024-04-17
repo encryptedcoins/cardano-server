@@ -20,7 +20,7 @@ import           Cardano.Mnemonic                   (MkSomeMnemonic (..))
 import           Control.Applicative                (Applicative (..))
 import           Control.Exception                  (SomeException)
 import           Control.Lens                       ((&), (.~))
-import           Control.Monad                      (MonadPlus (mzero), join, (<=<), (>=>))
+import           Control.Monad                      (MonadPlus (mzero), join, when, (<=<), (>=>))
 import           Control.Monad.Catch                (try)
 import           Control.Monad.Extra                (unlessM, whenM)
 import           Data.Aeson                         (FromJSON (..), ToJSON (..), eitherDecodeFileStrict, genericParseJSON, (.=))
@@ -30,6 +30,7 @@ import           Data.Aeson.Lens                    (key)
 import           Data.ByteString                    (ByteString)
 import qualified Data.ByteString                    as BS
 import           Data.Either.Extra                  (eitherToMaybe)
+import           Data.List.Extra                    (breakOnEnd, notNull)
 import           Data.List.NonEmpty                 (NonEmpty ((:|)), nonEmpty)
 import           Data.Maybe                         (fromMaybe, isJust, isNothing)
 import           Data.Text                          (Text)
@@ -47,7 +48,7 @@ import qualified PlutusAppsExtra.IO.Wallet          as Wallet
 import           PlutusAppsExtra.IO.Wallet.Internal (addressFromMnemonic)
 import           PlutusAppsExtra.Utils.Address      (bech32ToAddress, addressToBech32)
 import qualified Servant.Client                     as Servant
-import           System.Directory                   (doesFileExist)
+import           System.Directory                   (createDirectoryIfMissing, doesFileExist)
 import           Text.Read                          (readMaybe)
 
 data Config = Config
@@ -134,6 +135,7 @@ initialiseWallet cWalletFile =
         mnemonic_txt <- enterMnemonic
         putStrLn "enter your wallet passphrase"
         passphrase <- getLine
+        addMissingDirectories cWalletFile
         res <- writeFileJSON cWalletFile $ J.object
             [ "name" .= name
             , "mnemonic_sentence" .= T.words mnemonic_txt
@@ -158,6 +160,7 @@ initialiseWalletProvider Config{cDataProviders = Lightweight fp, ..} =
         putStrLn "keep in mind that each additional address also incurs additional costs in the form of provider credits"
         mnemonic <- mnemonicSentence <$> restoreWalletFromFile cWalletFile
         addrs <- (:| []) <$> addressFromMnemonic cNetworkId mnemonic
+        addMissingDirectories fp
         writeFileJSON fp (addressToBech32  cNetworkId <$> addrs) >>= either print pure
   where
     readAddrs =  fmap ((mapM bech32ToAddress >=> nonEmpty) <=< (join . eitherToMaybe))
@@ -177,6 +180,9 @@ initialiseToken tokenName fp = do
 
 writeJSONPretty :: FilePath -> J.Value -> IO ()
 writeJSONPretty fp val = BS.writeFile fp $ prettyPrintJSON val
+
+addMissingDirectories :: FilePath -> IO ()
+addMissingDirectories fp = let (dir,_) = breakOnEnd "/" fp in when (notNull dir) $ createDirectoryIfMissing True dir
 
 ------------------------------------------------------------------- Class -------------------------------------------------------------------
 
