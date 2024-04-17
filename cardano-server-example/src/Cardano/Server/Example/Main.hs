@@ -12,7 +12,7 @@
 module Cardano.Server.Example.Main where
 
 import           Cardano.Server.Client.Internal  (statusC)
-import           Cardano.Server.Config           (decodeOrErrorFromFile, initialiseConfig)
+import           Cardano.Server.Config           (decodeOrErrorFromFile, initializeConfig)
 import           Cardano.Server.Error            (Envelope, IsCardanoServerError (..), toEnvelope)
 import           Cardano.Server.Example.OffChain (testMintTx)
 import           Cardano.Server.Input            (InputContext)
@@ -67,7 +67,7 @@ exampleServerHandle = ServerHandle
 
 runExampleServer :: FilePath -> IO ()
 runExampleServer configFp = do
-    initialiseConfig configFp
+    initializeConfig configFp
     config <- decodeOrErrorFromFile configFp
     let ?creds    = embedCreds
     runServer config exampleServerHandle

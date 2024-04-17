@@ -107,27 +107,27 @@ dataProvidersFromConfigDataProviders = \case
 ------------------------------------------------------------------- Inintialisation -------------------------------------------------------------------
 
 -- | Ask user to type all missing information
-initialiseConfig :: FilePath -> IO ()
-initialiseConfig configFp = do
+initializeConfig :: FilePath -> IO ()
+initializeConfig configFp = do
     Config{..} <- decodeOrErrorFromFile configFp
-    sequence_ $ initialiseToken "blockfrost" <$> cBfTokenFilePath
-    sequence_ $ initialiseToken "maestro" <$> cMaestroTokenFilePath
-    initialiseNode configFp Config{..}
-    initialiseWallet cWalletFile
-    initialiseWalletProvider Config{..}
+    sequence_ $ initializeToken "blockfrost" <$> cBfTokenFilePath
+    sequence_ $ initializeToken "maestro" <$> cMaestroTokenFilePath
+    initializeNode configFp Config{..}
+    initializeWallet cWalletFile
+    initializeWalletProvider Config{..}
 
-initialiseNode :: FilePath -> Config -> IO ()
-initialiseNode _        Config{cDataProviders = Lightweight _} = pure ()
-initialiseNode configFp Config{cDataProviders = Cardano nodeFp} = unlessM (doesFileExist nodeFp) $ do
+initializeNode :: FilePath -> Config -> IO ()
+initializeNode _        Config{cDataProviders = Lightweight _} = pure ()
+initializeNode configFp Config{cDataProviders = Cardano nodeFp} = unlessM (doesFileExist nodeFp) $ do
     putStrLn "you have node-based providers but cardano node socket doesn't exists in specified path"
     putStrLn "enter correct cardano-node socket file path"
     fp <- getLine
     config_val <- decodeOrErrorFromFile @J.Value configFp
     writeJSONPretty configFp $ config_val & key "cDataProviders" .~ toJSON (Cardano fp)
-    decodeOrErrorFromFile configFp >>= initialiseNode configFp
+    decodeOrErrorFromFile configFp >>= initializeNode configFp
 
-initialiseWallet :: FilePath -> IO ()
-initialiseWallet cWalletFile =
+initializeWallet :: FilePath -> IO ()
+initializeWallet cWalletFile =
     unlessM (liftA2 (&&) (doesFileExist cWalletFile) (isJust <$> readWalletFile)) $ do
         putStrLn "wallet doesn't exists or wallet file is corrupted"
         putStrLn "enter your wallet name"
@@ -151,9 +151,9 @@ initialiseWallet cWalletFile =
             Right _ -> pure mnemonic_txt
             Left err -> print err >> enterMnemonic
 
-initialiseWalletProvider :: Config -> IO ()
-initialiseWalletProvider Config{cDataProviders = Cardano _} = pure ()
-initialiseWalletProvider Config{cDataProviders = Lightweight fp, ..} =
+initializeWalletProvider :: Config -> IO ()
+initializeWalletProvider Config{cDataProviders = Cardano _} = pure ()
+initializeWalletProvider Config{cDataProviders = Lightweight fp, ..} =
     whenM (isNothing <$> readAddrs) $ do
         putStrLn "no addresses specified for lightweight wallet provider or addresses file is corrupted"
         putStrLn "now they will be selected automatically, but you can manually change them at any time"
@@ -166,8 +166,8 @@ initialiseWalletProvider Config{cDataProviders = Lightweight fp, ..} =
     readAddrs =  fmap ((mapM bech32ToAddress >=> nonEmpty) <=< (join . eitherToMaybe))
         $ try @_ @SomeException $ J.decodeFileStrict @[Text] fp
 
-initialiseToken :: String -> FilePath -> IO String
-initialiseToken tokenName fp = do
+initializeToken :: String -> FilePath -> IO String
+initializeToken tokenName fp = do
     unlessM (doesFileExist fp) $ do
         putStrLn $ tokenName <> " token file doesn't exists."
         putStrLn $ "enter your " <> tokenName <> " token."
