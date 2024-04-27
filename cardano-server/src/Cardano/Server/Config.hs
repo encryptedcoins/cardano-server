@@ -20,7 +20,7 @@ import           Cardano.Mnemonic                   (MkSomeMnemonic (..))
 import           Control.Applicative                (Applicative (..))
 import           Control.Exception                  (SomeException)
 import           Control.Lens                       ((&), (.~))
-import           Control.Monad                      (MonadPlus (mzero), join, (<=<), (>=>))
+import           Control.Monad                      (MonadPlus (mzero), join, when, (<=<), (>=>))
 import           Control.Monad.Catch                (try)
 import           Control.Monad.Extra                (unlessM, whenM)
 import           Data.Aeson                         (FromJSON (..), ToJSON (..), eitherDecodeFileStrict, genericParseJSON, (.=))
@@ -30,6 +30,7 @@ import           Data.Aeson.Lens                    (key)
 import           Data.ByteString                    (ByteString)
 import qualified Data.ByteString                    as BS
 import           Data.Either.Extra                  (eitherToMaybe)
+import           Data.List.Extra                    (breakOnEnd, notNull)
 import           Data.List.NonEmpty                 (NonEmpty ((:|)), nonEmpty)
 import           Data.Maybe                         (fromMaybe, isJust, isNothing)
 import           Data.Text                          (Text)
@@ -47,7 +48,7 @@ import qualified PlutusAppsExtra.IO.Wallet          as Wallet
 import           PlutusAppsExtra.IO.Wallet.Internal (addressFromMnemonic)
 import           PlutusAppsExtra.Utils.Address      (bech32ToAddress, addressToBech32)
 import qualified Servant.Client                     as Servant
-import           System.Directory                   (doesFileExist)
+import           System.Directory                   (createDirectoryIfMissing, doesFileExist)
 import           Text.Read                          (readMaybe)
 
 data Config = Config
@@ -106,27 +107,27 @@ dataProvidersFromConfigDataProviders = \case
 ------------------------------------------------------------------- Inintialisation -------------------------------------------------------------------
 
 -- | Ask user to type all missing information
-initialiseConfig :: FilePath -> IO ()
-initialiseConfig configFp = do
+initializeConfig :: FilePath -> IO ()
+initializeConfig configFp = do
     Config{..} <- decodeOrErrorFromFile configFp
-    sequence_ $ initialiseToken "blockfrost" <$> cBfTokenFilePath
-    sequence_ $ initialiseToken "maestro" <$> cMaestroTokenFilePath
-    initialiseNode configFp Config{..}
-    initialiseWallet cWalletFile
-    initialiseWalletProvider Config{..}
+    sequence_ $ initializeToken "blockfrost" <$> cBfTokenFilePath
+    sequence_ $ initializeToken "maestro" <$> cMaestroTokenFilePath
+    initializeNode configFp Config{..}
+    initializeWallet cWalletFile
+    initializeWalletProvider Config{..}
 
-initialiseNode :: FilePath -> Config -> IO ()
-initialiseNode _        Config{cDataProviders = Lightweight _} = pure ()
-initialiseNode configFp Config{cDataProviders = Cardano nodeFp} = unlessM (doesFileExist nodeFp) $ do
+initializeNode :: FilePath -> Config -> IO ()
+initializeNode _        Config{cDataProviders = Lightweight _} = pure ()
+initializeNode configFp Config{cDataProviders = Cardano nodeFp} = unlessM (doesFileExist nodeFp) $ do
     putStrLn "you have node-based providers but cardano node socket doesn't exists in specified path"
     putStrLn "enter correct cardano-node socket file path"
     fp <- getLine
     config_val <- decodeOrErrorFromFile @J.Value configFp
     writeJSONPretty configFp $ config_val & key "cDataProviders" .~ toJSON (Cardano fp)
-    decodeOrErrorFromFile configFp >>= initialiseNode configFp
+    decodeOrErrorFromFile configFp >>= initializeNode configFp
 
-initialiseWallet :: FilePath -> IO ()
-initialiseWallet cWalletFile =
+initializeWallet :: FilePath -> IO ()
+initializeWallet cWalletFile =
     unlessM (liftA2 (&&) (doesFileExist cWalletFile) (isJust <$> readWalletFile)) $ do
         putStrLn "wallet doesn't exists or wallet file is corrupted"
         putStrLn "enter your wallet name"
@@ -134,6 +135,7 @@ initialiseWallet cWalletFile =
         mnemonic_txt <- enterMnemonic
         putStrLn "enter your wallet passphrase"
         passphrase <- getLine
+        addMissingDirectories cWalletFile
         res <- writeFileJSON cWalletFile $ J.object
             [ "name" .= name
             , "mnemonic_sentence" .= T.words mnemonic_txt
@@ -149,22 +151,23 @@ initialiseWallet cWalletFile =
             Right _ -> pure mnemonic_txt
             Left err -> print err >> enterMnemonic
 
-initialiseWalletProvider :: Config -> IO ()
-initialiseWalletProvider Config{cDataProviders = Cardano _} = pure ()
-initialiseWalletProvider Config{cDataProviders = Lightweight fp, ..} =
+initializeWalletProvider :: Config -> IO ()
+initializeWalletProvider Config{cDataProviders = Cardano _} = pure ()
+initializeWalletProvider Config{cDataProviders = Lightweight fp, ..} =
     whenM (isNothing <$> readAddrs) $ do
         putStrLn "no addresses specified for lightweight wallet provider or addresses file is corrupted"
         putStrLn "now they will be selected automatically, but you can manually change them at any time"
         putStrLn "keep in mind that each additional address also incurs additional costs in the form of provider credits"
         mnemonic <- mnemonicSentence <$> restoreWalletFromFile cWalletFile
         addrs <- (:| []) <$> addressFromMnemonic cNetworkId mnemonic
+        addMissingDirectories fp
         writeFileJSON fp (addressToBech32  cNetworkId <$> addrs) >>= either print pure
   where
     readAddrs =  fmap ((mapM bech32ToAddress >=> nonEmpty) <=< (join . eitherToMaybe))
         $ try @_ @SomeException $ J.decodeFileStrict @[Text] fp
 
-initialiseToken :: String -> FilePath -> IO String
-initialiseToken tokenName fp = do
+initializeToken :: String -> FilePath -> IO String
+initializeToken tokenName fp = do
     unlessM (doesFileExist fp) $ do
         putStrLn $ tokenName <> " token file doesn't exists."
         putStrLn $ "enter your " <> tokenName <> " token."
@@ -177,6 +180,9 @@ initialiseToken tokenName fp = do
 
 writeJSONPretty :: FilePath -> J.Value -> IO ()
 writeJSONPretty fp val = BS.writeFile fp $ prettyPrintJSON val
+
+addMissingDirectories :: FilePath -> IO ()
+addMissingDirectories fp = let (dir,_) = breakOnEnd "/" fp in when (notNull dir) $ createDirectoryIfMissing True dir
 
 ------------------------------------------------------------------- Class -------------------------------------------------------------------
 
